@@ -7,11 +7,22 @@ interface Strategy {
   description?: string;
 }
 
+interface StrategyMetrics {
+  strategy_id: string;
+  total_pl: number;
+  win_rate: number;
+  profit_factor: number;
+  drawdown: number;
+}
+
 const StrategiesPage: React.FC = () => {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', description: '' });
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
+  const [metrics, setMetrics] = useState<StrategyMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
   const loadStrategies = async () => {
     try {
@@ -61,6 +72,22 @@ const StrategiesPage: React.FC = () => {
       loadStrategies();
     } catch (e) {
       console.error('Error deleting strategy:', e);
+    }
+  };
+
+  const viewMetrics = async (strategy: Strategy) => {
+    setSelectedStrategy(strategy);
+    setMetrics(null);
+    setMetricsLoading(true);
+    try {
+      const res = await api.strategies.metrics(strategy.id);
+      if (!res.ok) throw new Error('Failed to load metrics');
+      const data = await res.json();
+      setMetrics(data);
+    } catch (e) {
+      console.error('Error loading metrics:', e);
+    } finally {
+      setMetricsLoading(false);
     }
   };
 
@@ -132,11 +159,39 @@ const StrategiesPage: React.FC = () => {
                     <button onClick={() => handleDelete(s.id)} className="text-red-600 hover:underline">
                       Delete
                     </button>
+                    <button onClick={() => viewMetrics(s)} className="text-indigo-600 hover:underline">
+                      Metrics
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {selectedStrategy && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-xl w-96 shadow-lg">
+            <h3 className="text-lg font-semibold mb-4">Metrics for {selectedStrategy.name}</h3>
+            {metricsLoading ? (
+              <p>Loading metrics...</p>
+            ) : metrics ? (
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li>Total P/L: {metrics.total_pl.toFixed(2)}</li>
+                <li>Win Rate: {(metrics.win_rate * 100).toFixed(2)}%</li>
+                <li>Profit Factor: {metrics.profit_factor.toFixed(2)}</li>
+                <li>Drawdown: {metrics.drawdown.toFixed(2)}</li>
+              </ul>
+            ) : (
+              <p>No metrics available.</p>
+            )}
+            <button
+              onClick={() => { setSelectedStrategy(null); setMetrics(null); }}
+              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>
