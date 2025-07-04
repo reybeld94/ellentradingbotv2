@@ -202,30 +202,6 @@ const StatsCard: React.FC<{
   </div>
 );
 
-// Component: Quick Action Card
-const QuickActionCard: React.FC<{
-  title: string;
-  description: string;
-  icon: React.ComponentType<any>;
-  color: string;
-  onClick: () => void;
-}> = ({ title, description, icon: Icon, color, onClick }) => (
-  <div
-    onClick={onClick}
-    className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md cursor-pointer transition-all duration-200 group"
-  >
-    <div className="flex items-center">
-      <div className={`p-2 rounded-lg ${color} group-hover:scale-110 transition-transform duration-200`}>
-        <Icon className="h-5 w-5 text-white" />
-      </div>
-      <div className="ml-3">
-        <p className="font-medium text-gray-900 text-sm">{title}</p>
-        <p className="text-xs text-gray-500">{description}</p>
-      </div>
-    </div>
-  </div>
-);
-
 // Component: Recent Activity Item
 const ActivityItem: React.FC<{
   type: 'signal' | 'order';
@@ -505,40 +481,7 @@ const TradingDashboard: React.FC = () => {
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <QuickActionCard
-            title="Test Signal"
-            description="Send test trading signal"
-            icon={Zap}
-            color="bg-blue-500"
-            onClick={() => console.log('Test signal')}
-          />
-          <QuickActionCard
-            title="View Signals"
-            description="Monitor recent signals"
-            icon={Activity}
-            color="bg-emerald-500"
-            onClick={() => console.log('View signals')}
-          />
-          <QuickActionCard
-            title="Check Orders"
-            description="Review order history"
-            icon={BarChart3}
-            color="bg-purple-500"
-            onClick={() => console.log('Check orders')}
-          />
-          <QuickActionCard
-            title="Account Settings"
-            description="Manage preferences"
-            icon={Shield}
-            color="bg-gray-500"
-            onClick={() => console.log('Settings')}
-          />
-        </div>
-      </div>
+
 
       {/* Activity Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
