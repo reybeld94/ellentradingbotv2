@@ -289,8 +289,9 @@ async def webhook_health(db: Session = Depends(get_db)):
             "verified": reybel_user.is_verified if reybel_user else False
         },
         "endpoints": {
-            "authenticated": "/api/v1/webhook",
-            "public": "/api/v1/webhook-public",
-            "test": "/api/v1/test-webhook"
-        }
+        "authenticated": "/api/v1/webhook",
+        "public": "/api/v1/webhook-public",
+        "test": "/api/v1/test-webhook"
     }
+    }
+

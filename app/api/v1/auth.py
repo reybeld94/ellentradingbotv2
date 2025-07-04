@@ -347,3 +347,4 @@ async def list_users(
         created_at=user.created_at,
         last_login=user.last_login
     ) for user in users]
+

@@ -125,3 +125,4 @@ class ValidationService:
 
 # Instancia global
 validation_service = ValidationService()
+
