@@ -2,7 +2,6 @@
 
 from sqlalchemy.orm import Session
 from ..models.strategy_position import StrategyPosition
-from ..models.signal import Signal
 import logging
 
 logger = logging.getLogger(__name__)
@@ -57,7 +56,10 @@ class StrategyPositionManager:
 
         self.db.commit()
 
-        logger.info(f"Added position: {strategy_id}:{symbol} +{quantity} @ ${price} (total: {position.quantity})")
+        logger.info(
+            f"Added position: {strategy_id}:{symbol} +{quantity} @ ${price} "
+            f"(total: {position.quantity})"
+        )
         return position
 
     def reduce_position(self, strategy_id: str, symbol: str, quantity: float) -> float:
@@ -84,12 +86,17 @@ class StrategyPositionManager:
             position.total_invested = 0.0
         else:
             # Reducir inversión proporcionalmente
-            sell_ratio = quantity_to_sell / (position.quantity + quantity_to_sell)
+            sell_ratio = quantity_to_sell / (
+                position.quantity + quantity_to_sell
+            )
             position.total_invested = position.total_invested * (1 - sell_ratio)
 
         self.db.commit()
 
-        logger.info(f"Reduced position: {strategy_id}:{symbol} -{quantity_to_sell} (remaining: {position.quantity})")
+        logger.info(
+            f"Reduced position: {strategy_id}:{symbol} -{quantity_to_sell} "
+            f"(remaining: {position.quantity})"
+        )
         return quantity_to_sell
 
     def get_strategy_positions(self, strategy_id: str):
@@ -119,3 +126,4 @@ class StrategyPositionManager:
         position.total_invested = 0.0
         self.db.commit()
         logger.info(f"Reset position: {strategy_id}:{symbol}")
+

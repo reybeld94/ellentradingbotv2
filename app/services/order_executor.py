@@ -182,7 +182,7 @@ class OrderExecutor:
 
         estimated_cost = current_price * signal.quantity
 
-        print(f"💰 Order details:")
+        print("💰 Order details:")
         print(f"   - Original symbol: {signal.symbol}")
         print(f"   - Alpaca symbol: {correct_symbol}")
         print(f"   - Price: ${current_price}")
@@ -193,7 +193,7 @@ class OrderExecutor:
         if estimated_cost > available_cash:
             raise ValueError(f"Insufficient cash. Need: ${estimated_cost:.2f}, Available: ${available_cash:.2f}")
 
-        print(f"📤 Submitting order to Alpaca...")
+        print("📤 Submitting order to Alpaca...")
         if self.is_crypto(signal.symbol):
             order = self.alpaca.submit_crypto_order(
                 symbol=correct_symbol,
@@ -220,7 +220,7 @@ class OrderExecutor:
         db.add(new_trade)
         db.commit()
         logger.info(f"💾 Trade created: {new_trade}")
-        print(f"📊 Updating strategy position...")
+        print("📊 Updating strategy position...")
         strategy_manager.add_position(
             strategy_id=signal.strategy_id,
             symbol=signal.symbol,
@@ -297,7 +297,7 @@ class OrderExecutor:
             logger.warning(
                 f"⚠️ No open trades found to close for {signal.strategy_id}:{signal.symbol}"
             )
-        print(f"📊 Reducing strategy position...")
+        print("📊 Reducing strategy position...")
         actual_sold = strategy_manager.reduce_position(
             strategy_id=signal.strategy_id,
             symbol=signal.symbol,
