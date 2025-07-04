@@ -14,17 +14,25 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+# Importar la configuración de tu app
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from app.config import settings
 from app.database import Base
-from app.models.signal import Signal  # Importar todos los models
 
+# IMPORTANTE: Importar TODOS los modelos para que SQLAlchemy los reconozca
+from app.models.signal import Signal
+from app.models.strategy_position import StrategyPosition
+from app.models.user import User
+from app.models.trades import Trade
+
+# Configurar la URL de la base de datos desde settings
+config.set_main_option('sqlalchemy.url', settings.database_url)
+
+# add your model's MetaData object here
+# for 'autogenerate' support
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

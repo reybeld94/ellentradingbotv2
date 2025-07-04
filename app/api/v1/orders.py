@@ -1,63 +1,127 @@
 # backend/app/api/v1/orders.py
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ...integrations.alpaca.client import alpaca_client
 from ...services.position_manager import position_manager
 from ...database import get_db
 from ...models.signal import Signal
+from ...models.user import User
+from ...core.auth import get_current_verified_user, get_admin_user
 
 router = APIRouter()
 
+
 @router.get("/orders")
-async def get_alpaca_orders():
+async def get_alpaca_orders(
+        current_user: User = Depends(get_current_verified_user)
+):
     """Ver órdenes en Alpaca"""
     try:
-        orders = alpaca_client.api.list_orders(status='all', limit=10)
-        return [
-            {
-                "id": order.id,
-                "symbol": order.symbol,
-                "qty": order.qty,
-                "side": order.side,
-                "status": order.status,
-                "submitted_at": order.submitted_at,
-                "filled_at": getattr(order, 'filled_at', None),
-                "rejected_reason": getattr(order, 'rejected_reason', None)
+        # Método directo con trading_client para obtener TODAS las órdenes
+        from alpaca.trading.requests import GetOrdersRequest
+        from alpaca.trading.enums import QueryOrderStatus
+
+        # Crear request para obtener todas las órdenes (sin filtro de status)
+        request = GetOrdersRequest(limit=200)  # Aumentar límite
+        orders = alpaca_client.trading_client.get_orders(filter=request)
+
+        if not orders:
+            return {
+                "orders": [],
+                "message": "No orders found in your Alpaca account",
+                "user": current_user.username,
+                "total_count": 0
             }
-            for order in orders
-        ]
+
+        order_list = []
+        for order in orders:
+            try:
+                order_data = {
+                    "id": str(order.id),
+                    "symbol": order.symbol,
+                    "qty": str(order.qty),
+                    "side": order.side.value if hasattr(order.side, 'value') else str(order.side),
+                    "status": order.status.value if hasattr(order.status, 'value') else str(order.status),
+                    "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                    "filled_at": order.filled_at.isoformat() if order.filled_at else None,
+                    "filled_qty": str(order.filled_qty) if order.filled_qty else "0",
+                    "filled_avg_price": str(order.filled_avg_price) if order.filled_avg_price else None,
+                    "rejected_reason": getattr(order, 'rejected_reason', None),
+                    "order_type": str(order.order_type) if hasattr(order, 'order_type') else "market",
+                    "time_in_force": str(order.time_in_force) if hasattr(order, 'time_in_force') else "day"
+                }
+                order_list.append(order_data)
+            except Exception as e:
+                # Si hay error procesando una orden específica, continuar con las demás
+                continue
+
+        return {
+            "orders": order_list,
+            "total_count": len(order_list),
+            "user": current_user.username
+        }
+
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "error": str(e),
+            "orders": [],
+            "user": current_user.username,
+            "total_count": 0
+        }
+
 
 @router.get("/account")
-async def get_account():
+async def get_account(
+        current_user: User = Depends(get_current_verified_user)
+):
     """Ver info de cuenta Alpaca"""
     try:
         account = alpaca_client.get_account()
+
         return {
-            "buying_power": account.buying_power,
-            "cash": account.cash,
-            "portfolio_value": account.portfolio_value,
-            "status": account.status,
-            "trading_blocked": account.trading_blocked,
-            "crypto_status": getattr(account, 'crypto_status', 'unknown')
+            "buying_power": str(account.buying_power),
+            "cash": str(account.cash),
+            "portfolio_value": str(account.portfolio_value),
+            "status": str(account.status),
+            "trading_blocked": getattr(account, 'trading_blocked', False),
+            "crypto_status": str(getattr(account, 'crypto_trading_enabled', False)),
+            "pattern_day_trader": getattr(account, 'pattern_day_trader', False),
+            "day_trade_count": getattr(account, 'day_trade_count', 0),
+            "user": current_user.username
         }
     except Exception as e:
         return {"error": str(e)}
 
+
 @router.get("/positions")
-async def get_positions():
-    """Ver posiciones actuales y resumen del portafolio"""
+async def get_positions(
+        current_user: User = Depends(get_current_verified_user)
+):
+    """Ver posiciones actuales"""
     try:
-        return position_manager.get_portfolio_summary()
+        portfolio_summary = position_manager.get_portfolio_summary()
+        portfolio_summary["user"] = current_user.username
+        return portfolio_summary
     except Exception as e:
         return {"error": str(e)}
 
+
 @router.get("/signals")
-async def get_signals(db: Session = Depends(get_db)):
-    """Ver señales en nuestra base de datos"""
-    signals = db.query(Signal).order_by(Signal.timestamp.desc()).limit(10).all()
+async def get_signals(
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_verified_user)
+):
+    """Ver señales del usuario actual"""
+    if current_user.is_admin:
+        # Admin puede ver todas
+        signals = db.query(Signal).order_by(Signal.timestamp.desc()).limit(50).all()
+    else:
+        # Usuario normal solo las suyas
+        signals = db.query(Signal).filter(
+            Signal.user_id == current_user.id
+        ).order_by(Signal.timestamp.desc()).limit(50).all()
+
     return [
         {
             "id": signal.id,
@@ -66,20 +130,59 @@ async def get_signals(db: Session = Depends(get_db)):
             "quantity": signal.quantity,
             "status": signal.status,
             "error_message": signal.error_message,
-            "timestamp": signal.timestamp
+            "timestamp": signal.timestamp.isoformat(),
+            "strategy_id": signal.strategy_id,
+            "source": "tradingview"
         }
         for signal in signals
     ]
 
-@router.get("/test-crypto-quote/{symbol}")
-async def test_crypto_quote(symbol: str):
-    """Probar obtener precio de crypto"""
-    try:
-        quote = alpaca_client.get_latest_crypto_quote(symbol)
-        return {
-            "symbol": symbol,
-            "price": quote.price,
-            "timestamp": quote.timestamp
+
+# Endpoints administrativos
+@router.get("/admin/all-signals")
+async def get_all_signals(
+        db: Session = Depends(get_db),
+        admin_user: User = Depends(get_admin_user)
+):
+    """Ver todas las señales de todos los usuarios (solo admin)"""
+    signals = db.query(Signal).order_by(Signal.timestamp.desc()).limit(100).all()
+
+    return [
+        {
+            "id": signal.id,
+            "symbol": signal.symbol,
+            "action": signal.action,
+            "strategy_id": signal.strategy_id,
+            "quantity": signal.quantity,
+            "status": signal.status,
+            "timestamp": signal.timestamp.isoformat(),
+            "user_id": signal.user_id,
+            "username": signal.user.username if signal.user else "Unknown"
         }
-    except Exception as e:
-        return {"error": str(e)}
+        for signal in signals
+    ]
+
+
+@router.get("/admin/user-stats")
+async def get_user_stats(
+        db: Session = Depends(get_db),
+        admin_user: User = Depends(get_admin_user)
+):
+    """Estadísticas de usuarios (solo admin)"""
+    from sqlalchemy import func
+    from ...models.user import User
+
+    stats = db.query(
+        func.count(Signal.id).label('total_signals'),
+        Signal.user_id,
+        User.username
+    ).join(User).group_by(Signal.user_id, User.username).all()
+
+    return [
+        {
+            "user_id": stat.user_id,
+            "username": stat.username,
+            "total_signals": stat.total_signals
+        }
+        for stat in stats
+    ]

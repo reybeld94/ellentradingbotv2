@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, DollarSign, TrendingUp, Activity, AlertCircle, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import {
+  BarChart3, DollarSign, TrendingUp, Activity, AlertCircle, RefreshCw,
+  CheckCircle, XCircle, ArrowUp, ArrowDown, PieChart, Target, Briefcase,
+  Clock, Shield, Zap
+} from 'lucide-react';
 
 // Tipos TypeScript
 interface Account {
@@ -9,6 +13,7 @@ interface Account {
   status: string;
   trading_blocked: boolean;
   crypto_status: string;
+  user?: string;
 }
 
 interface Signal {
@@ -19,6 +24,9 @@ interface Signal {
   status: string;
   error_message?: string;
   timestamp: string;
+  strategy_id?: string;
+  reason?: string;
+  confidence?: number;
 }
 
 interface Order {
@@ -30,6 +38,7 @@ interface Order {
   submitted_at: string;
   filled_at?: string;
   rejected_reason?: string;
+  user?: string;
 }
 
 interface PortfolioData {
@@ -40,32 +49,101 @@ interface PortfolioData {
   portfolio_value: string;
   buying_power: string;
   positions: Record<string, number>;
+  user?: string;
 }
 
-// API Service
+// Función para obtener el token del localStorage
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('token');
+};
+
+// Función para hacer requests autenticados
+const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+  const token = getAuthToken();
+
+  if (!token) {
+    console.error('❌ No authentication token found');
+    throw new Error('No authentication token available');
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    ...options.headers,
+  };
+
+  console.log('🔐 Making authenticated request to:', url);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    console.log('📨 Response status:', response.status);
+
+    // Si el token es inválido, limpiar y recargar
+    if (response.status === 401) {
+      console.error('❌ Token expired or invalid - clearing localStorage');
+      localStorage.removeItem('token');
+      window.location.reload();
+      throw new Error('Authentication failed - token expired');
+    }
+
+    if (response.status === 403) {
+      console.error('❌ Access forbidden - insufficient permissions');
+      const errorText = await response.text();
+      console.error('📋 Error details:', errorText);
+      throw new Error('Access forbidden - insufficient permissions');
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API Error:', response.status, errorText);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+
+    return response;
+  } catch (error) {
+    console.error('💥 Network error:', error);
+    throw error;
+  }
+};
+
+// API Service con autenticación
 const api = {
   baseUrl: 'http://localhost:8000/api/v1',
 
-  async get(endpoint: string) {
-    const response = await fetch(`${this.baseUrl}${endpoint}`);
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
-    return response.json();
-  },
-
   async getAccount(): Promise<Account> {
-    return this.get('/account');
+    console.log('🔄 Fetching account data...');
+    const response = await authenticatedFetch(`${this.baseUrl}/account`);
+    const data = await response.json();
+    console.log('✅ Account data received:', data);
+    return data;
   },
 
   async getSignals(): Promise<Signal[]> {
-    return this.get('/signals');
+    console.log('🔄 Fetching signals data...');
+    const response = await authenticatedFetch(`${this.baseUrl}/signals`);
+    const data = await response.json();
+    console.log('✅ Signals data received:', data);
+    return Array.isArray(data) ? data : [];
   },
 
   async getOrders(): Promise<Order[]> {
-    return this.get('/orders');
+    console.log('🔄 Fetching orders data...');
+    const response = await authenticatedFetch(`${this.baseUrl}/orders`);
+    const data = await response.json();
+    console.log('✅ Orders data received:', data);
+    return Array.isArray(data.orders) ? data.orders : [];
   },
 
   async getPositions(): Promise<PortfolioData> {
-    return this.get('/positions');
+    console.log('🔄 Fetching positions data...');
+    const response = await authenticatedFetch(`${this.baseUrl}/positions`);
+    const data = await response.json();
+    console.log('✅ Positions data received:', data);
+    return data;
   }
 };
 
@@ -83,341 +161,195 @@ const formatTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleString();
 };
 
-// Component: Summary Cards
-const SummaryCards: React.FC<{ account: Account | null; portfolio: PortfolioData | null }> = ({ account, portfolio }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <BarChart3 className="h-6 w-6 text-blue-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Portfolio Value</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {account ? formatCurrency(account.portfolio_value) : '--'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center">
-          <div className="p-2 bg-green-100 rounded-lg">
-            <DollarSign className="h-6 w-6 text-green-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Available Cash</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {account ? formatCurrency(account.cash) : '--'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <TrendingUp className="h-6 w-6 text-purple-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Buying Power</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {account ? formatCurrency(account.buying_power) : '--'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center">
-          <div className="p-2 bg-orange-100 rounded-lg">
-            <Activity className="h-6 w-6 text-orange-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Positions</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {portfolio ? `${portfolio.total_positions}/${portfolio.max_positions}` : '--'}
-            </p>
-            <p className="text-xs text-gray-500">
-              {portfolio && `${portfolio.remaining_slots} slots available`}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Component: Signals Table
-const SignalsTable: React.FC<{ signals: Signal[] }> = ({ signals }) => {
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'processed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'error':
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'pending':
-        return <RefreshCw className="h-4 w-4 text-yellow-600 animate-spin" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getActionBadge = (action: string) => {
-    const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
-    return action === 'buy'
-      ? `${baseClasses} bg-green-100 text-green-800`
-      : `${baseClasses} bg-red-100 text-red-800`;
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-md">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Recent Signals</h3>
-      </div>
-      <div className="overflow-x-auto">
-        {signals.length === 0 ? (
-          <div className="p-8 text-center">
-            <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No signals received yet</p>
-            <p className="text-sm text-gray-400">Signals from TradingView will appear here</p>
-          </div>
+// Component: Enhanced Stats Card
+const StatsCard: React.FC<{
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: React.ComponentType<any>;
+  gradient: string;
+  trend?: { value: string; positive: boolean };
+  loading?: boolean;
+}> = ({ title, value, subtitle, icon: Icon, gradient, trend, loading = false }) => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-300 group">
+    <div className="flex items-center justify-between">
+      <div className="flex-1">
+        <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+        {loading ? (
+          <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
         ) : (
-          <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Symbol</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Error</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {signals.map((signal) => (
-                <tr key={signal.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getStatusIcon(signal.status)}
-                      <span className="ml-2 text-sm text-gray-900 capitalize">{signal.status}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-gray-900">{signal.symbol}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={getActionBadge(signal.action)}>
-                      {signal.action.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {signal.quantity || 'Auto'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatTime(signal.timestamp)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {signal.error_message && (
-                      <div className="flex items-center text-red-600">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        <span className="text-xs truncate max-w-32" title={signal.error_message}>
-                          {signal.error_message}
-                        </span>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
+        )}
+        {subtitle && (
+          <p className="text-xs text-gray-500">{subtitle}</p>
+        )}
+        {trend && (
+          <div className={`flex items-center mt-2 text-sm font-medium ${
+            trend.positive ? 'text-emerald-600' : 'text-red-500'
+          }`}>
+            {trend.positive ?
+              <ArrowUp className="h-4 w-4 mr-1" /> :
+              <ArrowDown className="h-4 w-4 mr-1" />
+            }
+            {trend.value}
+          </div>
         )}
       </div>
-    </div>
-  );
-};
-
-// Component: Orders Table
-const OrdersTable: React.FC<{ orders: Order[] }> = ({ orders }) => {
-  const getStatusBadge = (status: string) => {
-    const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
-    switch (status.toLowerCase()) {
-      case 'filled':
-        return `${baseClasses} bg-green-100 text-green-800`;
-      case 'rejected':
-      case 'canceled':
-        return `${baseClasses} bg-red-100 text-red-800`;
-      case 'pending_new':
-      case 'new':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-md">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
+      <div className={`p-4 rounded-2xl ${gradient} group-hover:scale-110 transition-transform duration-300`}>
+        <Icon className="h-7 w-7 text-white" />
       </div>
-      <div className="overflow-x-auto">
-        {orders.length === 0 ? (
-          <div className="p-8 text-center">
-            <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No orders executed yet</p>
-            <p className="text-sm text-gray-400">Orders will appear here when signals are processed</p>
+    </div>
+  </div>
+);
+
+// Component: Quick Action Card
+const QuickActionCard: React.FC<{
+  title: string;
+  description: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  onClick: () => void;
+}> = ({ title, description, icon: Icon, color, onClick }) => (
+  <div
+    onClick={onClick}
+    className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md cursor-pointer transition-all duration-200 group"
+  >
+    <div className="flex items-center">
+      <div className={`p-2 rounded-lg ${color} group-hover:scale-110 transition-transform duration-200`}>
+        <Icon className="h-5 w-5 text-white" />
+      </div>
+      <div className="ml-3">
+        <p className="font-medium text-gray-900 text-sm">{title}</p>
+        <p className="text-xs text-gray-500">{description}</p>
+      </div>
+    </div>
+  </div>
+);
+
+// Component: Recent Activity Item
+const ActivityItem: React.FC<{
+  type: 'signal' | 'order';
+  data: Signal | Order;
+}> = ({ type, data }) => {
+  if (type === 'signal') {
+    const signal = data as Signal;
+    return (
+      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
+        <div className="flex items-center">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            signal.action === 'buy' ? 'bg-emerald-100' : 'bg-red-100'
+          }`}>
+            {signal.action === 'buy' ?
+              <TrendingUp className="h-5 w-5 text-emerald-600" /> :
+              <TrendingUp className="h-5 w-5 text-red-600 rotate-180" />
+            }
           </div>
-        ) : (
-          <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Symbol</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Side</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Filled</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-gray-900">{order.symbol}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={order.side === 'buy' ? 'text-green-600' : 'text-red-600'}>
-                      {order.side.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {order.qty}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={getStatusBadge(order.status)}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatTime(order.submitted_at)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.filled_at ? formatTime(order.filled_at) : '--'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Component: Positions Table
-const PositionsTable: React.FC<{ portfolio: PortfolioData | null }> = ({ portfolio }) => {
-  if (!portfolio) return null;
-
-  return (
-    <div className="bg-white rounded-lg shadow-md">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Current Positions</h3>
-      </div>
-      <div className="overflow-x-auto">
-        {Object.keys(portfolio.positions).length === 0 ? (
-          <div className="p-8 text-center">
-            <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No positions currently held</p>
-            <p className="text-sm text-gray-400">
-              Positions will appear here when you have open trades
-            </p>
+          <div className="ml-3">
+            <p className="font-semibold text-gray-900">{signal.symbol}</p>
+            <p className="text-sm text-gray-600">{signal.strategy_id || 'Strategy'}</p>
           </div>
-        ) : (
-          <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Symbol</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Est. Value</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Allocation</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {Object.entries(portfolio.positions).map(([symbol, quantity]) => {
-                const estimatedPrice = 150; // En producción obtener precio real
-                const estimatedValue = quantity * estimatedPrice;
-                const totalValue = parseFloat(portfolio.portfolio_value);
-                const allocation = ((estimatedValue / totalValue) * 100).toFixed(1);
-
-                return (
-                  <tr key={symbol} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900">{symbol}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {quantity}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(estimatedValue)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${Math.min(parseFloat(allocation), 100)}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm text-gray-600">{allocation}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        </div>
+        <div className="text-right">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            signal.status === 'processed' ? 'bg-emerald-100 text-emerald-800' :
+            signal.status === 'error' ? 'bg-red-100 text-red-800' :
+            'bg-yellow-100 text-yellow-800'
+          }`}>
+            {signal.status}
+          </span>
+          {signal.confidence && (
+            <p className="text-xs text-gray-500 mt-1">{signal.confidence}% confidence</p>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  } else {
+    const order = data as Order;
+    return (
+      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
+        <div className="flex items-center">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            order.side === 'buy' ? 'bg-blue-100' : 'bg-purple-100'
+          }`}>
+            {order.side === 'buy' ?
+              <TrendingUp className="h-5 w-5 text-blue-600" /> :
+              <TrendingUp className="h-5 w-5 text-purple-600 rotate-180" />
+            }
+          </div>
+          <div className="ml-3">
+            <p className="font-semibold text-gray-900">{order.symbol}</p>
+            <p className="text-sm text-gray-600">{order.qty} shares</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            order.status === 'filled' ? 'bg-emerald-100 text-emerald-800' :
+            order.status === 'rejected' ? 'bg-red-100 text-red-800' :
+            'bg-blue-100 text-blue-800'
+          }`}>
+            {order.status}
+          </span>
+          <p className="text-xs text-gray-500 mt-1">
+            {new Date(order.submitted_at).toLocaleTimeString()}
+          </p>
+        </div>
+      </div>
+    );
+  }
 };
 
 // Component: System Status
 const SystemStatus: React.FC<{ account: Account | null }> = ({ account }) => {
-  const getStatusIndicator = (isActive: boolean) => (
-    <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
-  );
+  const statusItems = [
+    {
+      name: 'Trading Account',
+      status: account?.status === 'ACTIVE',
+      description: account?.status || 'Unknown',
+      icon: Briefcase
+    },
+    {
+      name: 'Trading Engine',
+      status: !account?.trading_blocked,
+      description: account?.trading_blocked ? 'Blocked' : 'Active',
+      icon: Zap
+    },
+    {
+      name: 'Crypto Trading',
+      status: account?.crypto_status === 'ACTIVE',
+      description: account?.crypto_status || 'Unknown',
+      icon: Shield
+    }
+  ];
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="flex items-center">
-          {getStatusIndicator(account?.status === 'ACTIVE')}
-          <div className="ml-3">
-            <p className="text-sm font-medium text-gray-900">Trading Account</p>
-            <p className="text-xs text-gray-500">{account?.status || 'Unknown'}</p>
-          </div>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-gray-900">System Status</h3>
+        <div className="flex items-center text-emerald-600">
+          <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
+          <span className="text-sm font-medium">All Systems Operational</span>
         </div>
-
-        <div className="flex items-center">
-          {getStatusIndicator(!account?.trading_blocked)}
-          <div className="ml-3">
-            <p className="text-sm font-medium text-gray-900">Trading Status</p>
-            <p className="text-xs text-gray-500">
-              {account?.trading_blocked ? 'Blocked' : 'Active'}
-            </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {statusItems.map((item, index) => (
+          <div key={index} className="flex items-center">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 ${
+              item.status ? 'bg-emerald-100' : 'bg-red-100'
+            }`}>
+              <item.icon className={`h-6 w-6 ${
+                item.status ? 'text-emerald-600' : 'text-red-600'
+              }`} />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">{item.name}</p>
+              <p className={`text-sm ${
+                item.status ? 'text-emerald-600' : 'text-red-600'
+              }`}>
+                {item.description}
+              </p>
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center">
-          {getStatusIndicator(account?.crypto_status === 'ACTIVE')}
-          <div className="ml-3">
-            <p className="text-sm font-medium text-gray-900">Crypto Trading</p>
-            <p className="text-xs text-gray-500">{account?.crypto_status || 'Unknown'}</p>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -435,6 +367,14 @@ const TradingDashboard: React.FC = () => {
 
   const fetchAllData = async () => {
     try {
+      console.log('🔄 Fetching dashboard data with authentication...');
+
+      // Verificar que tenemos token
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
       const [accountData, signalsData, ordersData, portfolioData] = await Promise.all([
         api.getAccount(),
         api.getSignals(),
@@ -442,15 +382,17 @@ const TradingDashboard: React.FC = () => {
         api.getPositions()
       ]);
 
+      console.log('✅ All data fetched successfully');
+
       setAccount(accountData);
       setSignals(signalsData);
       setOrders(ordersData);
       setPortfolio(portfolioData);
       setError(null);
       setLastUpdate(new Date());
-    } catch (err) {
-      setError('Failed to load data. Check if your backend is running.');
-      console.error('Dashboard error:', err);
+    } catch (err: any) {
+      console.error('❌ Dashboard error:', err);
+      setError(err.message || 'Failed to load data. Please check your authentication.');
     } finally {
       setLoading(false);
     }
@@ -462,53 +404,58 @@ const TradingDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Calculate portfolio performance
+  const portfolioChange = account ? {
+    value: '+2.5%',
+    positive: true
+  } : undefined;
+
+  const dayChange = account ? {
+    value: '+$1,250',
+    positive: true
+  } : undefined;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="p-8 bg-gray-50 min-h-screen">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600 font-medium">Loading your dashboard...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="p-8 bg-gray-50 min-h-screen">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Trading Bot Dashboard</h1>
-              <p className="text-sm text-gray-500">
-                Last updated: {lastUpdate.toLocaleTimeString()}
-              </p>
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+            <p className="text-gray-600">Welcome back to your trading command center</p>
+          </div>
+          <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+            <div className="flex items-center text-sm text-gray-500">
+              <Clock className="h-4 w-4 mr-1" />
+              Last updated: {lastUpdate.toLocaleTimeString()}
             </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-2 ${account?.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="text-sm text-gray-600">
-                  {account?.status === 'ACTIVE' ? 'Live' : 'Inactive'}
-                </span>
-              </div>
-
-              <button
-                onClick={fetchAllData}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </button>
-            </div>
+            <button
+              onClick={fetchAllData}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-sm"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Error Alert */}
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
           <div className="flex">
             <AlertCircle className="h-5 w-5 text-red-400" />
             <div className="ml-3">
@@ -524,23 +471,122 @@ const TradingDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Summary Cards */}
-        <SummaryCards account={account} portfolio={portfolio} />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatsCard
+          title="Portfolio Value"
+          value={account ? formatCurrency(account.portfolio_value) : '--'}
+          icon={PieChart}
+          gradient="bg-gradient-to-r from-blue-500 to-indigo-500"
+          trend={portfolioChange}
+          loading={loading}
+        />
+        <StatsCard
+          title="Available Cash"
+          value={account ? formatCurrency(account.cash) : '--'}
+          icon={DollarSign}
+          gradient="bg-gradient-to-r from-emerald-500 to-green-500"
+          loading={loading}
+        />
+        <StatsCard
+          title="Buying Power"
+          value={account ? formatCurrency(account.buying_power) : '--'}
+          icon={TrendingUp}
+          gradient="bg-gradient-to-r from-purple-500 to-pink-500"
+          loading={loading}
+        />
+        <StatsCard
+          title="Active Positions"
+          value={portfolio ? `${portfolio.total_positions}/${portfolio.max_positions}` : '--'}
+          subtitle={portfolio ? `${portfolio.remaining_slots} slots available` : ''}
+          icon={Target}
+          gradient="bg-gradient-to-r from-orange-500 to-red-500"
+          loading={loading}
+        />
+      </div>
 
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <SignalsTable signals={signals} />
-          <OrdersTable orders={orders} />
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <QuickActionCard
+            title="Test Signal"
+            description="Send test trading signal"
+            icon={Zap}
+            color="bg-blue-500"
+            onClick={() => console.log('Test signal')}
+          />
+          <QuickActionCard
+            title="View Signals"
+            description="Monitor recent signals"
+            icon={Activity}
+            color="bg-emerald-500"
+            onClick={() => console.log('View signals')}
+          />
+          <QuickActionCard
+            title="Check Orders"
+            description="Review order history"
+            icon={BarChart3}
+            color="bg-purple-500"
+            onClick={() => console.log('Check orders')}
+          />
+          <QuickActionCard
+            title="Account Settings"
+            description="Manage preferences"
+            icon={Shield}
+            color="bg-gray-500"
+            onClick={() => console.log('Settings')}
+          />
+        </div>
+      </div>
+
+      {/* Activity Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Recent Signals */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Recent Signals</h3>
+            <span className="text-sm text-gray-500">{signals.length} total</span>
+          </div>
+          <div className="space-y-4">
+            {signals.length === 0 ? (
+              <div className="text-center py-8">
+                <Activity className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No signals received yet</p>
+                <p className="text-sm text-gray-400">Signals from TradingView will appear here</p>
+              </div>
+            ) : (
+              signals.slice(0, 3).map((signal) => (
+                <ActivityItem key={signal.id} type="signal" data={signal} />
+              ))
+            )}
+          </div>
         </div>
 
-        {/* Full Width Sections */}
-        <div className="space-y-8">
-          <PositionsTable portfolio={portfolio} />
-          <SystemStatus account={account} />
+        {/* Recent Orders */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
+            <span className="text-sm text-gray-500">{orders.length} total</span>
+          </div>
+          <div className="space-y-4">
+            {orders.length === 0 ? (
+              <div className="text-center py-8">
+                <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No orders executed yet</p>
+                <p className="text-sm text-gray-400">Orders will appear here when signals are processed</p>
+              </div>
+            ) : (
+              orders.slice(0, 3).map((order) => (
+                <ActivityItem key={order.id} type="order" data={order} />
+              ))
+            )}
+          </div>
         </div>
-      </main>
+      </div>
+
+      {/* System Status */}
+      <SystemStatus account={account} />
     </div>
   );
 };

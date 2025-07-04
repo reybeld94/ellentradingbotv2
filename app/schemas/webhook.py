@@ -1,14 +1,14 @@
 # backend/app/schemas/webhook.py
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union
 
 
 class TradingViewWebhook(BaseModel):
     symbol: str
     action: str  # "buy" or "sell"
     strategy_id: str  # Identificador único de la estrategia
-    quantity: Optional[int] = None
+    quantity: Optional[Union[int, float]] = None  # ✅ FIXED: Permitir int o float
     price: Optional[float] = None
     message: Optional[str] = None
 
@@ -16,7 +16,6 @@ class TradingViewWebhook(BaseModel):
     reason: Optional[str] = None  # "fibonacci_entry", "fibonacci_exit", "trailing_stop"
     confidence: Optional[int] = None  # Score de confianza 0-100
     timestamp: Optional[str] = None  # Timestamp de TradingView
-
 
 class WebhookResponse(BaseModel):
     status: str

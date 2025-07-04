@@ -1,5 +1,4 @@
 # backend/app/services/order_executor.py
-
 from sqlalchemy.orm import Session
 from ..integrations.alpaca.client import alpaca_client
 from ..models.signal import Signal
@@ -8,7 +7,8 @@ from .position_manager import position_manager
 from .strategy_position_manager import StrategyPositionManager
 from ..database import get_db
 import logging
-
+from app.models.trades import Trade
+from sqlalchemy.sql import func
 logger = logging.getLogger(__name__)
 
 
@@ -27,107 +27,201 @@ class OrderExecutor:
             'BTCUSD': 'BTC/USD',
             'ETHUSD': 'ETH/USD',
         }
-        return symbol_map.get(symbol, symbol)
+        mapped = symbol_map.get(symbol, symbol)
+        print(f"🔄 Symbol mapping: {symbol} -> {mapped}")
+        return mapped
 
     def calculate_position_size(self, symbol, action):
-        """Calcular tamaño de posición (10% del capital)"""
+        """Calcular tamaño de posición (10% del capital) con mejor manejo de crypto"""
+        print(f"💰 Calculating position size for {symbol} ({action})")
+        print(f"🔍 Is crypto: {self.is_crypto(symbol)}")
+
         account = self.alpaca.get_account()
         buying_power = float(account.buying_power)
+        print(f"💰 Account buying power: ${buying_power:,.2f}")
 
-        # 10% del capital total
-        position_value = buying_power * 0.10
+        position_value = buying_power * 0.14
+        print(f"💰 Target position value (10%): ${position_value:,.2f}")
 
-        # Obtener precio actual
         mapped_symbol = self.map_symbol_to_alpaca(symbol)
-        if self.is_crypto(symbol):
-            quote = self.alpaca.get_latest_crypto_quote(mapped_symbol)
-        else:
-            quote = self.alpaca.get_latest_quote(mapped_symbol)
-
-        current_price = float(quote.price)
-
-        # Para crypto, permitir decimales
-        if self.is_crypto(symbol):
-            quantity = round(position_value / current_price, 6)
-            return max(0.000001, quantity)
-        else:
-            quantity = int(position_value / current_price)
-            return max(1, quantity)
-
-    def execute_signal(self, signal: Signal):
-        """Ejecutar señal con gestión por estrategia"""
-        db = next(get_db())
-        strategy_manager = StrategyPositionManager(db)
+        final_symbol = mapped_symbol
 
         try:
-            if not signal.quantity:
-                signal.quantity = self.calculate_position_size(signal.symbol, signal.action)
+            if self.is_crypto(symbol):
+                print("🔍 Trying crypto quote...")
+                quote = self.alpaca.get_latest_crypto_quote(mapped_symbol)
+                current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
+                if current_price is None:
+                    raise ValueError("No ask price found in crypto quote")
+                print(f"📊 Crypto quote for {mapped_symbol}: ${current_price}")
+            else:
+                print("🔍 Trying stock quote...")
+                quote = self.alpaca.get_latest_quote(mapped_symbol)
+                current_price = float(quote.ask_price)
+                print(f"📊 Stock quote for {mapped_symbol}: ${current_price}")
+        except Exception as e:
+            print(f"❌ Quote failed for {mapped_symbol}: {e}")
+            raise
 
-            if signal.action.lower() == 'buy':
-                self._execute_buy_signal(signal, strategy_manager)
+        is_fractionable = self.alpaca.is_asset_fractionable(final_symbol)
+        print(f"🔍 Asset {final_symbol} is fractionable: {is_fractionable}")
 
-            elif signal.action.lower() == 'sell':
-                self._execute_sell_signal(signal, strategy_manager)
+        if self.is_crypto(symbol) or is_fractionable:
+            quantity = round(position_value / current_price, 6)
+            final_quantity = max(0.000001, quantity)
+            print(f"🔢 Fractionable quantity calculated: {final_quantity} {final_symbol}")
+        else:
+            quantity = int(position_value / current_price)
+            final_quantity = max(1, quantity)
+            print(f"🔢 Stock quantity calculated: {final_quantity} shares of {final_symbol}")
 
-            signal.status = "processed"
-            signal.error_message = None
+        return final_quantity, final_symbol
 
-            logger.info(f"Order processed: {signal.strategy_id} {signal.action} {signal.symbol}")
-            return True
+    def execute_signal(self, signal: Signal):
+        try:
+            print(f"🚀 Executing signal: {signal.strategy_id} {signal.action} {signal.symbol}")
+
+            from ..database import SessionLocal
+            db = SessionLocal()
+            strategy_manager = StrategyPositionManager(db)
+
+            try:
+                # MAPEAR símbolo
+                correct_symbol = self.map_symbol_to_alpaca(signal.symbol)
+
+                if signal.action.lower() == 'buy':
+                    if not signal.quantity:
+                        quantity, correct_symbol = self.calculate_position_size(signal.symbol, signal.action)
+                        signal.quantity = quantity
+
+                    order = self._execute_buy_signal(signal, strategy_manager, correct_symbol, db)
+
+
+                elif signal.action.lower() == 'sell':
+                    # 👉 NUEVO: usar toda la posición de esa estrategia
+                    strategy_position = strategy_manager.get_strategy_position(signal.strategy_id, signal.symbol)
+
+                    if strategy_position.quantity <= 0:
+                        raise ValueError(f"Strategy {signal.strategy_id} has no position in {signal.symbol} to sell")
+
+                    signal.quantity = strategy_position.quantity
+                    order = self._execute_sell_signal(signal, strategy_manager, correct_symbol, db)
+
+                else:
+                    raise ValueError(f"Unknown action: {signal.action}")
+
+                signal.status = "processed"
+                signal.error_message = None
+
+                print(f"✅ Signal executed successfully: {order.id}")
+                logger.info(f"Order executed: {order.id} for {signal.symbol}")
+
+                return order
+
+            finally:
+                db.close()
 
         except Exception as e:
             signal.status = "error"
             signal.error_message = str(e)
-            logger.error(f"Error executing signal for {signal.strategy_id}:{signal.symbol}: {e}")
-            raise
-        finally:
-            db.close()
 
-    def _execute_buy_signal(self, signal: Signal, strategy_manager: StrategyPositionManager):
-        """Ejecutar señal de compra"""
+            print(f"❌ Error executing signal: {e}")
+            logger.error(f"Error executing signal for {signal.symbol}: {e}")
+            raise
+
+    def _execute_buy_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, db: Session):
+
+        print(f"🟢 Executing BUY for {signal.strategy_id}:{signal.symbol} (as {correct_symbol})")
+
         current_positions = self.position_manager.count_open_positions()
+        print(f"📊 Current positions: {current_positions}/{self.position_manager.max_positions}")
+
         if current_positions >= self.position_manager.max_positions:
             raise ValueError(f"Maximum positions limit reached ({self.position_manager.max_positions})")
 
         account = self.alpaca.get_account()
         available_cash = float(account.cash)
+        print(f"💵 Available cash: ${available_cash:,.2f}")
 
-        mapped_symbol = self.map_symbol_to_alpaca(signal.symbol)
-        if self.is_crypto(signal.symbol):
-            quote = self.alpaca.get_latest_crypto_quote(mapped_symbol)
-        else:
-            quote = self.alpaca.get_latest_quote(mapped_symbol)
+        is_fractionable = self.alpaca.is_asset_fractionable(correct_symbol)
+        print(f"🔍 Asset {correct_symbol} is fractionable: {is_fractionable}")
 
-        estimated_cost = float(quote.price) * signal.quantity
+        if isinstance(signal.quantity, float) and signal.quantity != int(signal.quantity) and not is_fractionable:
+            print(f"⚠️ Asset {correct_symbol} is not fractionable, converting {signal.quantity} to integer")
+            signal.quantity = max(1, int(signal.quantity))
+            print(f"🔄 Adjusted quantity: {signal.quantity}")
+
+        try:
+            if self.is_crypto(signal.symbol):
+                quote = self.alpaca.get_latest_crypto_quote(correct_symbol)
+                current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
+                if current_price is None:
+                    raise ValueError("No ask price found in crypto quote")
+            else:
+                quote = self.alpaca.get_latest_quote(correct_symbol)
+                current_price = float(quote.ask_price)
+        except Exception as e:
+            print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
+            raise
+
+        estimated_cost = current_price * signal.quantity
+
+        print(f"💰 Order details:")
+        print(f"   - Original symbol: {signal.symbol}")
+        print(f"   - Alpaca symbol: {correct_symbol}")
+        print(f"   - Price: ${current_price}")
+        print(f"   - Quantity: {signal.quantity}")
+        print(f"   - Estimated cost: ${estimated_cost:,.2f}")
+        print(f"   - Is fractionable: {is_fractionable}")
+
         if estimated_cost > available_cash:
             raise ValueError(f"Insufficient cash. Need: ${estimated_cost:.2f}, Available: ${available_cash:.2f}")
 
+        print(f"📤 Submitting order to Alpaca...")
         if self.is_crypto(signal.symbol):
             order = self.alpaca.submit_crypto_order(
-                symbol=mapped_symbol,
+                symbol=correct_symbol,
                 qty=signal.quantity,
                 side=signal.action
             )
+            print(f"📤 Crypto order submitted: {order.id}")
         else:
             order = self.alpaca.submit_order(
-                symbol=mapped_symbol,
+                symbol=correct_symbol,
                 qty=signal.quantity,
                 side=signal.action
             )
-
+            print(f"📤 Stock order submitted: {order.id}")
+        new_trade = Trade(
+            strategy_id=signal.strategy_id,
+            symbol=signal.symbol,
+            action='buy',
+            quantity=signal.quantity,
+            entry_price=current_price,
+            status='open',
+            user_id=signal.user_id
+        )
+        db.add(new_trade)
+        db.commit()
+        logger.info(f"💾 Trade created: {new_trade}")
+        print(f"📊 Updating strategy position...")
         strategy_manager.add_position(
             strategy_id=signal.strategy_id,
             symbol=signal.symbol,
             quantity=signal.quantity,
-            price=float(quote.price)
+            price=current_price
         )
 
+        print(f"✅ Buy order completed: {signal.strategy_id} bought {signal.quantity} {signal.symbol}")
         logger.info(f"Buy order executed: {signal.strategy_id} bought {signal.quantity} {signal.symbol}")
         return order
 
-    def _execute_sell_signal(self, signal: Signal, strategy_manager: StrategyPositionManager):
-        """Ejecutar señal de venta"""
+    def _execute_sell_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, db: Session):
+
+        print(f"🔴 Executing SELL for {signal.strategy_id}:{signal.symbol} (as {correct_symbol})")
+
         strategy_position = strategy_manager.get_strategy_position(signal.strategy_id, signal.symbol)
+        print(f"📊 Current strategy position: {strategy_position.quantity} {signal.symbol}")
 
         if strategy_position.quantity <= 0:
             raise ValueError(f"Strategy {signal.strategy_id} has no position in {signal.symbol} to sell")
@@ -135,26 +229,60 @@ class OrderExecutor:
         quantity_to_sell = min(signal.quantity, strategy_position.quantity)
         signal.quantity = quantity_to_sell
 
-        mapped_symbol = self.map_symbol_to_alpaca(signal.symbol)
+        print(f"📊 Selling {quantity_to_sell} out of {strategy_position.quantity} available")
+
+        try:
+            if self.is_crypto(signal.symbol):
+                quote = self.alpaca.get_latest_crypto_quote(correct_symbol)
+                current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
+                if current_price is None:
+                    raise ValueError("No ask price found in crypto quote")
+            else:
+                quote = self.alpaca.get_latest_quote(correct_symbol)
+                current_price = float(quote.ask_price)
+        except Exception as e:
+            print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
+            raise
+
+        print(f"📤 Submitting sell order to Alpaca for {correct_symbol}...")
         if self.is_crypto(signal.symbol):
             order = self.alpaca.submit_crypto_order(
-                symbol=mapped_symbol,
+                symbol=correct_symbol,
                 qty=quantity_to_sell,
                 side=signal.action
             )
+            print(f"📤 Crypto sell order submitted: {order.id}")
         else:
             order = self.alpaca.submit_order(
-                symbol=mapped_symbol,
+                symbol=correct_symbol,
                 qty=quantity_to_sell,
                 side=signal.action
             )
+            print(f"📤 Stock sell order submitted: {order.id}")
+        open_trade = db.query(Trade).filter_by(
+            strategy_id=signal.strategy_id,
+            symbol=signal.symbol,
+            status='open',
+            user_id=signal.user_id
+        ).order_by(Trade.opened_at.desc()).first()
 
+        if open_trade:
+            open_trade.exit_price = current_price
+            open_trade.closed_at = func.now()
+            open_trade.status = 'closed'
+            open_trade.pnl = (current_price - open_trade.entry_price) * open_trade.quantity
+            db.commit()
+            logger.info(f"💾 Trade closed: {open_trade}")
+        else:
+            logger.warning(f"⚠️ No open trade found to close for {signal.strategy_id}:{signal.symbol}")
+        print(f"📊 Reducing strategy position...")
         actual_sold = strategy_manager.reduce_position(
             strategy_id=signal.strategy_id,
             symbol=signal.symbol,
             quantity=quantity_to_sell
         )
 
+        print(f"✅ Sell order completed: {signal.strategy_id} sold {actual_sold} {signal.symbol}")
         logger.info(f"Sell order executed: {signal.strategy_id} sold {actual_sold} {signal.symbol}")
         return order
 

@@ -1,0 +1,110 @@
+// frontend/src/services/api.ts
+
+const API_BASE_URL = 'http://localhost:8000/api/v1';
+
+// Función para obtener el token del localStorage
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('token');
+};
+
+// Función para hacer requests autenticados
+const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+  const token = getAuthToken();
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  // Si el token es inválido, redirigir al login
+  if (response.status === 401) {
+    localStorage.removeItem('token');
+    window.location.reload();
+  }
+
+  return response;
+};
+
+// API functions
+export const api = {
+  // Auth endpoints
+  auth: {
+    login: async (email: string, password: string) => {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      return response;
+    },
+
+    register: async (email: string, username: string, password: string, fullName?: string) => {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          username,
+          password,
+          full_name: fullName,
+        }),
+      });
+      return response;
+    },
+
+    getProfile: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/auth/me`);
+    },
+
+    refreshToken: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/auth/refresh-token`, {
+        method: 'POST',
+      });
+    },
+  },
+
+  // Trading endpoints
+  trading: {
+    getAccount: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/account`);
+    },
+
+    getSignals: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/signals`);
+    },
+
+    getOrders: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/orders`);
+    },
+
+    getPositions: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/positions`);
+    },
+
+    sendWebhook: async (webhookData: any) => {
+      return authenticatedFetch(`${API_BASE_URL}/webhook`, {
+        method: 'POST',
+        body: JSON.stringify(webhookData),
+      });
+    },
+  },
+
+  // Admin endpoints (if user is admin)
+  admin: {
+    getAllSignals: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/admin/all-signals`);
+    },
+
+    getUserStats: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/admin/user-stats`);
+    },
+  },
+};
+
+export default api;
