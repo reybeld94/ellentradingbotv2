@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { connectWebSocket } from '../services/ws';
 import {
   Activity, CheckCircle, XCircle, Clock, AlertCircle, RefreshCw, Filter,
   Search, TrendingUp, TrendingDown, Zap, BarChart3, Target,
@@ -115,8 +116,10 @@ const SignalsPage: React.FC = () => {
 
   useEffect(() => {
     fetchSignals();
-    const interval = setInterval(fetchSignals, 15000); // Refresh every 15s
-    return () => clearInterval(interval);
+    const ws = connectWebSocket({
+      onSignal: (sig) => setSignals((prev) => [sig, ...prev]),
+    });
+    return () => ws.close();
   }, []);
 
   // Stats Card Component

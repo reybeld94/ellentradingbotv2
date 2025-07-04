@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { connectWebSocket } from '../services/ws';
 import {
   BarChart3, DollarSign, TrendingUp, Activity, AlertCircle, RefreshCw,
   CheckCircle, XCircle, ArrowUp, ArrowDown, PieChart, Target, Briefcase,
@@ -387,8 +388,12 @@ const TradingDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchAllData();
-    const interval = setInterval(fetchAllData, 30000); // Auto-refresh every 30s
-    return () => clearInterval(interval);
+    const ws = connectWebSocket({
+      onSignal: (sig) => setSignals((prev) => [sig, ...prev]),
+      onOrder: (order) => setOrders((prev) => [order, ...prev]),
+      onTrade: () => fetchAllData(),
+    });
+    return () => ws.close();
   }, []);
 
   // Calculate portfolio performance

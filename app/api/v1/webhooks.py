@@ -11,6 +11,9 @@ from ...models.user import User
 from ...services.order_executor import order_executor
 from ...core.auth import get_current_verified_user
 from ...config import settings
+from ...websockets import ws_manager
+import asyncio
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -58,6 +61,32 @@ async def receive_tradingview_webhook(
         db.add(signal)
         db.commit()
         db.refresh(signal)
+
+        signal_data = {
+            "id": signal.id,
+            "symbol": signal.symbol,
+            "action": signal.action,
+            "quantity": signal.quantity,
+            "status": signal.status,
+            "strategy_id": signal.strategy_id,
+            "timestamp": signal.timestamp.isoformat(),
+        }
+        asyncio.create_task(
+            ws_manager.broadcast(json.dumps({"event": "new_signal", "payload": signal_data}))
+        )
+
+        signal_data = {
+            "id": signal.id,
+            "symbol": signal.symbol,
+            "action": signal.action,
+            "quantity": signal.quantity,
+            "status": signal.status,
+            "strategy_id": signal.strategy_id,
+            "timestamp": signal.timestamp.isoformat(),
+        }
+        asyncio.create_task(
+            ws_manager.broadcast(json.dumps({"event": "new_signal", "payload": signal_data}))
+        )
 
         logger.info(
             f"Signal created: ID {signal.id}, User: {current_user.username}, {signal.strategy_id}:{signal.symbol} {signal.action}")

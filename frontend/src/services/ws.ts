@@ -1,0 +1,30 @@
+export interface WSHandlers {
+  onSignal?: (data: any) => void;
+  onOrder?: (data: any) => void;
+  onTrade?: (data: any) => void;
+}
+
+export const connectWebSocket = (handlers: WSHandlers) => {
+  const ws = new WebSocket('ws://localhost:8000/ws/updates');
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      switch (msg.event) {
+        case 'new_signal':
+          handlers.onSignal?.(msg.payload);
+          break;
+        case 'order_update':
+          handlers.onOrder?.(msg.payload);
+          break;
+        case 'trade_update':
+          handlers.onTrade?.(msg.payload);
+          break;
+        default:
+          break;
+      }
+    } catch (err) {
+      console.error('WS message error', err);
+    }
+  };
+  return ws;
+};
