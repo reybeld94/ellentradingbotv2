@@ -92,7 +92,7 @@ const StrategiesPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Strategies</h1>
 
       <form onSubmit={handleSubmit} className="bg-white p-4 rounded-xl shadow mb-8 space-y-4">
