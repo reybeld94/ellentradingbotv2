@@ -259,22 +259,28 @@ class OrderExecutor:
                 side=signal.action
             )
             print(f"📤 Stock sell order submitted: {order.id}")
-        open_trade = db.query(Trade).filter_by(
+        open_trades = db.query(Trade).filter_by(
             strategy_id=signal.strategy_id,
             symbol=signal.symbol,
             status='open',
             user_id=signal.user_id
-        ).order_by(Trade.opened_at.desc()).first()
+        ).order_by(Trade.opened_at.desc()).all()
 
-        if open_trade:
-            open_trade.exit_price = current_price
-            open_trade.closed_at = func.now()
-            open_trade.status = 'closed'
-            open_trade.pnl = (current_price - open_trade.entry_price) * open_trade.quantity
+        if open_trades:
+            now = func.now()
+            for trade in open_trades:
+                trade.exit_price = current_price
+                trade.closed_at = now
+                trade.status = 'closed'
+                trade.pnl = (current_price - trade.entry_price) * trade.quantity
             db.commit()
-            logger.info(f"💾 Trade closed: {open_trade}")
+            logger.info(
+                f"💾 Closed {len(open_trades)} trade(s) for {signal.strategy_id}:{signal.symbol}"
+            )
         else:
-            logger.warning(f"⚠️ No open trade found to close for {signal.strategy_id}:{signal.symbol}")
+            logger.warning(
+                f"⚠️ No open trades found to close for {signal.strategy_id}:{signal.symbol}"
+            )
         print(f"📊 Reducing strategy position...")
         actual_sold = strategy_manager.reduce_position(
             strategy_id=signal.strategy_id,
