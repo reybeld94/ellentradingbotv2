@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Activity, CheckCircle, XCircle, Clock, AlertCircle, RefreshCw, Filter,
   Search, TrendingUp, TrendingDown, Zap, BarChart3, Target,
-  ArrowUp, ArrowDown, Calendar, Download, Eye, Settings2,
-  PlayCircle, PauseCircle
+  ArrowUp, ArrowDown, Calendar, Eye, Settings2
 } from 'lucide-react';
 
 interface Signal {
@@ -111,25 +110,6 @@ const SignalsPage: React.FC = () => {
       setSignals([]); // IMPORTANTE: asegurar que signals sea un array vacío en caso de error
     } finally {
       setLoading(false);
-    }
-  };
-
-  const testSignal = async () => {
-    try {
-      const response = await authenticatedFetch('http://localhost:8000/api/v1/test-signal', {
-        method: 'POST',
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        alert('Test signal executed successfully!');
-      } else {
-        alert(`Test signal failed: ${result.error}`);
-      }
-
-      fetchSignals(); // Refresh signals
-    } catch (err: any) {
-      alert(`Failed to execute test signal: ${err.message}`);
     }
   };
 
@@ -377,22 +357,11 @@ const SignalsPage: React.FC = () => {
           </div>
           <div className="mt-4 lg:mt-0 flex flex-wrap gap-3">
             <button
-              onClick={testSignal}
-              className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg"
-            >
-              <PlayCircle className="h-4 w-4 mr-2" />
-              Test Signal
-            </button>
-            <button
               onClick={fetchSignals}
               className="flex items-center px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
-            </button>
-            <button className="flex items-center px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200">
-              <Download className="h-4 w-4 mr-2" />
-              Export
             </button>
           </div>
         </div>
