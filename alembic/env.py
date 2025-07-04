@@ -1,7 +1,8 @@
+import os
+import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -15,18 +16,16 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Importar la configuración de tu app
-import sys
-import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.config import settings
 from app.database import Base
 
 # IMPORTANTE: Importar TODOS los modelos para que SQLAlchemy los reconozca
-from app.models.signal import Signal
-from app.models.strategy_position import StrategyPosition
-from app.models.user import User
-from app.models.trades import Trade
+from app.models.signal import Signal  # noqa: F401
+from app.models.strategy_position import StrategyPosition  # noqa: F401
+from app.models.user import User  # noqa: F401
+from app.models.trades import Trade  # noqa: F401
 
 # Configurar la URL de la base de datos desde settings
 config.set_main_option('sqlalchemy.url', settings.database_url)
