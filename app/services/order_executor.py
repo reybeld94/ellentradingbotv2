@@ -111,7 +111,13 @@ class OrderExecutor:
                     print(f"📊 Account position for {correct_symbol}: {account_qty}")
 
                     if account_qty <= 0:
-                        raise ValueError(f"No account position found for {correct_symbol} to sell")
+                        logger.warning(
+                            f"No account position found for {correct_symbol} when processing sell signal"
+                        )
+                        strategy_manager.reset_position(signal.strategy_id, signal.symbol)
+                        raise ValueError(
+                            f"No account position found for {correct_symbol} to sell"
+                        )
 
                     sell_qty = min(strategy_position.quantity, account_qty)
                     signal.quantity = sell_qty
