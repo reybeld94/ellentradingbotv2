@@ -5,6 +5,7 @@ import {
   Search, TrendingUp, TrendingDown, Zap, BarChart3, Target,
   ArrowUp, ArrowDown, Calendar, Eye, Settings2
 } from 'lucide-react';
+import Pagination from '../components/Pagination';
 
 interface Signal {
   id: number;
@@ -28,6 +29,12 @@ const SignalsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'timestamp' | 'confidence' | 'symbol'>('timestamp');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchTerm, sortBy, sortOrder]);
 
   // Función para obtener el token del localStorage
   const getAuthToken = (): string | null => {
@@ -327,6 +334,19 @@ const SignalsPage: React.FC = () => {
       return 0;
     });
 
+  const totalPages = Math.ceil(filteredAndSortedSignals.length / PAGE_SIZE);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages || 1);
+    }
+  }, [totalPages, currentPage]);
+
+  const paginatedSignals = filteredAndSortedSignals.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   const stats = {
     total: safeSignals.length,
     processed: safeSignals.filter(s => s.status === 'processed').length,
@@ -551,13 +571,19 @@ const SignalsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredAndSortedSignals.map((signal) => (
+                {paginatedSignals.map((signal) => (
                   <SignalRow key={signal.id} signal={signal} />
                 ))}
               </tbody>
             </table>
           )}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredAndSortedSignals.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );

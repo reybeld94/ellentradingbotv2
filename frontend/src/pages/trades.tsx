@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import Pagination from '../components/Pagination';
 
 interface Trade {
   id: number;
@@ -18,6 +19,8 @@ interface Trade {
 const TradesPage: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     const fetchTrades = async () => {
@@ -39,6 +42,23 @@ const TradesPage: React.FC = () => {
     const interval = window.setInterval(fetchTrades, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const totalPages = Math.ceil(trades.length / PAGE_SIZE);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages || 1);
+    }
+  }, [totalPages, currentPage]);
+
+  const paginatedTrades = trades.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [trades]);
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
@@ -66,7 +86,7 @@ const TradesPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {trades.map((trade) => (
+              {paginatedTrades.map((trade) => (
                 <tr key={trade.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2">{trade.strategy_id}</td>
                   <td className="px-4 py-2">{trade.symbol}</td>
@@ -89,6 +109,12 @@ const TradesPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={trades.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+        />
       )}
     </div>
   );
