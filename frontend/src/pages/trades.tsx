@@ -69,52 +69,54 @@ const TradesPage: React.FC = () => {
       ) : trades.length === 0 ? (
         <p>No trades found.</p>
       ) : (
-        <div className="overflow-x-auto border rounded-xl bg-white shadow-sm">
-          <table className="min-w-full text-sm text-left text-gray-600">
-            <thead className="bg-gray-100 text-gray-700 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3">Strategy</th>
-                <th className="px-4 py-3">Symbol</th>
-                <th className="px-4 py-3">Action</th>
-                <th className="px-4 py-3">Qty</th>
-                <th className="px-4 py-3">Entry</th>
-                <th className="px-4 py-3">Exit</th>
-                <th className="px-4 py-3">PnL</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Opened</th>
-                <th className="px-4 py-3">Closed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedTrades.map((trade) => (
-                <tr key={trade.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2">{trade.strategy_id}</td>
-                  <td className="px-4 py-2">{trade.symbol}</td>
-                  <td className="px-4 py-2">{trade.action.toUpperCase()}</td>
-                  <td className="px-4 py-2">{trade.quantity}</td>
-                  <td className="px-4 py-2">${trade.entry_price.toFixed(2)}</td>
-                  <td className="px-4 py-2">
-                    {trade.exit_price !== null ? `$${trade.exit_price.toFixed(2)}` : '--'}
-                  </td>
-                  <td className={`px-4 py-2 ${trade.pnl !== null ? (trade.pnl >= 0 ? 'text-green-600' : 'text-red-500') : ''}`}>
-                    {trade.pnl !== null ? `$${trade.pnl.toFixed(2)}` : '--'}
-                  </td>
-                  <td className="px-4 py-2 capitalize">{trade.status}</td>
-                  <td className="px-4 py-2">{new Date(trade.opened_at).toLocaleString()}</td>
-                  <td className="px-4 py-2">
-                    {trade.closed_at ? new Date(trade.closed_at).toLocaleString() : '--'}
-                  </td>
+        <>
+          <div className="overflow-x-auto border rounded-xl bg-white shadow-sm">
+            <table className="min-w-full text-sm text-left text-gray-600">
+              <thead className="bg-gray-100 text-gray-700 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3">Strategy</th>
+                  <th className="px-4 py-3">Symbol</th>
+                  <th className="px-4 py-3">Action</th>
+                  <th className="px-4 py-3">Qty</th>
+                  <th className="px-4 py-3">Entry</th>
+                  <th className="px-4 py-3">Exit</th>
+                  <th className="px-4 py-3">PnL</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Opened</th>
+                  <th className="px-4 py-3">Closed</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <Pagination
-          currentPage={currentPage}
-          totalItems={trades.length}
-          pageSize={PAGE_SIZE}
-          onPageChange={setCurrentPage}
-        />
+              </thead>
+              <tbody>
+                {paginatedTrades.map((trade) => (
+                  <tr key={trade.id} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2">{trade.strategy_id}</td>
+                    <td className="px-4 py-2">{trade.symbol}</td>
+                    <td className="px-4 py-2">{trade.action.toUpperCase()}</td>
+                    <td className="px-4 py-2">{trade.quantity}</td>
+                    <td className="px-4 py-2">${trade.entry_price.toFixed(2)}</td>
+                    <td className="px-4 py-2">
+                      {trade.exit_price !== null ? `$${trade.exit_price.toFixed(2)}` : '--'}
+                    </td>
+                    <td className={`px-4 py-2 ${trade.pnl !== null ? (trade.pnl >= 0 ? 'text-green-600' : 'text-red-500') : ''}`}>
+                      {trade.pnl !== null ? `$${trade.pnl.toFixed(2)}` : '--'}
+                    </td>
+                    <td className="px-4 py-2 capitalize">{trade.status}</td>
+                    <td className="px-4 py-2">{new Date(trade.opened_at).toLocaleString()}</td>
+                    <td className="px-4 py-2">
+                      {trade.closed_at ? new Date(trade.closed_at).toLocaleString() : '--'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={trades.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+        </>
       )}
     </div>
   );
