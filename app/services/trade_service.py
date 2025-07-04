@@ -29,16 +29,30 @@ class TradeService:
             return 0.0
 
     def refresh_user_trades(self, user_id: int) -> None:
-        open_trades = self.db.query(Trade).filter(Trade.user_id == user_id, Trade.status == 'open').all()
+        open_trades = (
+            self.db.query(Trade)
+            .filter(Trade.user_id == user_id, Trade.status == "open")
+            .all()
+        )
+
+        try:
+            open_orders = self.alpaca.list_orders(status="open", limit=50)
+            symbols_with_open_orders = {o.symbol for o in open_orders}
+        except Exception:
+            symbols_with_open_orders = set()
+
         for trade in open_trades:
             alpaca_symbol = self._map_symbol(trade.symbol)
             price = self._get_current_price(alpaca_symbol)
             position = self.alpaca.get_position(alpaca_symbol)
-            if position is None:
+
+            if position is None and alpaca_symbol not in symbols_with_open_orders:
                 trade.exit_price = price
                 trade.closed_at = datetime.utcnow()
-                trade.status = 'closed'
+                trade.status = "closed"
+
             trade.pnl = (price - trade.entry_price) * trade.quantity
+
         self.db.commit()
 
     def get_equity_curve(self, user_id: int):
