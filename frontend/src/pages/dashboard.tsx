@@ -404,7 +404,7 @@ const TradingDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
@@ -416,7 +416,7 @@ const TradingDashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
