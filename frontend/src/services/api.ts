@@ -83,6 +83,10 @@ export const api = {
       return authenticatedFetch(`${API_BASE_URL}/orders`);
     },
 
+    getTrades: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/trades`);
+    },
+
     getPositions: async () => {
       return authenticatedFetch(`${API_BASE_URL}/positions`);
     },

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import api from '../services/api';
 
 interface Trade {
   id: number;
@@ -21,18 +22,10 @@ const TradesPage: React.FC = () => {
   useEffect(() => {
     const fetchTrades = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:8000/api/v1/trades', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
+        const response = await api.trading.getTrades();
         if (!response.ok) {
           throw new Error('Failed to fetch trades');
         }
-
         const data = await response.json();
         setTrades(data);
       } catch (error) {
@@ -43,6 +36,8 @@ const TradesPage: React.FC = () => {
     };
 
     fetchTrades();
+    const interval = window.setInterval(fetchTrades, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
