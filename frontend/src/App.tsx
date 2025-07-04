@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   BarChart3, Activity, List, Settings, Menu, X, LogOut, User,
-  Home, Briefcase, Bell, Search, ChevronRight, Zap, Shield,
+  Home, Briefcase, Bell, Search, ChevronRight, Zap,
   TrendingUp, Clock, RefreshCw
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -215,24 +215,6 @@ const Sidebar: React.FC<{
               })}
             </ul>
           </nav>
-
-          {/* System Status */}
-          <div className="p-4 border-t border-gray-100">
-            <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3">
-                    <Shield className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-700">System Status</p>
-                    <p className="text-xs text-emerald-600">All systems operational</p>
-                  </div>
-                </div>
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              </div>
-            </div>
-          </div>
 
           {/* Logout Button */}
           <div className="p-4 border-t border-gray-100">
