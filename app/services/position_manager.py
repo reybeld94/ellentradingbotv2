@@ -44,15 +44,16 @@ class PositionManager:
         except Exception as e:
             logger.debug(f"Position lookup failed for {symbol}: {e}")
 
-        # If not found and symbol might be crypto without slash, try mapped form
-        if self.is_crypto(symbol) and '/' not in symbol:
+        # If not found and the symbol could have an alternate crypto format
+        if self.is_crypto(symbol):
             mapped = self._map_symbol(symbol)
-            try:
-                position = self.alpaca.get_position(mapped)
-                if position:
-                    return float(position.qty)
-            except Exception as e:
-                logger.debug(f"Retry lookup failed for {mapped}: {e}")
+            if mapped != symbol:
+                try:
+                    position = self.alpaca.get_position(mapped)
+                    if position:
+                        return float(position.qty)
+                except Exception as e:
+                    logger.debug(f"Retry lookup failed for {mapped}: {e}")
 
         return 0.0
 
