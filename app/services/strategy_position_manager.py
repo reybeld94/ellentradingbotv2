@@ -110,3 +110,12 @@ class StrategyPositionManager:
         """Obtener cantidad total de un símbolo across todas las estrategias"""
         positions = self.get_all_positions_by_symbol(symbol)
         return sum(pos.quantity for pos in positions)
+
+    def reset_position(self, strategy_id: str, symbol: str) -> None:
+        """Restablecer completamente la posición de una estrategia"""
+        position = self.get_strategy_position(strategy_id, symbol)
+        position.quantity = 0.0
+        position.avg_price = None
+        position.total_invested = 0.0
+        self.db.commit()
+        logger.info(f"Reset position: {strategy_id}:{symbol}")
