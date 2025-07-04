@@ -98,13 +98,23 @@ class OrderExecutor:
 
 
                 elif signal.action.lower() == 'sell':
-                    # 👉 NUEVO: usar toda la posición de esa estrategia
+                    # Use entire strategy position but verify actual account quantity
                     strategy_position = strategy_manager.get_strategy_position(signal.strategy_id, signal.symbol)
 
                     if strategy_position.quantity <= 0:
-                        raise ValueError(f"Strategy {signal.strategy_id} has no position in {signal.symbol} to sell")
+                        raise ValueError(
+                            f"Strategy {signal.strategy_id} has no position in {signal.symbol} to sell"
+                        )
 
-                    signal.quantity = strategy_position.quantity
+                    # Get current quantity from Alpaca to avoid overselling due to rounding
+                    account_qty = self.position_manager.get_position_quantity(correct_symbol)
+                    print(f"📊 Account position for {correct_symbol}: {account_qty}")
+
+                    if account_qty <= 0:
+                        raise ValueError(f"No account position found for {correct_symbol} to sell")
+
+                    sell_qty = min(strategy_position.quantity, account_qty)
+                    signal.quantity = sell_qty
                     order = self._execute_sell_signal(signal, strategy_manager, correct_symbol, db)
 
                 else:
