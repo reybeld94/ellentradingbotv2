@@ -392,6 +392,22 @@ const TradingDashboard: React.FC = () => {
       onSignal: (sig) => setSignals((prev) => [sig, ...prev]),
       onOrder: (order) => setOrders((prev) => [order, ...prev]),
       onTrade: () => fetchAllData(),
+      onAccountUpdate: (data) => {
+        setAccount((prev) => prev ? { ...prev, ...data } : data);
+        setPortfolio((prev) =>
+          prev
+            ? {
+                ...prev,
+                cash: data.cash,
+                buying_power: data.buying_power,
+                portfolio_value: data.portfolio_value,
+                total_positions: data.total_positions,
+                remaining_slots: Math.max(0, prev.max_positions - data.total_positions)
+              }
+            : prev
+        );
+        setLastUpdate(new Date());
+      },
     });
     return () => ws.close();
   }, []);
