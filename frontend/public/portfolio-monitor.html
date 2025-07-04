@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portfolio Value Monitor</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+        font-family: 'Inter', sans-serif;
+      }
+      #value {
+        font-size: 6rem;
+        font-weight: 700;
+        color: #1e293b;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="value">--</div>
+    <script>
+      async function fetchValue() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+          const res = await fetch('http://localhost:8000/api/v1/account', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(parseFloat(data.portfolio_value));
+          document.getElementById('value').textContent = formatted;
+        } catch (err) {
+          console.error('Error fetching portfolio value', err);
+        }
+      }
+      fetchValue();
+      setInterval(fetchValue, 60000);
+    </script>
+  </body>
+</html>

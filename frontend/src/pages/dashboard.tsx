@@ -481,14 +481,16 @@ const TradingDashboard: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Portfolio Value"
-          value={account ? formatCurrency(account.portfolio_value) : '--'}
-          icon={PieChart}
-          gradient="bg-gradient-to-r from-blue-500 to-indigo-500"
-          trend={portfolioChange}
-          loading={loading}
-        />
+        <a href="/portfolio-monitor.html" target="_blank" rel="noopener noreferrer">
+          <StatsCard
+            title="Portfolio Value"
+            value={account ? formatCurrency(account.portfolio_value) : '--'}
+            icon={PieChart}
+            gradient="bg-gradient-to-r from-blue-500 to-indigo-500"
+            trend={portfolioChange}
+            loading={loading}
+          />
+        </a>
         <StatsCard
           title="Available Cash"
           value={account ? formatCurrency(account.cash) : '--'}
