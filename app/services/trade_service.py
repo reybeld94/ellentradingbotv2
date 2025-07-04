@@ -28,6 +28,21 @@ class TradeService:
         except Exception:
             return 0.0
 
+    def _fetch_position(self, symbol: str):
+        """Get position for ``symbol`` trying both crypto formats."""
+        position = self.alpaca.get_position(symbol)
+        if position is None:
+            if '/' in symbol:
+                alt_symbol = symbol.replace('/', '')
+            else:
+                if len(symbol) > 3:
+                    alt_symbol = f"{symbol[:-3]}/{symbol[-3:]}"
+                else:
+                    alt_symbol = None
+            if alt_symbol:
+                position = self.alpaca.get_position(alt_symbol)
+        return position
+
     def refresh_user_trades(self, user_id: int) -> None:
         open_trades = (
             self.db.query(Trade)
@@ -44,7 +59,7 @@ class TradeService:
         for trade in open_trades:
             alpaca_symbol = self._map_symbol(trade.symbol)
             price = self._get_current_price(alpaca_symbol)
-            position = self.alpaca.get_position(alpaca_symbol)
+            position = self._fetch_position(alpaca_symbol)
 
             if position is None and alpaca_symbol not in symbols_with_open_orders:
                 trade.exit_price = price
