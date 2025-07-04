@@ -4,7 +4,8 @@ import {
   CheckCircle, XCircle, ArrowUp, ArrowDown, PieChart, Target, Briefcase,
   Clock, Shield, Zap
 } from 'lucide-react';
-import EquityCurveChart, { EquityPoint } from '../components/EquityCurveChart';
+import EquityCurveChart from '../components/EquityCurveChart';
+import type { EquityPoint } from '../components/EquityCurveChart';
 
 // Tipos TypeScript
 interface Account {
