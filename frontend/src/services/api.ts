@@ -103,6 +103,33 @@ export const api = {
     },
   },
 
+  // Strategy endpoints
+  strategies: {
+    list: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/strategies`);
+    },
+
+    create: async (data: any) => {
+      return authenticatedFetch(`${API_BASE_URL}/strategies`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    update: async (id: number, data: any) => {
+      return authenticatedFetch(`${API_BASE_URL}/strategies/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    },
+
+    delete: async (id: number) => {
+      return authenticatedFetch(`${API_BASE_URL}/strategies/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
   // Admin endpoints (if user is admin)
   admin: {
     getAllSignals: async () => {

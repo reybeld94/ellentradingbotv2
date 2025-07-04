@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   BarChart3, Activity, List, Settings, Menu, X, LogOut, User,
   Home, Briefcase, Bell, Search, ChevronRight,
-  Clock, RefreshCw
+  Clock, RefreshCw, Target
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
@@ -12,9 +12,10 @@ import SignalsPage from './pages/signals';
 import OrdersPage from './pages/orders';
 import Profile from './pages/Profile';
 import TradesPage from './pages/trades';
+import StrategiesPage from './pages/strategies';
 
 // Tipos para las páginas
-type Page = 'dashboard' | 'signals' | 'orders' | 'trades' |'settings';
+type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'settings';
 
 // Componente de navegación mejorado
 const Sidebar: React.FC<{
@@ -50,12 +51,19 @@ const Sidebar: React.FC<{
       badge: null
     },
     {
-  id: 'trades' as Page,
-  name: 'Trades',
-  icon: BarChart3,
-  description: 'Trade history',
-  badge: null
-  },
+      id: 'trades' as Page,
+      name: 'Trades',
+      icon: BarChart3,
+      description: 'Trade history',
+      badge: null
+    },
+    {
+      id: 'strategies' as Page,
+      name: 'Strategies',
+      icon: Target,
+      description: 'Strategy configs',
+      badge: null
+    },
     {
       id: 'settings' as Page,
       name: 'Settings',
@@ -219,6 +227,7 @@ const MobileHeader: React.FC<{
     dashboard: 'Dashboard',
     signals: 'Signals',
     orders: 'Orders',
+    strategies: 'Strategies',
     settings: 'Settings'
   };
 
@@ -333,6 +342,8 @@ const AuthenticatedApp: React.FC = () => {
         return <OrdersPage />;
       case 'trades':
         return <TradesPage />;
+      case 'strategies':
+        return <StrategiesPage />;
       case 'settings':
         return <Profile />;
       default:
