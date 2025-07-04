@@ -6,6 +6,7 @@ from .api.v1.orders import router as orders_router
 from .api.v1.auth import router as auth_router
 from .api.v1.trades import router as trades_router
 from .api.v1.strategies import router as strategies_router
+from .api.ws import router as ws_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -27,6 +28,7 @@ app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
 app.include_router(trades_router, prefix="/api/v1", tags=["trades"])
 app.include_router(strategies_router, prefix="/api/v1", tags=["strategies"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
+app.include_router(ws_router)
 
 @app.get("/")
 async def root():

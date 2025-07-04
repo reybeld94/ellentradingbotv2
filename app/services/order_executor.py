@@ -9,6 +9,9 @@ from ..database import get_db
 import logging
 from app.models.trades import Trade
 from sqlalchemy.sql import func
+from ..websockets import ws_manager
+import asyncio
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -137,6 +140,18 @@ class OrderExecutor:
                 print(f"✅ Signal executed successfully: {order.id}")
                 logger.info(f"Order executed: {order.id} for {signal.symbol}")
 
+                order_data = {
+                    "id": str(order.id),
+                    "symbol": signal.symbol,
+                    "side": signal.action,
+                    "status": str(getattr(order, "status", "")),
+                }
+                asyncio.create_task(
+                    ws_manager.broadcast(
+                        json.dumps({"event": "order_update", "payload": order_data})
+                    )
+                )
+
                 return order
 
             finally:
@@ -225,6 +240,14 @@ class OrderExecutor:
         db.add(new_trade)
         db.commit()
         logger.info(f"💾 Trade created: {new_trade}")
+        asyncio.create_task(
+            ws_manager.broadcast(
+                json.dumps({
+                    "event": "trade_update",
+                    "payload": {"symbol": signal.symbol, "action": "buy"}
+                })
+            )
+        )
         print("📊 Updating strategy position...")
         strategy_manager.add_position(
             strategy_id=signal.strategy_id,
@@ -307,6 +330,15 @@ class OrderExecutor:
             strategy_id=signal.strategy_id,
             symbol=signal.symbol,
             quantity=quantity_to_sell
+        )
+
+        asyncio.create_task(
+            ws_manager.broadcast(
+                json.dumps({
+                    "event": "trade_update",
+                    "payload": {"symbol": signal.symbol, "action": "sell"}
+                })
+            )
         )
 
         print(f"✅ Sell order completed: {signal.strategy_id} sold {actual_sold} {signal.symbol}")
