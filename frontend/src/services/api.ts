@@ -128,6 +128,10 @@ export const api = {
         method: 'DELETE',
       });
     },
+
+    metrics: async (id: number) => {
+      return authenticatedFetch(`${API_BASE_URL}/strategies/${id}/metrics`);
+    },
   },
 
   // Admin endpoints (if user is admin)
