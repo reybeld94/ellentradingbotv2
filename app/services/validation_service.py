@@ -1,7 +1,7 @@
 # backend/app/services/validation_service.py
 
 import re
-from typing import List, Dict
+from typing import Dict
 
 
 class ValidationService:
@@ -24,7 +24,9 @@ class ValidationService:
             errors.append("Username must be less than 30 characters")
 
         if not re.match(r'^[a-zA-Z0-9_-]+$', username):
-            errors.append("Username can only contain letters, numbers, hyphens and underscores")
+            errors.append(
+                "Username can only contain letters, numbers, hyphens and underscores"
+            )
 
         if username.startswith('_') or username.startswith('-'):
             errors.append("Username cannot start with underscore or hyphen")
@@ -92,7 +94,9 @@ class ValidationService:
         }
 
     @staticmethod
-    def validate_registration_data(email: str, username: str, password: str) -> Dict[str, any]:
+    def validate_registration_data(
+        email: str, username: str, password: str
+    ) -> Dict[str, any]:
         """Validar todos los datos de registro"""
         all_errors = []
 
@@ -113,7 +117,9 @@ class ValidationService:
         return {
             "is_valid": len(all_errors) == 0,
             "errors": all_errors,
-            "password_strength": password_validation.get("strength", "unknown")
+            "password_strength": password_validation.get(
+                "strength", "unknown"
+            ),
         }
 
 

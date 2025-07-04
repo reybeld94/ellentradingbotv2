@@ -2,6 +2,7 @@
 
 from app.integrations.alpaca.client import alpaca_client
 
+
 def run():
     print("🔍 Verificando órdenes en Alpaca...")
     orders = alpaca_client.list_orders(status='all', limit=10)
@@ -11,7 +12,11 @@ def run():
         return
 
     for o in orders:
-        print(f"🧾 {o.symbol} | {o.side} | {o.status} | qty={o.qty} | id={o.id}")
+        msg = (
+            f"🧾 {o.symbol} | {o.side} | {o.status} | "
+            f"qty={o.qty} | id={o.id}"
+        )
+        print(msg)
 
 if __name__ == "__main__":
     run()
