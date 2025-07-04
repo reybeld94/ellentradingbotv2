@@ -74,7 +74,11 @@ class StrategyPositionManager:
         # Actualizar posición
         position.quantity = position.quantity - quantity_to_sell
 
-        # Si se vendió todo, resetear valores
+        # Truncar valores residuales muy pequeños para evitar errores de redondeo
+        if 0 < position.quantity < 0.0001:
+            position.quantity = 0.0
+
+        # Si se vendió todo o quedó por debajo del umbral, resetear valores
         if position.quantity == 0:
             position.avg_price = None
             position.total_invested = 0.0
