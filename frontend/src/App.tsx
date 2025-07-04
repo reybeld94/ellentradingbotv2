@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   BarChart3, Activity, List, Settings, Menu, X, LogOut, User,
-  Home, Briefcase, Bell, Search, ChevronRight, Zap,
-  TrendingUp, Clock, RefreshCw
+  Home, Briefcase, Bell, Search, ChevronRight,
+  Clock, RefreshCw
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
@@ -137,34 +137,6 @@ const Sidebar: React.FC<{
               </div>
             </div>
           </div>
-
-          {/* Quick Stats */}
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Quick Stats</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-                <div className="flex items-center">
-                  <TrendingUp className="h-4 w-4 text-emerald-600 mr-2" />
-                  <div>
-                    <p className="text-xs text-emerald-600 font-medium">Portfolio</p>
-                    <p className="text-sm font-bold text-emerald-700">+2.5%</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
-                <div className="flex items-center">
-                  <Zap className="h-4 w-4 text-blue-600 mr-2" />
-                  <div>
-                    <p className="text-xs text-blue-600 font-medium">Signals</p>
-                    <p className="text-sm font-bold text-blue-700">
-                      {pendingSignalsCount > 0 ? `${pendingSignalsCount} Pending` : 'All Clear'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Navigation */}
           <nav className="flex-1 p-4">
             <ul className="space-y-2">
