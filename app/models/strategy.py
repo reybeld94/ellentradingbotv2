@@ -1,7 +1,4 @@
-# backend/app/models/strategy.py
-
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 
 from ..database import Base
@@ -11,14 +8,12 @@ class Strategy(Base):
     __tablename__ = "strategies"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False, index=True)
-    description = Column(Text, nullable=True)
 
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    user = relationship("User")
-
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def __repr__(self):
-        return f"<Strategy({self.name})>"
+        return f"<Strategy({self.id}, {self.name})>"
+
