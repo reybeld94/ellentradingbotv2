@@ -25,6 +25,7 @@ app.add_middleware(
 app.include_router(webhooks_router, prefix="/api/v1", tags=["webhooks"])
 app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
 app.include_router(trades_router, prefix="/api/v1", tags=["trades"])
+app.include_router(strategies_router, prefix="/api/v1", tags=["strategies"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(strategies_router, prefix="/api/v1", tags=["strategies"])
 
