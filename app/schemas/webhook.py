@@ -21,3 +21,4 @@ class WebhookResponse(BaseModel):
     status: str
     message: str
     signal_id: Optional[int] = None
+
