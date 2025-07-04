@@ -32,7 +32,7 @@ class OrderExecutor:
         return mapped
 
     def calculate_position_size(self, symbol, action):
-        """Calcular tamaño de posición (10% del capital) con mejor manejo de crypto"""
+        """Calcular tamaño de posición delegando en el RiskManager"""
         print(f"💰 Calculating position size for {symbol} ({action})")
         print(f"🔍 Is crypto: {self.is_crypto(symbol)}")
 
@@ -40,8 +40,6 @@ class OrderExecutor:
         buying_power = float(account.buying_power)
         print(f"💰 Account buying power: ${buying_power:,.2f}")
 
-        position_value = buying_power * 0.14
-        print(f"💰 Target position value (10%): ${position_value:,.2f}")
 
         mapped_symbol = self.map_symbol_to_alpaca(symbol)
         final_symbol = mapped_symbol
@@ -66,13 +64,20 @@ class OrderExecutor:
         is_fractionable = self.alpaca.is_asset_fractionable(final_symbol)
         print(f"🔍 Asset {final_symbol} is fractionable: {is_fractionable}")
 
+        # Delegar a RiskManager para obtener cantidad base
+        from .risk_manager import risk_manager
+
+        base_qty = risk_manager.calculate_optimal_position_size(
+            price=current_price,
+            buying_power=buying_power,
+        )
+        print(f"📐 Risk manager base quantity: {base_qty}")
+
         if self.is_crypto(symbol) or is_fractionable:
-            quantity = round(position_value / current_price, 6)
-            final_quantity = max(0.000001, quantity)
+            final_quantity = max(0.000001, round(base_qty, 6))
             print(f"🔢 Fractionable quantity calculated: {final_quantity} {final_symbol}")
         else:
-            quantity = int(position_value / current_price)
-            final_quantity = max(1, quantity)
+            final_quantity = max(1, int(base_qty))
             print(f"🔢 Stock quantity calculated: {final_quantity} shares of {final_symbol}")
 
         return final_quantity, final_symbol
