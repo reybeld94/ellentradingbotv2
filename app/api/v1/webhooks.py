@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import Optional
 from ...database import get_db
 from ...schemas.webhook import TradingViewWebhook, WebhookResponse
@@ -24,7 +25,20 @@ async def receive_tradingview_webhook(
 ):
     """Recibir webhook de TradingView (requiere autenticación)"""
     try:
-        logger.info(f"Received webhook from user {current_user.username}: {webhook_data.dict()}")
+        logger.info(
+            f"Received webhook from user {current_user.username}: {webhook_data.dict()}"
+        )
+
+        # Verify that the strategy exists before creating the signal
+        strategy_exists = db.execute(
+            text("SELECT 1 FROM strategies WHERE id = :sid"),
+            {"sid": webhook_data.strategy_id},
+        ).first()
+        if not strategy_exists:
+            logger.warning(
+                f"Unknown strategy received: {webhook_data.strategy_id}"
+            )
+            raise HTTPException(status_code=400, detail="Unknown strategy_id")
 
         # Crear nueva señal en la base de datos con información del usuario
         signal = Signal(
@@ -161,6 +175,21 @@ async def receive_public_webhook(
 
     try:
         logger.info(f"Processing public webhook for user 'reybel': {webhook_data.dict()}")
+
+        # Verify that the strategy exists before creating the signal
+        strategy_exists = db.execute(
+            text("SELECT 1 FROM strategies WHERE id = :sid"),
+            {"sid": webhook_data.strategy_id},
+        ).first()
+        if not strategy_exists:
+            logger.warning(
+                f"Unknown strategy received: {webhook_data.strategy_id}"
+            )
+            return WebhookResponse(
+                status="error",
+                message="Unknown strategy_id",
+                signal_id=None,
+            )
 
         signal = Signal(
             symbol=webhook_data.symbol,
