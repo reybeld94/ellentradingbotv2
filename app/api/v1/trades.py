@@ -6,7 +6,7 @@ from typing import List
 from ...database import get_db
 from ...models.trades import Trade
 from ...models.user import User
-from ...schemas.trades import TradeSchema
+from ...schemas.trades import TradeSchema, EquityPointSchema
 from ...core.auth import get_current_verified_user, get_admin_user
 from ...services.trade_service import TradeService
 
@@ -29,6 +29,17 @@ async def get_user_trades(
         .all()
     )
     return trades
+
+
+@router.get("/trades/equity-curve", response_model=List[EquityPointSchema])
+async def get_equity_curve(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Return equity curve points for the current user."""
+    service = TradeService(db)
+    data = service.get_equity_curve(current_user.id)
+    return data
 
 
 @router.get("/admin/all-trades", response_model=List[TradeSchema])

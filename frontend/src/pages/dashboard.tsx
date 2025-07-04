@@ -4,6 +4,7 @@ import {
   CheckCircle, XCircle, ArrowUp, ArrowDown, PieChart, Target, Briefcase,
   Clock, Shield, Zap
 } from 'lucide-react';
+import EquityCurveChart, { EquityPoint } from '../components/EquityCurveChart';
 
 // Tipos TypeScript
 interface Account {
@@ -144,6 +145,12 @@ const api = {
     const data = await response.json();
     console.log('✅ Positions data received:', data);
     return data;
+  },
+
+  async getEquityCurve(): Promise<EquityPoint[]> {
+    const response = await authenticatedFetch(`${this.baseUrl}/trades/equity-curve`);
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   }
 };
 
@@ -337,6 +344,7 @@ const TradingDashboard: React.FC = () => {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
+  const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -351,11 +359,12 @@ const TradingDashboard: React.FC = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const [accountData, signalsData, ordersData, portfolioData] = await Promise.all([
+      const [accountData, signalsData, ordersData, portfolioData, equityData] = await Promise.all([
         api.getAccount(),
         api.getSignals(),
         api.getOrders(),
-        api.getPositions()
+        api.getPositions(),
+        api.getEquityCurve()
       ]);
 
       console.log('✅ All data fetched successfully');
@@ -364,6 +373,7 @@ const TradingDashboard: React.FC = () => {
       setSignals(signalsData);
       setOrders(ordersData);
       setPortfolio(portfolioData);
+      setEquityCurve(equityData);
       setError(null);
       setLastUpdate(new Date());
     } catch (err: any) {
@@ -526,6 +536,11 @@ const TradingDashboard: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Equity Curve */}
+      <div className="mb-8">
+        <EquityCurveChart data={equityCurve} />
       </div>
 
       {/* System Status */}
