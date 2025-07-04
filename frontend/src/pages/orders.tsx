@@ -5,6 +5,7 @@ import {
   ArrowUp, ArrowDown, Eye, MoreHorizontal, Target, Zap, PieChart,
   PlayCircle, Settings2
 } from 'lucide-react';
+import Pagination from '../components/Pagination';
 
 interface Order {
   id: string;
@@ -30,6 +31,12 @@ const OrdersPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'submitted_at' | 'filled_at' | 'symbol' | 'qty'>('submitted_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedTimeRange, setSelectedTimeRange] = useState<'today' | 'week' | 'month' | 'all'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchTerm, sortBy, sortOrder, selectedTimeRange]);
 
   // Función para obtener el token del localStorage
   const getAuthToken = (): string | null => {
@@ -411,6 +418,19 @@ const OrdersPage: React.FC = () => {
       return 0;
     });
 
+  const totalPages = Math.ceil(filteredAndSortedOrders.length / PAGE_SIZE);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages || 1);
+    }
+  }, [totalPages, currentPage]);
+
+  const paginatedOrders = filteredAndSortedOrders.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   const stats = {
     total: safeOrders.length,
     filled: safeOrders.filter(o => o.status.toLowerCase() === 'filled').length,
@@ -691,13 +711,19 @@ const OrdersPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredAndSortedOrders.map((order) => (
+                {paginatedOrders.map((order) => (
                   <OrderRow key={order.id} order={order} />
                 ))}
               </tbody>
             </table>
           )}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredAndSortedOrders.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Summary Section */}
