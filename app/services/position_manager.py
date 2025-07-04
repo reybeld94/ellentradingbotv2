@@ -12,6 +12,20 @@ class PositionManager:
         self.alpaca = alpaca_client
         self.max_positions = 7  # Límite de posiciones simultáneas
 
+    def _map_symbol(self, symbol: str) -> str:
+        """Return alternate representation of a crypto symbol.
+
+        If ``symbol`` is ``BTCUSD`` it becomes ``BTC/USD`` and vice versa.
+        Any non-USD or already mapped symbols are returned unchanged.
+        """
+        if '/' in symbol:
+            return symbol.replace('/', '')
+        if symbol.upper().endswith('USD'):
+            base = symbol[:-3]
+            quote = symbol[-3:]
+            return f"{base}/{quote}"
+        return symbol
+
     def get_current_positions(self):
         """Obtener todas las posiciones actuales"""
         try:
@@ -25,9 +39,22 @@ class PositionManager:
         """Obtener cantidad específica de un símbolo"""
         try:
             position = self.alpaca.get_position(symbol)
-            return float(position.qty) if position else 0.0
-        except Exception:
-            return 0.0
+            if position:
+                return float(position.qty)
+        except Exception as e:
+            logger.debug(f"Position lookup failed for {symbol}: {e}")
+
+        # If not found and symbol might be crypto without slash, try mapped form
+        if self.is_crypto(symbol) and '/' not in symbol:
+            mapped = self._map_symbol(symbol)
+            try:
+                position = self.alpaca.get_position(mapped)
+                if position:
+                    return float(position.qty)
+            except Exception as e:
+                logger.debug(f"Retry lookup failed for {mapped}: {e}")
+
+        return 0.0
 
     def count_open_positions(self):
         """Contar posiciones abiertas"""
