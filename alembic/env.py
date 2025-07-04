@@ -27,6 +27,7 @@ from app.models.strategy_position import StrategyPosition  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.trades import Trade  # noqa: F401
 from app.models.strategy import Strategy  # noqa: F401
+from app.models.portfolio import Portfolio  # noqa: F401
 
 # Configurar la URL de la base de datos desde settings
 config.set_main_option('sqlalchemy.url', settings.database_url)

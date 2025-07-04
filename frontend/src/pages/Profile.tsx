@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 const Profile: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences' | 'activity'>('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -27,6 +27,34 @@ const Profile: React.FC = () => {
     new: false,
     confirm: false,
   });
+  const [portfolios, setPortfolios] = useState<Array<{id:number;name:string;is_active:boolean}>>([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<number | null>(null);
+
+  const API_BASE_URL = 'http://localhost:8000/api/v1';
+
+  React.useEffect(() => {
+    const fetchPortfolios = async () => {
+      if (!token) return;
+      const res = await fetch(`${API_BASE_URL}/portfolios`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPortfolios(data);
+        const active = data.find((p: any) => p.is_active);
+        if (active) setSelectedPortfolio(active.id);
+      }
+    };
+    fetchPortfolios();
+  }, [token]);
+
+  const changePortfolio = async (id: number) => {
+    setSelectedPortfolio(id);
+    await fetch(`${API_BASE_URL}/portfolios/${id}/activate`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  };
 
   const handleSave = async () => {
     try {
@@ -430,6 +458,19 @@ const Profile: React.FC = () => {
 
   const renderPreferencesTab = () => (
     <div className="space-y-6">
+      <InfoCard title="Trading Portfolio">
+        <select
+          value={selectedPortfolio ?? ''}
+          onChange={(e) => changePortfolio(Number(e.target.value))}
+          className="w-full p-3 border border-gray-300 rounded-lg"
+        >
+          {portfolios.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </InfoCard>
       {/* Notifications */}
       <InfoCard title="Notification Preferences">
         <div className="space-y-4">

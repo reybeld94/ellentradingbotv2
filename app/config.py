@@ -2,6 +2,13 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 import os
 from dotenv import load_dotenv
+import base64
+import hashlib
+
+try:
+    from cryptography.fernet import Fernet
+except Exception:
+    Fernet = None
 
 # Cargar el archivo .env manualmente
 load_dotenv()
@@ -40,6 +47,21 @@ class Settings(BaseSettings):
     smtp_username: Optional[str] = None
     smtp_password: Optional[str] = None
     from_email: Optional[str] = None
+
+    def update_from_portfolio(self, portfolio) -> None:
+        """Update Alpaca credentials from a Portfolio instance."""
+        if portfolio:
+            if Fernet:
+                key = base64.urlsafe_b64encode(
+                    hashlib.sha256(self.secret_key.encode()).digest()
+                )
+                f = Fernet(key)
+                self.alpaca_api_key = f.decrypt(portfolio.api_key_encrypted.encode()).decode()
+                self.alpaca_secret_key = f.decrypt(portfolio.secret_key_encrypted.encode()).decode()
+            else:
+                self.alpaca_api_key = portfolio.api_key_encrypted
+                self.alpaca_secret_key = portfolio.secret_key_encrypted
+            self.alpaca_base_url = portfolio.base_url
 
     def __init__(self, **values):
         super().__init__(**values)

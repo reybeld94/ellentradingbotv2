@@ -11,11 +11,7 @@ from ...config import settings
 class AlpacaClient:
     def __init__(self):
         # Nuevo SDK alpaca-py
-        self.trading_client = TradingClient(
-            api_key=settings.alpaca_api_key,
-            secret_key=settings.alpaca_secret_key,
-            paper=True  # True para paper trading
-        )
+        self._init_clients()
 
         # Clientes para datos
         self.crypto_data_client = CryptoHistoricalDataClient(
@@ -27,6 +23,25 @@ class AlpacaClient:
             api_key=settings.alpaca_api_key,
             secret_key=settings.alpaca_secret_key
         )
+
+    def _init_clients(self):
+        self.trading_client = TradingClient(
+            api_key=settings.alpaca_api_key,
+            secret_key=settings.alpaca_secret_key,
+            paper=True,
+        )
+        self.crypto_data_client = CryptoHistoricalDataClient(
+            api_key=settings.alpaca_api_key,
+            secret_key=settings.alpaca_secret_key,
+        )
+        self.stock_data_client = StockHistoricalDataClient(
+            api_key=settings.alpaca_api_key,
+            secret_key=settings.alpaca_secret_key,
+        )
+
+    def refresh(self):
+        """Recreate clients with current settings credentials."""
+        self._init_clients()
 
     def get_account(self):
         """Obtener información de la cuenta"""
