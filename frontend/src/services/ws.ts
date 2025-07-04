@@ -2,6 +2,7 @@ export interface WSHandlers {
   onSignal?: (data: any) => void;
   onOrder?: (data: any) => void;
   onTrade?: (data: any) => void;
+  onAccountUpdate?: (data: any) => void;
 }
 
 export const connectWebSocket = (handlers: WSHandlers) => {
@@ -18,6 +19,9 @@ export const connectWebSocket = (handlers: WSHandlers) => {
           break;
         case 'trade_update':
           handlers.onTrade?.(msg.payload);
+          break;
+        case 'account_update':
+          handlers.onAccountUpdate?.(msg.payload);
           break;
         default:
           break;
