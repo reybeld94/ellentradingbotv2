@@ -40,3 +40,25 @@ class TradeService:
                 trade.status = 'closed'
             trade.pnl = (price - trade.entry_price) * trade.quantity
         self.db.commit()
+
+    def get_equity_curve(self, user_id: int):
+        """Return equity curve data for the given user."""
+        # Ensure trade information is up to date
+        self.refresh_user_trades(user_id)
+
+        trades = (
+            self.db.query(Trade)
+            .filter(Trade.user_id == user_id)
+            .filter(Trade.status == "closed")
+            .order_by(Trade.closed_at)
+            .all()
+        )
+
+        equity_curve = []
+        cumulative = 0.0
+        for trade in trades:
+            pnl = trade.pnl or 0.0
+            cumulative += pnl
+            timestamp = trade.closed_at or trade.opened_at
+            equity_curve.append({"timestamp": timestamp, "equity": cumulative})
+        return equity_curve

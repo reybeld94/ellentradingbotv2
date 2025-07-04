@@ -21,3 +21,9 @@ class TradeSchema(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class EquityPointSchema(BaseModel):
+    timestamp: datetime
+    equity: float
+
