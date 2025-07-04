@@ -11,7 +11,6 @@ alembic==1.12.1
 redis==5.0.1
 
 # Alpaca trading
-alpaca-trade-api==3.1.1
 alpaca-py==0.18.0
 
 # Validación y configuración
@@ -23,13 +22,11 @@ python-dotenv==1.0.0
 python-multipart==0.0.6
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-
-# WebSockets (compatible con alpaca-trade-api)
-websockets>=9.0,<11
+werkzeug==3.0.1
 
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
 httpx==0.25.2
 
-pydantic[email]==2.2.0
+pydantic[email]==2.5.0

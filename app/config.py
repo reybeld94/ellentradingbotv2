@@ -15,8 +15,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
 
     # Alpaca
-    alpaca_api_key: str
-    alpaca_secret_key: str
+    alpaca_portfolio: str = "DEFAULT"
+    alpaca_api_key: Optional[str] = None
+    alpaca_secret_key: Optional[str] = None
     alpaca_base_url: str = "https://paper-api.alpaca.markets/v2"
 
     # App
@@ -39,6 +40,22 @@ class Settings(BaseSettings):
     smtp_username: Optional[str] = None
     smtp_password: Optional[str] = None
     from_email: Optional[str] = None
+
+    def __init__(self, **values):
+        super().__init__(**values)
+        prefix = self.alpaca_portfolio.upper() if self.alpaca_portfolio else "DEFAULT"
+        self.alpaca_api_key = os.getenv(
+            f"ALPACA_{prefix}_API_KEY",
+            os.getenv("ALPACA_API_KEY", self.alpaca_api_key),
+        )
+        self.alpaca_secret_key = os.getenv(
+            f"ALPACA_{prefix}_SECRET_KEY",
+            os.getenv("ALPACA_SECRET_KEY", self.alpaca_secret_key),
+        )
+        self.alpaca_base_url = os.getenv(
+            f"ALPACA_{prefix}_BASE_URL",
+            os.getenv("ALPACA_BASE_URL", self.alpaca_base_url),
+        )
 
     class Config:
         env_file = ".env"
