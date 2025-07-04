@@ -22,8 +22,11 @@ async def get_alpaca_orders(
         from alpaca.trading.requests import GetOrdersRequest
         from alpaca.trading.enums import QueryOrderStatus
 
-        # Crear request para obtener todas las órdenes (sin filtro de status)
-        request = GetOrdersRequest(limit=200)  # Aumentar límite
+        # Crear request para obtener todas las órdenes (incluyendo ejecutadas)
+        request = GetOrdersRequest(
+            status=QueryOrderStatus.CLOSED,
+            limit=200
+        )  # Aumentar límite para mostrar más resultados
         orders = alpaca_client.trading_client.get_orders(filter=request)
 
         if not orders:
