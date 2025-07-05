@@ -1,7 +1,7 @@
 """add user_id to portfolio
 
 Revision ID: cda90f233a37
-Revises: f9db15bb6dbc
+Revises: 2152693dfc7b
 Create Date: 2025-07-02 00:00:00
 """
 from typing import Sequence, Union
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = 'cda90f233a37'
-down_revision: Union[str, Sequence[str], None] = 'f9db15bb6dbc'
+down_revision: Union[str, Sequence[str], None] = '2152693dfc7b'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
