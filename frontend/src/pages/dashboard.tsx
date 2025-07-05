@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { connectWebSocket } from '../services/ws';
 import {
   BarChart3, DollarSign, TrendingUp, Activity, AlertCircle, RefreshCw,
-  CheckCircle, XCircle, ArrowUp, ArrowDown, PieChart, Target, Briefcase,
+  ArrowUp, ArrowDown, PieChart, Target, Briefcase,
   Clock, Shield, Zap
 } from 'lucide-react';
 import EquityCurveChart from '../components/EquityCurveChart';
@@ -177,9 +177,6 @@ const formatCurrency = (value: string | number | null | undefined) => {
   }).format(num);
 };
 
-const formatTime = (timestamp: string) => {
-  return new Date(timestamp).toLocaleString();
-};
 
 // Component: Enhanced Stats Card
 const StatsCard: React.FC<{
@@ -429,10 +426,6 @@ const TradingDashboard: React.FC = () => {
     positive: true
   } : undefined;
 
-  const dayChange = account ? {
-    value: '+$1,250',
-    positive: true
-  } : undefined;
 
   if (loading) {
     return (

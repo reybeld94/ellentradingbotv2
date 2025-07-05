@@ -1,6 +1,7 @@
 // frontend/src/contexts/AuthContext.tsx
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 
 interface User {
   id: number;
@@ -119,7 +120,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('✅ Login completed successfully'); // DEBUG
 
   } catch (error) {
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       console.error('💥 Login timeout after 10 seconds'); // DEBUG
       throw new Error('Login request timed out. Please check your connection.');
     }
