@@ -1,6 +1,6 @@
 # backend/app/schemas/trade.py
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -19,8 +19,7 @@ class TradeSchema(BaseModel):
     pnl: Optional[float] = None
     user_id: Optional[int] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EquityPointSchema(BaseModel):
