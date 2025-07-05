@@ -20,6 +20,9 @@ class User(Base):
     trades = relationship("Trade", back_populates="user")
     portfolios = relationship("Portfolio", back_populates="user")
 
+    # Per-user limit for simultaneous positions
+    position_limit = Column(Integer, default=7)
+
     # Estados
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)

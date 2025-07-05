@@ -76,7 +76,7 @@ class AuthService:
         """Obtener usuario por username"""
         return db.query(User).filter(User.username == username).first()
 
-    def create_user(self, db: Session, email: str, username: str, password: str, full_name: str = None) -> User:
+    def create_user(self, db: Session, email: str, username: str, password: str, full_name: str = None, position_limit: int = 7) -> User:
         """Crear nuevo usuario"""
         # Verificar si ya existe
         if self.get_user_by_email(db, email):
@@ -89,7 +89,8 @@ class AuthService:
         user = User(
             email=email,
             username=username,
-            full_name=full_name
+            full_name=full_name,
+            position_limit=position_limit
         )
         user.set_password(password)
         user.generate_verification_token()

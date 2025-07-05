@@ -51,7 +51,8 @@ async def register(
             email=user_data.email,
             username=user_data.username,
             password=user_data.password,
-            full_name=user_data.full_name
+            full_name=user_data.full_name,
+            position_limit=user_data.position_limit
         )
 
         print(f"✅ User created: {user.username}")  # DEBUG
@@ -120,7 +121,8 @@ async def login(
         is_verified=user.is_verified,
         is_admin=user.is_admin,
         created_at=user.created_at,
-        last_login=user.last_login
+        last_login=user.last_login,
+        position_limit=user.position_limit
     )
 
     return Token(
@@ -145,7 +147,8 @@ async def get_current_user_info(
         is_verified=current_user.is_verified,
         is_admin=current_user.is_admin,
         created_at=current_user.created_at,
-        last_login=current_user.last_login
+        last_login=current_user.last_login,
+        position_limit=current_user.position_limit
     )
 
 
@@ -172,6 +175,9 @@ async def update_profile(
     if user_update.full_name is not None:
         current_user.full_name = user_update.full_name
 
+    if user_update.position_limit is not None:
+        current_user.position_limit = user_update.position_limit
+
     db.commit()
     db.refresh(current_user)
 
@@ -184,7 +190,8 @@ async def update_profile(
         is_verified=current_user.is_verified,
         is_admin=current_user.is_admin,
         created_at=current_user.created_at,
-        last_login=current_user.last_login
+        last_login=current_user.last_login,
+        position_limit=current_user.position_limit
     )
 
 

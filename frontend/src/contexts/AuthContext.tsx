@@ -12,13 +12,20 @@ interface User {
   is_admin: boolean;
   created_at: string;
   last_login?: string;
+  position_limit: number;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, username: string, password: string, fullName?: string) => Promise<void>;
+  register: (
+    email: string,
+    username: string,
+    password: string,
+    fullName?: string,
+    positionLimit?: number
+  ) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -123,7 +130,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }
 };
 
-  const register = async (email: string, username: string, password: string, fullName?: string) => {
+  const register = async (
+    email: string,
+    username: string,
+    password: string,
+    fullName?: string,
+    positionLimit: number = 7
+  ) => {
   setIsLoading(true);
   console.log('🔄 Attempting registration...', { email, username, fullName }); // DEBUG
 
@@ -138,6 +151,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         username,
         password,
         full_name: fullName,
+        position_limit: positionLimit,
       }),
     });
 
