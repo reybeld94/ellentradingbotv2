@@ -15,3 +15,5 @@ class Portfolio(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="portfolios")
+    signals = relationship("Signal", back_populates="portfolio")
+    trades = relationship("Trade", back_populates="portfolio")

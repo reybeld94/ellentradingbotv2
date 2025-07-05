@@ -24,5 +24,9 @@ class Trade(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     user = relationship("User", back_populates="trades")  # si quieres enlazarlo
 
+    # Portfolio association
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), nullable=True, index=True)
+    portfolio = relationship("Portfolio", back_populates="trades")
+
     def __repr__(self):
         return f"<Trade({self.strategy_id}:{self.symbol} - {self.action}, {self.quantity}, {self.status})>"

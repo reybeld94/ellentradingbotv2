@@ -18,6 +18,7 @@ class TradeSchema(BaseModel):
     closed_at: Optional[datetime] = None
     pnl: Optional[float] = None
     user_id: Optional[int] = None
+    portfolio_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

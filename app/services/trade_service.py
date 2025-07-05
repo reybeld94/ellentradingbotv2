@@ -43,10 +43,14 @@ class TradeService:
                 position = self.alpaca.get_position(alt_symbol)
         return position
 
-    def refresh_user_trades(self, user_id: int) -> None:
+    def refresh_user_trades(self, user_id: int, portfolio_id: int) -> None:
         open_trades = (
             self.db.query(Trade)
-            .filter(Trade.user_id == user_id, Trade.status == "open")
+            .filter(
+                Trade.user_id == user_id,
+                Trade.portfolio_id == portfolio_id,
+                Trade.status == "open",
+            )
             .all()
         )
 
@@ -70,14 +74,17 @@ class TradeService:
 
         self.db.commit()
 
-    def get_equity_curve(self, user_id: int):
+    def get_equity_curve(self, user_id: int, portfolio_id: int):
         """Return equity curve data for the given user."""
         # Ensure trade information is up to date
-        self.refresh_user_trades(user_id)
+        self.refresh_user_trades(user_id, portfolio_id)
 
         trades = (
             self.db.query(Trade)
-            .filter(Trade.user_id == user_id)
+            .filter(
+                Trade.user_id == user_id,
+                Trade.portfolio_id == portfolio_id,
+            )
             .filter(Trade.status == "closed")
             .order_by(Trade.closed_at)
             .all()

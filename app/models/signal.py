@@ -30,5 +30,9 @@ class Signal(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     user = relationship("User", back_populates="signals")
 
+    # Portfolio association
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), nullable=True, index=True)
+    portfolio = relationship("Portfolio", back_populates="signals")
+
     def __repr__(self):
         return f"<Signal({self.strategy_id}:{self.symbol}, {self.action}, {self.status}, user:{self.user_id})>"
