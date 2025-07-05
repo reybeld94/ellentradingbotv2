@@ -3,6 +3,7 @@ from ..models.portfolio import Portfolio
 from ..models.user import User
 from ..config import settings
 from ..integrations.alpaca.client import alpaca_client
+from ..integrations.alpaca.stream import alpaca_stream
 import base64
 import hashlib
 from cryptography.fernet import Fernet
@@ -44,6 +45,7 @@ def get_active(db: Session, user: User | None = None) -> Portfolio | None:
     if active:
         settings.update_from_portfolio(active)
         alpaca_client.refresh()
+    alpaca_stream.refresh()
     return active
 
 
@@ -55,3 +57,4 @@ def activate_portfolio(db: Session, user: User, portfolio_id: int):
     active = db.query(Portfolio).filter_by(id=portfolio_id, user_id=user.id).first()
     settings.update_from_portfolio(active)
     alpaca_client.refresh()
+    alpaca_stream.refresh()

@@ -5,6 +5,7 @@ try:  # alpaca-py may not be installed during testing
     from alpaca.data.live import StockDataStream, CryptoDataStream
     from alpaca.trading.stream import TradingStream
 except Exception:  # pragma: no cover - fallback for tests
+
     class _Dummy:
         def __init__(self, *_, **__):
             pass
@@ -21,6 +22,7 @@ except Exception:  # pragma: no cover - fallback for tests
         def subscribe_trade_updates(self, *_, **__):
             pass
 
+
 from ...config import settings
 from ...websockets import ws_manager
 from .client import alpaca_client
@@ -31,28 +33,49 @@ class AlpacaStream:
     """Manage Alpaca data streaming and forward events via internal WebSocket."""
 
     def __init__(self) -> None:
+        self.stock_stream = None
+        self.crypto_stream = None
+        self.trading_stream = None
         if settings.alpaca_api_key and settings.alpaca_secret_key:
-            self.stock_stream = StockDataStream(
-                settings.alpaca_api_key, settings.alpaca_secret_key
-            )
-            self.crypto_stream = CryptoDataStream(
-                settings.alpaca_api_key, settings.alpaca_secret_key
-            )
-            self.trading_stream = TradingStream(
-                settings.alpaca_api_key,
-                settings.alpaca_secret_key,
-                paper=True,
-            )
-            self.trading_stream.subscribe_trade_updates(self._handle_trade_update)
-            if hasattr(self.trading_stream, "subscribe_account_updates"):
-                self.trading_stream.subscribe_account_updates(self._handle_trade_update)
-        else:
-            self.stock_stream = None
-            self.crypto_stream = None
-            self.trading_stream = None
+            self._init_streams()
         self._stock_task: asyncio.Task | None = None
         self._crypto_task: asyncio.Task | None = None
         self._trading_task: asyncio.Task | None = None
+
+    def _init_streams(self) -> None:
+        self.stock_stream = StockDataStream(
+            settings.alpaca_api_key, settings.alpaca_secret_key
+        )
+        self.crypto_stream = CryptoDataStream(
+            settings.alpaca_api_key, settings.alpaca_secret_key
+        )
+        self.trading_stream = TradingStream(
+            settings.alpaca_api_key,
+            settings.alpaca_secret_key,
+            paper=True,
+        )
+        self.trading_stream.subscribe_trade_updates(self._handle_trade_update)
+        if hasattr(self.trading_stream, "subscribe_account_updates"):
+            self.trading_stream.subscribe_account_updates(self._handle_trade_update)
+
+    def _cancel_tasks(self) -> None:
+        for task in (self._stock_task, self._crypto_task, self._trading_task):
+            if task is not None:
+                task.cancel()
+        self._stock_task = self._crypto_task = self._trading_task = None
+
+    def stop(self) -> None:
+        """Cancel any running stream tasks and clear stream objects."""
+        self._cancel_tasks()
+        self.stock_stream = None
+        self.crypto_stream = None
+        self.trading_stream = None
+
+    def refresh(self) -> None:
+        """Recreate stream clients based on current settings."""
+        self.stop()
+        if settings.alpaca_api_key and settings.alpaca_secret_key:
+            self._init_streams()
 
     async def _handle_trade(self, trade) -> None:
         """Broadcast trade updates to all websocket clients."""
@@ -74,7 +97,9 @@ class AlpacaStream:
             "buying_power": float(getattr(account, "buying_power", 0)),
             "total_positions": summary.get("total_positions", 0),
         }
-        await ws_manager.broadcast(json.dumps({"event": "account_update", "payload": payload}))
+        await ws_manager.broadcast(
+            json.dumps({"event": "account_update", "payload": payload})
+        )
 
     def _ensure_tasks(self) -> None:
         if not self.stock_stream or not self.crypto_stream or not self.trading_stream:
@@ -103,4 +128,3 @@ class AlpacaStream:
 
 
 alpaca_stream = AlpacaStream()
-
