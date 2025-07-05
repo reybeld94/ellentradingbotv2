@@ -31,20 +31,25 @@ class AlpacaStream:
     """Manage Alpaca data streaming and forward events via internal WebSocket."""
 
     def __init__(self) -> None:
-        self.stock_stream = StockDataStream(
-            settings.alpaca_api_key, settings.alpaca_secret_key
-        )
-        self.crypto_stream = CryptoDataStream(
-            settings.alpaca_api_key, settings.alpaca_secret_key
-        )
-        self.trading_stream = TradingStream(
-            settings.alpaca_api_key,
-            settings.alpaca_secret_key,
-            paper=True,
-        )
-        self.trading_stream.subscribe_trade_updates(self._handle_trade_update)
-        if hasattr(self.trading_stream, "subscribe_account_updates"):
-            self.trading_stream.subscribe_account_updates(self._handle_trade_update)
+        if settings.alpaca_api_key and settings.alpaca_secret_key:
+            self.stock_stream = StockDataStream(
+                settings.alpaca_api_key, settings.alpaca_secret_key
+            )
+            self.crypto_stream = CryptoDataStream(
+                settings.alpaca_api_key, settings.alpaca_secret_key
+            )
+            self.trading_stream = TradingStream(
+                settings.alpaca_api_key,
+                settings.alpaca_secret_key,
+                paper=True,
+            )
+            self.trading_stream.subscribe_trade_updates(self._handle_trade_update)
+            if hasattr(self.trading_stream, "subscribe_account_updates"):
+                self.trading_stream.subscribe_account_updates(self._handle_trade_update)
+        else:
+            self.stock_stream = None
+            self.crypto_stream = None
+            self.trading_stream = None
         self._stock_task: asyncio.Task | None = None
         self._crypto_task: asyncio.Task | None = None
         self._trading_task: asyncio.Task | None = None
@@ -72,6 +77,8 @@ class AlpacaStream:
         await ws_manager.broadcast(json.dumps({"event": "account_update", "payload": payload}))
 
     def _ensure_tasks(self) -> None:
+        if not self.stock_stream or not self.crypto_stream or not self.trading_stream:
+            return
         loop = asyncio.get_running_loop()
         if self._stock_task is None:
             self._stock_task = loop.create_task(self.stock_stream._run_forever())
@@ -86,6 +93,8 @@ class AlpacaStream:
 
     def subscribe(self, symbol: str) -> None:
         """Subscribe to real time trades for a symbol."""
+        if not self.crypto_stream or not self.stock_stream:
+            return
         if "/" in symbol:
             self.crypto_stream.subscribe_trades(self._handle_trade, symbol)
         else:

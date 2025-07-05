@@ -10,21 +10,14 @@ from ...config import settings
 
 class AlpacaClient:
     def __init__(self):
-        # Nuevo SDK alpaca-py
-        self._init_clients()
+        """Initialize clients only if credentials are available."""
+        self.trading_client = None
+        self.crypto_data_client = None
+        self.stock_data_client = None
+        if settings.alpaca_api_key and settings.alpaca_secret_key:
+            self._init_clients()
 
-        # Clientes para datos
-        self.crypto_data_client = CryptoHistoricalDataClient(
-            api_key=settings.alpaca_api_key,
-            secret_key=settings.alpaca_secret_key
-        )
-
-        self.stock_data_client = StockHistoricalDataClient(
-            api_key=settings.alpaca_api_key,
-            secret_key=settings.alpaca_secret_key
-        )
-
-    def _init_clients(self):
+    def _init_clients(self) -> None:
         self.trading_client = TradingClient(
             api_key=settings.alpaca_api_key,
             secret_key=settings.alpaca_secret_key,
@@ -39,21 +32,35 @@ class AlpacaClient:
             secret_key=settings.alpaca_secret_key,
         )
 
-    def refresh(self):
+    def _ensure_clients(self) -> None:
+        if self.trading_client is None:
+            if not settings.alpaca_api_key or not settings.alpaca_secret_key:
+                raise RuntimeError("Alpaca API credentials not configured")
+            self._init_clients()
+
+    def refresh(self) -> None:
         """Recreate clients with current settings credentials."""
-        self._init_clients()
+        if settings.alpaca_api_key and settings.alpaca_secret_key:
+            self._init_clients()
+        else:
+            self.trading_client = None
+            self.crypto_data_client = None
+            self.stock_data_client = None
 
     def get_account(self):
         """Obtener información de la cuenta"""
+        self._ensure_clients()
         return self.trading_client.get_account()
 
     def get_positions(self):
         """Obtener posiciones actuales"""
+        self._ensure_clients()
         return self.trading_client.get_all_positions()
 
     def get_position(self, symbol):
         """Obtener posición específica"""
         try:
+            self._ensure_clients()
             return self.trading_client.get_open_position(symbol)
         except Exception:
             return None
@@ -80,6 +87,7 @@ class AlpacaClient:
             time_in_force=time_in_force
         )
 
+        self._ensure_clients()
         return self.trading_client.submit_order(order_data=market_order_data)
 
     def submit_crypto_order(self, symbol, qty, side, order_type='market'):
@@ -100,11 +108,13 @@ class AlpacaClient:
             time_in_force=time_in_force
         )
 
+        self._ensure_clients()
         return self.trading_client.submit_order(order_data=market_order_data)
 
     def get_latest_quote(self, symbol):
         """Obtener último precio (stocks)"""
         try:
+            self._ensure_clients()
             request = StockLatestQuoteRequest(symbol_or_symbols=[symbol])
             quotes = self.stock_data_client.get_stock_latest_quote(request)
             return quotes[symbol]
@@ -116,6 +126,7 @@ class AlpacaClient:
         """Obtener último precio de crypto"""
         try:
             print(f"🔍 Getting crypto quote for: {symbol}")
+            self._ensure_clients()
             request = CryptoLatestQuoteRequest(symbol_or_symbols=[symbol])
             quotes = self.crypto_data_client.get_crypto_latest_quote(request)
             return quotes[symbol]
@@ -137,12 +148,14 @@ class AlpacaClient:
         else:
             status_filter = QueryOrderStatus.CLOSED  # fallback
 
+        self._ensure_clients()
         filter_request = GetOrdersRequest(status=status_filter, limit=limit)
         return self.trading_client.get_orders(filter=filter_request)
 
     def is_asset_fractionable(self, symbol):
         """Verificar si un activo es fraccionable"""
         try:
+            self._ensure_clients()
             asset = self.trading_client.get_asset(symbol)
             return asset.fractionable
         except Exception as e:
@@ -169,6 +182,7 @@ class AlpacaClient:
     def get_crypto_assets(self):
         """Obtener lista de activos crypto disponibles"""
         try:
+            self._ensure_clients()
             # Con nuevo SDK
             assets = self.trading_client.get_all_assets()
             crypto_assets = [asset for asset in assets if asset.asset_class == AssetClass.CRYPTO]
@@ -205,6 +219,7 @@ class AlpacaClient:
             else:
                 status_filter = None
 
+            self._ensure_clients()
             assets = self.trading_client.get_all_assets()
 
             # Filtrar manualmente ya que el SDK nuevo no tiene filtros directos
@@ -224,6 +239,7 @@ class AlpacaClient:
     def get_asset(self, symbol):
         """Obtener activo específico"""
         try:
+            self._ensure_clients()
             return self.trading_client.get_asset(symbol)
         except Exception as e:
             print(f"❌ Error getting asset {symbol}: {e}")
