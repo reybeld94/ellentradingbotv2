@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = None
     from_email: Optional[str] = None
 
+    def clear_alpaca_credentials(self) -> None:
+        """Reset Alpaca credentials to ensure no connections are made."""
+        self.alpaca_api_key = None
+        self.alpaca_secret_key = None
+
     def update_from_portfolio(self, portfolio) -> None:
         """Update Alpaca credentials from a Portfolio instance."""
         if portfolio:

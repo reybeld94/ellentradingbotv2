@@ -45,6 +45,9 @@ def get_active(db: Session, user: User | None = None) -> Portfolio | None:
     if active:
         settings.update_from_portfolio(active)
         alpaca_client.refresh()
+    else:
+        settings.clear_alpaca_credentials()
+        alpaca_client.refresh()
     alpaca_stream.refresh()
     return active
 
