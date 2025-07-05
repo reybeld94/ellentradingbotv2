@@ -12,3 +12,11 @@ credentials.
 Each user has a **position_limit** value determining how many open positions they
 may hold at once. The default limit is 7 and can be modified from the profile
 page or via the API.
+
+## Admin Setup
+
+Before starting the server, create an initial admin user:
+
+```bash
+python scripts/create_admin_user.py --email you@example.com --username admin --password yourpassword
+```
