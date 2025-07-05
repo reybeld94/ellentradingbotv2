@@ -4,15 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional
-from ...database import get_db
-from ...schemas.webhook import TradingViewWebhook, WebhookResponse
-from ...models.signal import Signal
-from ...models.user import User
-from ...services.order_executor import order_executor
-from ...core.auth import get_current_verified_user
-from ...config import settings
-from ...websockets import ws_manager
-from ...services import portfolio_service
+from app.database import get_db
+from app.schemas.webhook import TradingViewWebhook, WebhookResponse
+from app.models.signal import Signal
+from app.models.user import User
+from app.services.order_executor import order_executor
+from app.core.auth import get_current_verified_user
+from app.config import settings
+from app.websockets import ws_manager
+from app.services import portfolio_service
 import asyncio
 import json
 import logging

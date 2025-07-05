@@ -2,13 +2,13 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ...integrations.alpaca.client import alpaca_client
-from ...services.position_manager import position_manager
-from ...database import get_db
-from ...models.signal import Signal
-from ...models.user import User
-from ...core.auth import get_current_verified_user, get_admin_user
-from ...services import portfolio_service
+from app.integrations.alpaca.client import alpaca_client
+from app.services.position_manager import position_manager
+from app.database import get_db
+from app.models.signal import Signal
+from app.models.user import User
+from app.core.auth import get_current_verified_user, get_admin_user
+from app.services import portfolio_service
 
 router = APIRouter()
 
@@ -185,7 +185,7 @@ async def get_user_stats(
 ):
     """Estadísticas de usuarios (solo admin)"""
     from sqlalchemy import func
-    from ...models.user import User
+    from app.models.user import User
 
     stats = db.query(
         func.count(Signal.id).label('total_signals'),

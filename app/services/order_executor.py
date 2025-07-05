@@ -1,15 +1,15 @@
 # backend/app/services/order_executor.py
 from sqlalchemy.orm import Session
-from ..integrations.alpaca.client import alpaca_client
-from ..models.signal import Signal
-from ..config import settings
-from .position_manager import position_manager
-from .strategy_position_manager import StrategyPositionManager
-from ..database import get_db
+from app.integrations.alpaca.client import alpaca_client
+from app.models.signal import Signal
+from app.config import settings
+from app.services.position_manager import position_manager
+from app.services.strategy_position_manager import StrategyPositionManager
+from app.database import get_db
 import logging
 from app.models.trades import Trade
 from sqlalchemy.sql import func
-from ..websockets import ws_manager
+from app.websockets import ws_manager
 import asyncio
 import json
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class OrderExecutor:
         print(f"🔍 Asset {final_symbol} is fractionable: {is_fractionable}")
 
         # Delegar a RiskManager para obtener cantidad base
-        from .risk_manager import risk_manager
+        from app.services.risk_manager import risk_manager
 
         base_qty = risk_manager.calculate_optimal_position_size(
             price=current_price,
@@ -89,7 +89,7 @@ class OrderExecutor:
         try:
             print(f"🚀 Executing signal: {signal.strategy_id} {signal.action} {signal.symbol}")
 
-            from ..database import SessionLocal
+            from app.database import SessionLocal
             db = SessionLocal()
             strategy_manager = StrategyPositionManager(db)
 

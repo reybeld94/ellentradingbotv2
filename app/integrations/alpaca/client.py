@@ -5,7 +5,7 @@ from alpaca.trading.requests import MarketOrderRequest, GetOrdersRequest
 from alpaca.trading.enums import OrderSide, TimeInForce, AssetClass
 from alpaca.data.historical import CryptoHistoricalDataClient, StockHistoricalDataClient
 from alpaca.data.requests import CryptoLatestQuoteRequest, StockLatestQuoteRequest
-from ...config import settings
+from app.config import settings
 
 
 class AlpacaClient:

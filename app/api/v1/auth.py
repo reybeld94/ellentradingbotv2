@@ -6,17 +6,17 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import Any
 
-from ...database import get_db
-from ...schemas.auth import (
+from app.database import get_db
+from app.schemas.auth import (
     UserCreate, UserLogin, UserResponse, Token,
     PasswordReset, PasswordResetConfirm, UserUpdate
 )
 from typing import Any, Dict
-from ...services.auth_service import auth_service
-from ...services.validation_service import validation_service
-from ...core.auth import get_current_user, get_current_verified_user
-from ...utils.responses import AuthResponses
-from ...models.user import User
+from app.services.auth_service import auth_service
+from app.services.validation_service import validation_service
+from app.core.auth import get_current_user, get_current_verified_user
+from app.utils.responses import AuthResponses
+from app.models.user import User
 
 router = APIRouter()
 security = HTTPBearer()

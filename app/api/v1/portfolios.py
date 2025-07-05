@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ...database import get_db
-from ...services import portfolio_service
-from ...models.user import User
-from ...core.auth import get_current_verified_user
-from ...schemas.portfolio import PortfolioCreate, PortfolioResponse
+from app.database import get_db
+from app.services import portfolio_service
+from app.models.user import User
+from app.core.auth import get_current_verified_user
+from app.schemas.portfolio import PortfolioCreate, PortfolioResponse
 
 router = APIRouter()
 

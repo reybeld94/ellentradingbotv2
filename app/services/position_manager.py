@@ -1,7 +1,7 @@
 # backend/app/services/position_manager.py
 
-from ..integrations.alpaca.client import alpaca_client
-from ..models.signal import Signal
+from app.integrations.alpaca.client import alpaca_client
+from app.models.signal import Signal
 import logging
 
 logger = logging.getLogger(__name__)

@@ -23,10 +23,10 @@ except Exception:  # pragma: no cover - fallback for tests
             pass
 
 
-from ...config import settings
-from ...websockets import ws_manager
-from .client import alpaca_client
-from ...services.position_manager import position_manager
+from app.config import settings
+from app.websockets import ws_manager
+from app.integrations.alpaca.client import alpaca_client
+from app.services.position_manager import position_manager
 
 
 class AlpacaStream:

@@ -3,13 +3,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from ...database import get_db
-from ...models.trades import Trade
-from ...models.user import User
-from ...schemas.trades import TradeSchema, EquityPointSchema
-from ...core.auth import get_current_verified_user, get_admin_user
-from ...services.trade_service import TradeService
-from ...services import portfolio_service
+from app.database import get_db
+from app.models.trades import Trade
+from app.models.user import User
+from app.schemas.trades import TradeSchema, EquityPointSchema
+from app.core.auth import get_current_verified_user, get_admin_user
+from app.services.trade_service import TradeService
+from app.services import portfolio_service
 
 router = APIRouter()
 

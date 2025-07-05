@@ -1,9 +1,9 @@
-from .user import User
-from .signal import Signal
-from .strategy_position import StrategyPosition
-from .strategy import Strategy
-from .trades import Trade
-from .portfolio import Portfolio
+from app.models.user import User
+from app.models.signal import Signal
+from app.models.strategy_position import StrategyPosition
+from app.models.strategy import Strategy
+from app.models.trades import Trade
+from app.models.portfolio import Portfolio
 
 __all__ = [
     "User",

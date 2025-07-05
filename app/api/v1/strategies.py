@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from ...database import get_db
-from ...models.user import User
-from ...models.strategy import Strategy
-from ...services.trade_service import TradeService
-from ...core.auth import get_current_verified_user
-from ...schemas.strategy import StrategyCreate, StrategyUpdate, StrategyOut
+from app.database import get_db
+from app.models.user import User
+from app.models.strategy import Strategy
+from app.services.trade_service import TradeService
+from app.core.auth import get_current_verified_user
+from app.schemas.strategy import StrategyCreate, StrategyUpdate, StrategyOut
 
 router = APIRouter()
 

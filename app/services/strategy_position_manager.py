@@ -1,7 +1,7 @@
 # backend/app/services/strategy_position_manager.py
 
 from sqlalchemy.orm import Session
-from ..models.strategy_position import StrategyPosition
+from app.models.strategy_position import StrategyPosition
 import logging
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,8 @@
 from sqlalchemy.orm import sessionmaker, Session
 
-from ..database import SessionLocal
-from ..models.trades import Trade
-from .monte_carlo_analyzer import MonteCarloAnalyzer
+from app.database import SessionLocal
+from app.models.trades import Trade
+from app.services.monte_carlo_analyzer import MonteCarloAnalyzer
 
 
 class RiskManager:
