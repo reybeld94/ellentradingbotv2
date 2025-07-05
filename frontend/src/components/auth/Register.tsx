@@ -1,6 +1,7 @@
 // frontend/src/components/auth/Register.tsx
 
 import React, { useState } from 'react';
+import type { ReactNode } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, UserPlus, AlertCircle, CheckCircle, Info, RefreshCw } from 'lucide-react';
 
@@ -117,7 +118,7 @@ const Register: React.FC<RegisterProps> = ({ onToggleMode }) => {
     }
   };
 
-  const PasswordRequirement: React.FC<{ met: boolean; children: React.ReactNode }> = ({ met, children }) => (
+  const PasswordRequirement: React.FC<{ met: boolean; children: ReactNode }> = ({ met, children }) => (
     <div className={`flex items-center text-sm transition-colors duration-200 ${met ? 'text-green-600' : 'text-gray-500'}`}>
       {met ? (
         <CheckCircle className="h-4 w-4 mr-2" />

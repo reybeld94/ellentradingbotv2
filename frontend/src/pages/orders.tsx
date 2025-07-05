@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import {
   BarChart3, CheckCircle, XCircle, Clock, AlertCircle, RefreshCw, Filter,
   TrendingUp, TrendingDown, Search, Download, Calendar, DollarSign,
-  ArrowUp, ArrowDown, Eye, MoreHorizontal, Target, Zap, PieChart,
-  PlayCircle, Settings2
+  ArrowUp, ArrowDown, Eye, MoreHorizontal, Target, PieChart
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
 
@@ -166,7 +166,7 @@ const OrdersPage: React.FC = () => {
   const FilterButton: React.FC<{
     active: boolean;
     onClick: () => void;
-    children: React.ReactNode;
+    children: ReactNode;
     count?: number;
   }> = ({ active, onClick, children, count }) => (
     <button
@@ -190,7 +190,7 @@ const OrdersPage: React.FC = () => {
   const TimeRangeButton: React.FC<{
     active: boolean;
     onClick: () => void;
-    children: React.ReactNode;
+    children: ReactNode;
   }> = ({ active, onClick, children }) => (
     <button
       onClick={onClick}
@@ -252,9 +252,6 @@ const OrdersPage: React.FC = () => {
       }).format(num);
     };
 
-    const formatTime = (timestamp: string) => {
-      return new Date(timestamp).toLocaleString();
-    };
 
     return (
       <tr className="hover:bg-gray-50 transition-colors duration-200 group">

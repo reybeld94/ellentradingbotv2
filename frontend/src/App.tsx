@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   BarChart3, Activity, List, Settings, Menu, X, LogOut, User,
-  Home, Briefcase, Bell, Search, ChevronRight,
-  Clock, RefreshCw, Target
+  Home, Briefcase, Bell, ChevronRight,
+  RefreshCw, Target
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/dashboard';
 import SignalsPage from './pages/signals';
 import OrdersPage from './pages/orders';
 import Profile from './pages/Profile';
@@ -221,14 +221,14 @@ const Sidebar: React.FC<{
 const MobileHeader: React.FC<{
   currentPage: Page;
   onToggleSidebar: () => void;
-  user: any;
-}> = ({ currentPage, onToggleSidebar, user }) => {
-  const pageNames = {
+}> = ({ currentPage, onToggleSidebar }) => {
+  const pageNames: Record<Page, string> = {
     dashboard: 'Dashboard',
     signals: 'Signals',
     orders: 'Orders',
     strategies: 'Strategies',
-    settings: 'Settings'
+    settings: 'Settings',
+    trades: 'Trades'
   };
 
   return (
@@ -265,18 +265,6 @@ const MobileHeader: React.FC<{
   );
 };
 
-// Componente temporal para páginas no implementadas
-const ComingSoon: React.FC<{ title: string }> = ({ title }) => (
-  <div className="flex-1 p-8 bg-gray-50 min-h-screen">
-    <div className="text-center py-20">
-      <div className="mx-auto h-24 w-24 text-gray-400 mb-4">
-        <Activity className="h-full w-full" />
-      </div>
-      <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-500">This page is coming soon...</p>
-    </div>
-  </div>
-);
 
 // Componente principal del dashboard autenticado
 const AuthenticatedApp: React.FC = () => {
@@ -285,7 +273,6 @@ const AuthenticatedApp: React.FC = () => {
 
   // ✅ NUEVO: Estado para contar signals pendientes
   const [pendingSignalsCount, setPendingSignalsCount] = useState(0);
-  const { user } = useAuth();
 
   // ✅ NUEVO: Función para obtener el count de signals
   useEffect(() => {
@@ -368,7 +355,6 @@ const AuthenticatedApp: React.FC = () => {
         <MobileHeader
           currentPage={currentPage}
           onToggleSidebar={() => setSidebarOpen(true)}
-          user={user}
         />
 
         {/* Page content */}

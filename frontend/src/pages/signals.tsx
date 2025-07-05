@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { connectWebSocket } from '../services/ws';
 import {
   Activity, CheckCircle, XCircle, Clock, AlertCircle, RefreshCw, Filter,
-  Search, TrendingUp, TrendingDown, Zap, BarChart3, Target,
+  Search, TrendingUp, TrendingDown,
   ArrowUp, ArrowDown, Calendar, Eye, Settings2
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
@@ -165,7 +166,7 @@ const SignalsPage: React.FC = () => {
   const FilterButton: React.FC<{
     active: boolean;
     onClick: () => void;
-    children: React.ReactNode;
+    children: ReactNode;
     count?: number;
   }> = ({ active, onClick, children, count }) => (
     <button

@@ -1,11 +1,12 @@
 // frontend/src/components/auth/ProtectedRoute.tsx
 
 import React from 'react';
+import type { ReactNode } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { RefreshCw } from 'lucide-react';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {

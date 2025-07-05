@@ -1,11 +1,11 @@
 // frontend/src/pages/Profile.tsx
 
 import React, { useState } from "react";
+import type { ReactNode } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   User,
   Mail,
-  Calendar,
   Shield,
   CheckCircle,
   XCircle,
@@ -13,7 +13,6 @@ import {
   Save,
   X,
   Key,
-  Bell,
   Download,
   Upload,
   Settings,
@@ -21,9 +20,6 @@ import {
   EyeOff,
   AlertTriangle,
   Camera,
-  MapPin,
-  Phone,
-  Globe,
   Briefcase,
   Award,
   Clock,
@@ -164,12 +160,11 @@ const Profile: React.FC = () => {
   if (!user) return null;
 
   const TabButton: React.FC<{
-    tab: string;
     active: boolean;
     onClick: () => void;
     icon: React.ComponentType<any>;
-    children: React.ReactNode;
-  }> = ({ tab, active, onClick, icon: Icon, children }) => (
+    children: ReactNode;
+  }> = ({ active, onClick, icon: Icon, children }) => (
     <button
       onClick={onClick}
       className={`flex items-center px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
@@ -185,8 +180,8 @@ const Profile: React.FC = () => {
 
   const InfoCard: React.FC<{
     title: string;
-    children: React.ReactNode;
-    action?: React.ReactNode;
+    children: ReactNode;
+    action?: ReactNode;
   }> = ({ title, children, action }) => (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
       <div className="flex items-center justify-between mb-4">
@@ -878,7 +873,6 @@ const Profile: React.FC = () => {
       <div className="mb-8">
         <div className="flex flex-wrap gap-2">
           <TabButton
-            tab="profile"
             active={activeTab === "profile"}
             onClick={() => setActiveTab("profile")}
             icon={User}
@@ -886,7 +880,6 @@ const Profile: React.FC = () => {
             Profile
           </TabButton>
           <TabButton
-            tab="security"
             active={activeTab === "security"}
             onClick={() => setActiveTab("security")}
             icon={Shield}
@@ -894,7 +887,6 @@ const Profile: React.FC = () => {
             Security
           </TabButton>
           <TabButton
-            tab="preferences"
             active={activeTab === "preferences"}
             onClick={() => setActiveTab("preferences")}
             icon={Settings}
@@ -902,7 +894,6 @@ const Profile: React.FC = () => {
             Preferences
           </TabButton>
           <TabButton
-            tab="activity"
             active={activeTab === "activity"}
             onClick={() => setActiveTab("activity")}
             icon={Activity}
