@@ -104,7 +104,9 @@ async def get_positions(
 ):
     """Ver posiciones actuales"""
     try:
-        portfolio_summary = position_manager.get_portfolio_summary()
+        portfolio_summary = position_manager.get_portfolio_summary(
+            current_user.position_limit
+        )
         portfolio_summary["user"] = current_user.username
         return portfolio_summary
     except Exception as e:

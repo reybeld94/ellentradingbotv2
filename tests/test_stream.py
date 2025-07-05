@@ -64,7 +64,11 @@ def test_trade_update_triggers_broadcast(monkeypatch):
         messages.append(json.loads(msg))
     monkeypatch.setattr(ws_manager, 'broadcast', fake_broadcast)
     monkeypatch.setattr(stream_module.alpaca_client, 'get_account', lambda: DummyAccount())
-    monkeypatch.setattr(stream_module.position_manager, 'get_portfolio_summary', lambda: {'total_positions': 1})
+    monkeypatch.setattr(
+        stream_module.position_manager,
+        'get_portfolio_summary',
+        lambda *a, **k: {'total_positions': 1}
+    )
     alpaca_stream = stream_module.AlpacaStream()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(alpaca_stream._handle_trade_update({}))
