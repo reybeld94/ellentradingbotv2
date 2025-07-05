@@ -235,7 +235,8 @@ class OrderExecutor:
             quantity=signal.quantity,
             entry_price=current_price,
             status='open',
-            user_id=signal.user_id
+            user_id=signal.user_id,
+            portfolio_id=signal.portfolio_id
         )
         db.add(new_trade)
         db.commit()
@@ -307,7 +308,8 @@ class OrderExecutor:
             strategy_id=signal.strategy_id,
             symbol=signal.symbol,
             status='open',
-            user_id=signal.user_id
+            user_id=signal.user_id,
+            portfolio_id=signal.portfolio_id
         ).order_by(Trade.opened_at.desc()).all()
 
         if open_trades:

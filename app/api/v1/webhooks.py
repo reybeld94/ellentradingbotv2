@@ -12,6 +12,7 @@ from ...services.order_executor import order_executor
 from ...core.auth import get_current_verified_user
 from ...config import settings
 from ...websockets import ws_manager
+from ...services import portfolio_service
 import asyncio
 import json
 import logging
@@ -43,6 +44,10 @@ async def receive_tradingview_webhook(
             )
             raise HTTPException(status_code=400, detail="Unknown strategy_id")
 
+        active_portfolio = portfolio_service.get_active(db, current_user)
+        if not active_portfolio:
+            raise HTTPException(status_code=400, detail="No active portfolio configured")
+
         # Crear nueva señal en la base de datos con información del usuario
         signal = Signal(
             symbol=webhook_data.symbol,
@@ -55,7 +60,8 @@ async def receive_tradingview_webhook(
             reason=webhook_data.reason,
             confidence=webhook_data.confidence,
             tv_timestamp=webhook_data.timestamp,
-            user_id=current_user.id  # NUEVO: Asociar señal con usuario
+            user_id=current_user.id,  # NUEVO: Asociar señal con usuario
+            portfolio_id=active_portfolio.id
         )
 
         db.add(signal)
@@ -130,9 +136,19 @@ async def get_signals(
         signals = db.query(Signal).order_by(Signal.timestamp.desc()).limit(50).all()
     else:
         # Usuario normal solo ve sus señales
-        signals = db.query(Signal).filter(
-            Signal.user_id == current_user.id
-        ).order_by(Signal.timestamp.desc()).limit(50).all()
+        active_portfolio = portfolio_service.get_active(db, current_user)
+        if not active_portfolio:
+            return []
+        signals = (
+            db.query(Signal)
+            .filter(
+                Signal.user_id == current_user.id,
+                Signal.portfolio_id == active_portfolio.id,
+            )
+            .order_by(Signal.timestamp.desc())
+            .limit(50)
+            .all()
+        )
 
     return [
         {
@@ -220,6 +236,14 @@ async def receive_public_webhook(
                 signal_id=None,
             )
 
+        active_portfolio = portfolio_service.get_active(db, target_user)
+        if not active_portfolio:
+            return WebhookResponse(
+                status="error",
+                message="No active portfolio configured",
+                signal_id=None,
+            )
+
         signal = Signal(
             symbol=webhook_data.symbol,
             action=webhook_data.action,
@@ -231,7 +255,8 @@ async def receive_public_webhook(
             reason=webhook_data.reason,
             confidence=webhook_data.confidence,
             tv_timestamp=webhook_data.timestamp,
-            user_id=target_user.id  # Usar ID del usuario 'reybel'
+            user_id=target_user.id,  # Usar ID del usuario 'reybel'
+            portfolio_id=active_portfolio.id
         )
 
         db.add(signal)

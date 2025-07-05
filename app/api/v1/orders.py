@@ -8,6 +8,7 @@ from ...database import get_db
 from ...models.signal import Signal
 from ...models.user import User
 from ...core.auth import get_current_verified_user, get_admin_user
+from ...services import portfolio_service
 
 router = APIRouter()
 
@@ -120,10 +121,19 @@ async def get_signals(
         # Admin puede ver todas
         signals = db.query(Signal).order_by(Signal.timestamp.desc()).limit(50).all()
     else:
-        # Usuario normal solo las suyas
-        signals = db.query(Signal).filter(
-            Signal.user_id == current_user.id
-        ).order_by(Signal.timestamp.desc()).limit(50).all()
+        active_portfolio = portfolio_service.get_active(db, current_user)
+        if not active_portfolio:
+            return []
+        signals = (
+            db.query(Signal)
+            .filter(
+                Signal.user_id == current_user.id,
+                Signal.portfolio_id == active_portfolio.id,
+            )
+            .order_by(Signal.timestamp.desc())
+            .limit(50)
+            .all()
+        )
 
     return [
         {
