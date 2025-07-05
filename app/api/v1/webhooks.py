@@ -99,7 +99,7 @@ async def receive_tradingview_webhook(
 
         # Ejecutar orden en Alpaca con gestión por estrategia
         try:
-            order = order_executor.execute_signal(signal)
+            order = order_executor.execute_signal(signal, current_user)
             db.commit()
 
             return WebhookResponse(
@@ -267,7 +267,7 @@ async def receive_public_webhook(
 
         # Ejecutar orden
         try:
-            order = order_executor.execute_signal(signal)
+            order = order_executor.execute_signal(signal, target_user)
             db.commit()
 
             logger.info(f"Order executed successfully for reybel: {signal.strategy_id} {signal.action} {signal.symbol}")

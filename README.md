@@ -8,3 +8,7 @@ Alpaca credentials are stored securely in the database. Each user can create
 their own portfolios from the frontend or via the API and select which one is
 active. The application no longer falls back to environment variables for
 credentials.
+
+Each user has a **position_limit** value determining how many open positions they
+may hold at once. The default limit is 7 and can be modified from the profile
+page or via the API.

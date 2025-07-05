@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class PositionManager:
-    def __init__(self):
+    def __init__(self, default_limit: int = 7):
         self.alpaca = alpaca_client
-        self.max_positions = 7  # Límite de posiciones simultáneas
+        self.default_limit = default_limit
 
     def _map_symbol(self, symbol: str) -> str:
         """Return alternate representation of a crypto symbol.
@@ -62,15 +62,18 @@ class PositionManager:
         positions = self.get_current_positions()
         return len([qty for qty in positions.values() if qty > 0])
 
-    def validate_buy_signal(self, signal: Signal, calculated_quantity):
+    def validate_buy_signal(self, signal: Signal, calculated_quantity, limit: int | None = None):
         """Validar señal de compra"""
+        if limit is None:
+            limit = self.default_limit
+
         # 1. Verificar límite de posiciones
         current_positions = self.count_open_positions()
         current_qty = self.get_position_quantity(signal.symbol)
 
         # Si ya tenemos el símbolo, no cuenta como nueva posición
-        if current_qty == 0 and current_positions >= self.max_positions:
-            raise ValueError(f"Maximum positions limit reached ({self.max_positions}). Current: {current_positions}")
+        if current_qty == 0 and current_positions >= limit:
+            raise ValueError(f"Maximum positions limit reached ({limit}). Current: {current_positions}")
 
         # 2. Verificar efectivo disponible
         account = self.alpaca.get_account()
@@ -126,16 +129,19 @@ class PositionManager:
         """Verificar si es crypto"""
         return '/' in symbol or symbol.endswith('USD')
 
-    def get_portfolio_summary(self):
+    def get_portfolio_summary(self, limit: int | None = None):
         """Resumen del portafolio"""
         try:
             positions = self.get_current_positions()
             account = self.alpaca.get_account()
 
+            if limit is None:
+                limit = self.default_limit
+
             return {
                 "total_positions": len(positions),
-                "max_positions": self.max_positions,
-                "remaining_slots": max(0, self.max_positions - len(positions)),
+                "max_positions": limit,
+                "remaining_slots": max(0, limit - len(positions)),
                 "cash": float(account.cash),
                 "portfolio_value": float(account.portfolio_value),
                 "buying_power": float(account.buying_power),

@@ -85,7 +85,7 @@ class OrderExecutor:
 
         return final_quantity, final_symbol
 
-    def execute_signal(self, signal: Signal):
+    def execute_signal(self, signal: Signal, user):
         try:
             print(f"🚀 Executing signal: {signal.strategy_id} {signal.action} {signal.symbol}")
 
@@ -102,7 +102,7 @@ class OrderExecutor:
                         quantity, correct_symbol = self.calculate_position_size(signal.symbol, signal.action)
                         signal.quantity = quantity
 
-                    order = self._execute_buy_signal(signal, strategy_manager, correct_symbol, db)
+                    order = self._execute_buy_signal(signal, strategy_manager, correct_symbol, user.position_limit, db)
 
 
                 elif signal.action.lower() == 'sell':
@@ -165,15 +165,15 @@ class OrderExecutor:
             logger.error(f"Error executing signal for {signal.symbol}: {e}")
             raise
 
-    def _execute_buy_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, db: Session):
+    def _execute_buy_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, limit: int, db: Session):
 
         print(f"🟢 Executing BUY for {signal.strategy_id}:{signal.symbol} (as {correct_symbol})")
 
         current_positions = self.position_manager.count_open_positions()
-        print(f"📊 Current positions: {current_positions}/{self.position_manager.max_positions}")
+        print(f"📊 Current positions: {current_positions}/{limit}")
 
-        if current_positions >= self.position_manager.max_positions:
-            raise ValueError(f"Maximum positions limit reached ({self.position_manager.max_positions})")
+        if current_positions >= limit:
+            raise ValueError(f"Maximum positions limit reached ({limit})")
 
         account = self.alpaca.get_account()
         available_cash = float(account.cash)

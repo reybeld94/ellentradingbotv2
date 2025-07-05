@@ -9,6 +9,7 @@ class UserBase(BaseModel):
     email: EmailStr
     username: str
     full_name: Optional[str] = None
+    position_limit: int = 7
 
 
 class UserCreate(UserBase):
@@ -23,6 +24,7 @@ class UserLogin(BaseModel):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
+    position_limit: Optional[int] = None
 
 
 class PasswordReset(BaseModel):

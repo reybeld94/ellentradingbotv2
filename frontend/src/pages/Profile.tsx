@@ -64,6 +64,7 @@ const Profile: React.FC = () => {
     secret_key: "",
     base_url: "",
   });
+  const [positionLimit, setPositionLimit] = useState<number>(user?.position_limit ?? 7);
 
   const API_BASE_URL = "http://localhost:8000/api/v1";
 
@@ -109,6 +110,21 @@ const Profile: React.FC = () => {
       ]);
       setShowPortfolioForm(false);
       setNewPortfolio({ name: "", api_key: "", secret_key: "", base_url: "" });
+    }
+  };
+
+  const savePositionLimit = async () => {
+    const res = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ position_limit: positionLimit }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setPositionLimit(data.position_limit);
     }
   };
 
@@ -592,6 +608,22 @@ const Profile: React.FC = () => {
 
   const renderPreferencesTab = () => (
     <div className="space-y-6">
+      <InfoCard title="Position Limit">
+        <div className="flex items-center space-x-2">
+          <input
+            type="number"
+            value={positionLimit}
+            onChange={(e) => setPositionLimit(Number(e.target.value))}
+            className="w-24 p-2 border border-gray-300 rounded"
+          />
+          <button
+            onClick={savePositionLimit}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Save
+          </button>
+        </div>
+      </InfoCard>
       <InfoCard
         title="Trading Portfolio"
         action={
