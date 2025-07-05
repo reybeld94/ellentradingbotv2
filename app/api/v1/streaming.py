@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from ...integrations.alpaca import alpaca_stream
+from app.integrations.alpaca import alpaca_stream
 
 router = APIRouter()
 

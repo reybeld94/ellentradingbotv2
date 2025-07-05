@@ -2,7 +2,7 @@ import random
 import statistics
 from typing import List, Iterable, Dict
 
-from ..models.trades import Trade
+from app.models.trades import Trade
 
 
 class MonteCarloAnalyzer:

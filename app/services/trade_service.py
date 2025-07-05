@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
-from ..models.trades import Trade
-from ..integrations.alpaca.client import alpaca_client
+from app.models.trades import Trade
+from app.integrations.alpaca.client import alpaca_client
 
 
 class TradeService:

@@ -1,17 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .config import settings
-from .api.v1.webhooks import router as webhooks_router
-from .api.v1.orders import router as orders_router
-from .api.v1.auth import router as auth_router
-from .api.v1.trades import router as trades_router
-from .api.v1.strategies import router as strategies_router
-from .api.v1.streaming import router as streaming_router
-from .api.v1.portfolios import router as portfolios_router
-from .api.ws import router as ws_router
-from .integrations.alpaca import alpaca_stream
-from .database import SessionLocal
-from .services import portfolio_service
+from app.config import settings
+from app.api.v1.webhooks import router as webhooks_router
+from app.api.v1.orders import router as orders_router
+from app.api.v1.auth import router as auth_router
+from app.api.v1.trades import router as trades_router
+from app.api.v1.strategies import router as strategies_router
+from app.api.v1.streaming import router as streaming_router
+from app.api.v1.portfolios import router as portfolios_router
+from app.api.ws import router as ws_router
+from app.integrations.alpaca import alpaca_stream
+from app.database import SessionLocal
+from app.services import portfolio_service
 
 app = FastAPI(
     title=settings.app_name,
