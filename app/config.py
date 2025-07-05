@@ -1,7 +1,5 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
-import os
-from dotenv import load_dotenv
 import base64
 import hashlib
 
@@ -9,10 +7,6 @@ try:
     from cryptography.fernet import Fernet
 except Exception:
     Fernet = None
-
-# Cargar el archivo .env manualmente
-load_dotenv()
-
 
 class Settings(BaseSettings):
     # Database
@@ -30,7 +24,7 @@ class Settings(BaseSettings):
     # App
     app_name: str = "Trading Bot"
     debug: bool = True
-    secret_key: str
+    secret_key: str = "changeme"
 
     # Webhook
     webhook_secret: Optional[str] = None
@@ -74,10 +68,5 @@ class Settings(BaseSettings):
 
     def __init__(self, **values):
         super().__init__(**values)
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-
 
 settings = Settings()
