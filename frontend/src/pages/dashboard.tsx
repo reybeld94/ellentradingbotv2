@@ -115,7 +115,7 @@ const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
 
 // API Service con autenticación
 const api = {
-  baseUrl: 'http://localhost:8000/api/v1',
+  baseUrl: '/api/v1',
 
   async getAccount(): Promise<Account | null> {
     console.log('🔄 Fetching account data...');

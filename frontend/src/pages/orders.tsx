@@ -101,7 +101,7 @@ const OrdersPage: React.FC = () => {
       setError(null);
 
       console.log('🔄 Fetching orders...');
-      const response = await authenticatedFetch('http://localhost:8000/api/v1/orders');
+      const response = await authenticatedFetch('/api/v1/orders');
       const data = await response.json();
 
       if (Array.isArray(data.orders)) {

@@ -100,7 +100,7 @@ const SignalsPage: React.FC = () => {
       setError(null);
 
       console.log('🔄 Fetching signals...');
-      const response = await authenticatedFetch('http://localhost:8000/api/v1/signals');
+      const response = await authenticatedFetch('/api/v1/signals');
       const data = await response.json();
 
       console.log('✅ Signals fetched successfully:', data);

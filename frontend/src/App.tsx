@@ -281,7 +281,7 @@ const AuthenticatedApp: React.FC = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const response = await fetch('http://localhost:8000/api/v1/signals', {
+        const response = await fetch('/api/v1/signals', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
