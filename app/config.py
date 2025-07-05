@@ -56,8 +56,12 @@ class Settings(BaseSettings):
                     hashlib.sha256(self.secret_key.encode()).digest()
                 )
                 f = Fernet(key)
-                self.alpaca_api_key = f.decrypt(portfolio.api_key_encrypted.encode()).decode()
-                self.alpaca_secret_key = f.decrypt(portfolio.secret_key_encrypted.encode()).decode()
+                self.alpaca_api_key = f.decrypt(
+                    portfolio.api_key_encrypted.encode()
+                ).decode()
+                self.alpaca_secret_key = f.decrypt(
+                    portfolio.secret_key_encrypted.encode()
+                ).decode()
             else:
                 self.alpaca_api_key = portfolio.api_key_encrypted
                 self.alpaca_secret_key = portfolio.secret_key_encrypted
@@ -65,24 +69,10 @@ class Settings(BaseSettings):
 
     def __init__(self, **values):
         super().__init__(**values)
-        prefix = self.alpaca_portfolio.upper() if self.alpaca_portfolio else "DEFAULT"
-        self.alpaca_api_key = os.getenv(
-            f"ALPACA_{prefix}_API_KEY",
-            os.getenv("ALPACA_API_KEY", self.alpaca_api_key),
-        )
-        self.alpaca_secret_key = os.getenv(
-            f"ALPACA_{prefix}_SECRET_KEY",
-            os.getenv("ALPACA_SECRET_KEY", self.alpaca_secret_key),
-        )
-        self.alpaca_base_url = os.getenv(
-            f"ALPACA_{prefix}_BASE_URL",
-            os.getenv("ALPACA_BASE_URL", self.alpaca_base_url),
-        )
 
     class Config:
         env_file = ".env"
-        env_file_encoding = 'utf-8'
+        env_file_encoding = "utf-8"
 
 
 settings = Settings()
-

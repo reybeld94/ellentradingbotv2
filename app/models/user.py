@@ -18,6 +18,7 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     signals = relationship("Signal", back_populates="user")
     trades = relationship("Trade", back_populates="user")
+    portfolios = relationship("Portfolio", back_populates="user")
 
     # Estados
     is_active = Column(Boolean, default=True)
@@ -54,4 +55,3 @@ class User(Base):
 
     def __repr__(self):
         return f"<User({self.username}, {self.email})>"
-
