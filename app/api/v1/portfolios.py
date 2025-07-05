@@ -18,6 +18,17 @@ def list_portfolios(
     return portfolios
 
 
+@router.get("/portfolios/active", response_model=PortfolioResponse)
+def get_active_portfolio(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    active = portfolio_service.get_active(db, current_user)
+    if not active:
+        raise HTTPException(status_code=404, detail="No active portfolio")
+    return active
+
+
 @router.post("/portfolios", response_model=PortfolioResponse)
 def create_portfolio(
     portfolio: PortfolioCreate,

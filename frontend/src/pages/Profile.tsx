@@ -102,9 +102,10 @@ const Profile: React.FC = () => {
     });
     if (res.ok) {
       const data = await res.json();
-      setPortfolios([
-        ...portfolios,
-        { id: data.id, name: data.name, is_active: false },
+      await changePortfolio(data.id);
+      setPortfolios((prev) => [
+        ...prev.map((p) => ({ ...p, is_active: false })),
+        { id: data.id, name: data.name, is_active: true },
       ]);
       setShowPortfolioForm(false);
       setNewPortfolio({ name: "", api_key: "", secret_key: "", base_url: "" });

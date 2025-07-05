@@ -30,6 +30,17 @@ def create_portfolio(
     db.add(portfolio)
     db.commit()
     db.refresh(portfolio)
+
+    # If the user doesn't have an active portfolio yet, activate the new one
+    existing_active = (
+        db.query(Portfolio)
+        .filter_by(user_id=user.id, is_active=True)
+        .first()
+    )
+    if not existing_active:
+        activate_portfolio(db, user, portfolio.id)
+        db.refresh(portfolio)
+
     return portfolio
 
 
