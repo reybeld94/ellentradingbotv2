@@ -6,7 +6,8 @@ export interface WSHandlers {
 }
 
 export const connectWebSocket = (handlers: WSHandlers) => {
-  const ws = new WebSocket('ws://localhost:8000/ws/updates');
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${protocol}://${window.location.host}/ws/updates`);
   ws.onmessage = (event) => {
     try {
       const msg = JSON.parse(event.data);

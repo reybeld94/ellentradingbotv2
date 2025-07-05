@@ -62,7 +62,7 @@ const Profile: React.FC = () => {
   });
   const [positionLimit, setPositionLimit] = useState<number>(user?.position_limit ?? 7);
 
-  const API_BASE_URL = "http://localhost:8000/api/v1";
+  const API_BASE_URL = "/api/v1";
 
   React.useEffect(() => {
     const fetchPortfolios = async () => {
