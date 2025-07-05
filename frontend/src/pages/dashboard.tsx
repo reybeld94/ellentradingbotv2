@@ -117,11 +117,15 @@ const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
 const api = {
   baseUrl: 'http://localhost:8000/api/v1',
 
-  async getAccount(): Promise<Account> {
+  async getAccount(): Promise<Account | null> {
     console.log('🔄 Fetching account data...');
     const response = await authenticatedFetch(`${this.baseUrl}/account`);
     const data = await response.json();
     console.log('✅ Account data received:', data);
+    if (data.error || typeof data.cash === 'undefined') {
+      console.warn('⚠️ Invalid account data, portfolio may be disconnected');
+      return null;
+    }
     return data;
   },
 
@@ -141,11 +145,15 @@ const api = {
     return Array.isArray(data.orders) ? data.orders : [];
   },
 
-  async getPositions(): Promise<PortfolioData> {
+  async getPositions(): Promise<PortfolioData | null> {
     console.log('🔄 Fetching positions data...');
     const response = await authenticatedFetch(`${this.baseUrl}/positions`);
     const data = await response.json();
     console.log('✅ Positions data received:', data);
+    if (data.error || typeof data.total_positions === 'undefined') {
+      console.warn('⚠️ Invalid portfolio data, portfolio may be disconnected');
+      return null;
+    }
     return data;
   },
 
@@ -157,8 +165,11 @@ const api = {
 };
 
 // Utility functions
-const formatCurrency = (value: string | number) => {
+const formatCurrency = (value: string | number | null | undefined) => {
   const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (num === null || num === undefined || Number.isNaN(num)) {
+    return '--';
+  }
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
