@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.trades import Trade
-from app.integrations.alpaca.client import alpaca_client
+
 
 
 class TradeService:
@@ -12,7 +12,8 @@ class TradeService:
 
     def __init__(self, db: Session):
         self.db = db
-        self.alpaca = alpaca_client
+        from app.integrations import broker_client
+        self.alpaca = broker_client
 
     def _map_symbol(self, symbol: str) -> str:
         return self.SYMBOL_MAP.get(symbol, symbol)

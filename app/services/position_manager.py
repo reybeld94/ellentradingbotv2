@@ -1,6 +1,6 @@
 # backend/app/services/position_manager.py
 
-from app.integrations.alpaca.client import alpaca_client
+
 from app.models.signal import Signal
 import logging
 
@@ -9,8 +9,12 @@ logger = logging.getLogger(__name__)
 
 class PositionManager:
     def __init__(self, default_limit: int = 7):
-        self.alpaca = alpaca_client
         self.default_limit = default_limit
+
+    @property
+    def broker(self):
+        from app.integrations import broker_client
+        return broker_client
 
     def _map_symbol(self, symbol: str) -> str:
         """Return alternate representation of a crypto symbol.
@@ -29,7 +33,7 @@ class PositionManager:
     def get_current_positions(self):
         """Obtener todas las posiciones actuales"""
         try:
-            positions = self.alpaca.get_positions()
+            positions = self.broker.get_positions()
             return {pos.symbol: float(pos.qty) for pos in positions}
         except Exception as e:
             logger.error(f"Error getting positions: {e}")
@@ -38,7 +42,7 @@ class PositionManager:
     def get_position_quantity(self, symbol):
         """Obtener cantidad específica de un símbolo"""
         try:
-            position = self.alpaca.get_position(symbol)
+            position = self.broker.get_position(symbol)
             if position:
                 return float(position.qty)
         except Exception as e:
@@ -49,7 +53,7 @@ class PositionManager:
             mapped = self._map_symbol(symbol)
             if mapped != symbol:
                 try:
-                    position = self.alpaca.get_position(mapped)
+                    position = self.broker.get_position(mapped)
                     if position:
                         return float(position.qty)
                 except Exception as e:
@@ -76,15 +80,15 @@ class PositionManager:
             raise ValueError(f"Maximum positions limit reached ({limit}). Current: {current_positions}")
 
         # 2. Verificar efectivo disponible
-        account = self.alpaca.get_account()
+        account = self.broker.get_account()
         available_cash = float(account.cash)
 
         # Estimar costo de la orden (precio aproximado)
         try:
             if self.is_crypto(signal.symbol):
-                quote = self.alpaca.get_latest_crypto_quote(signal.symbol)
+                quote = self.broker.get_latest_crypto_quote(signal.symbol)
             else:
-                quote = self.alpaca.get_latest_quote(signal.symbol)
+                quote = self.broker.get_latest_quote(signal.symbol)
 
             estimated_cost = float(quote.price) * calculated_quantity
 
@@ -133,7 +137,7 @@ class PositionManager:
         """Resumen del portafolio"""
         try:
             positions = self.get_current_positions()
-            account = self.alpaca.get_account()
+            account = self.broker.get_account()
 
             if limit is None:
                 limit = self.default_limit

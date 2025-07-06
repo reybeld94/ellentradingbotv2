@@ -18,14 +18,14 @@ class DummyPM:
     def get_position_quantity(self, symbol):
         return 0
 
-class DummyAlpaca:
+class DummyBroker:
     def get_account(self):
         return types.SimpleNamespace(cash="1000")
 
 
 def test_order_blocked_when_limit_exceeded(monkeypatch):
     oe = OrderExecutor()
-    monkeypatch.setattr(oe, 'alpaca', DummyAlpaca())
+    monkeypatch.setattr(oe, 'broker', DummyBroker())
     oe.position_manager = DummyPM(open_positions=2)
 
     user = User(id=1, email="a@b.c", username="u", position_limit=2)
