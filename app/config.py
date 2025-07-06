@@ -84,7 +84,10 @@ class Settings(BaseSettings):
 
             self.kraken_api_key = api_key
             self.kraken_secret_key = secret_key
-            self.kraken_base_url = portfolio.base_url
+            base_url = portfolio.base_url.rstrip('/')
+            if base_url.endswith('/0'):
+                base_url = base_url[:-2]
+            self.kraken_base_url = base_url
 
     def __init__(self, **values):
         super().__init__(**values)
