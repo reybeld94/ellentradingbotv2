@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.integrations.alpaca.client import alpaca_client
+from app.integrations import broker_client
 from app.services.position_manager import position_manager
 from app.database import get_db
 from app.models.signal import Signal
@@ -17,23 +17,14 @@ router = APIRouter()
 async def get_alpaca_orders(
         current_user: User = Depends(get_current_verified_user)
 ):
-    """Ver órdenes en Alpaca"""
+    """Ver órdenes en la cuenta del broker"""
     try:
-        # Método directo con trading_client para obtener TODAS las órdenes
-        from alpaca.trading.requests import GetOrdersRequest
-        from alpaca.trading.enums import QueryOrderStatus
-
-        # Crear request para obtener todas las órdenes (incluyendo ejecutadas)
-        request = GetOrdersRequest(
-            status=QueryOrderStatus.CLOSED,
-            limit=200
-        )  # Aumentar límite para mostrar más resultados
-        orders = alpaca_client.trading_client.get_orders(filter=request)
+        orders = broker_client.list_orders(status="all", limit=200)
 
         if not orders:
             return {
                 "orders": [],
-                "message": "No orders found in your Alpaca account",
+                "message": "No orders found in your account",
                 "user": current_user.username,
                 "total_count": 0
             }
@@ -42,18 +33,16 @@ async def get_alpaca_orders(
         for order in orders:
             try:
                 order_data = {
-                    "id": str(order.id),
-                    "symbol": order.symbol,
-                    "qty": str(order.qty),
-                    "side": order.side.value if hasattr(order.side, 'value') else str(order.side),
-                    "status": order.status.value if hasattr(order.status, 'value') else str(order.status),
-                    "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
-                    "filled_at": order.filled_at.isoformat() if order.filled_at else None,
-                    "filled_qty": str(order.filled_qty) if order.filled_qty else "0",
-                    "filled_avg_price": str(order.filled_avg_price) if order.filled_avg_price else None,
-                    "rejected_reason": getattr(order, 'rejected_reason', None),
-                    "order_type": str(order.order_type) if hasattr(order, 'order_type') else "market",
-                    "time_in_force": str(order.time_in_force) if hasattr(order, 'time_in_force') else "day"
+                    "id": str(getattr(order, "id", "")),
+                    "symbol": str(getattr(order, "symbol", "")),
+                    "qty": str(getattr(order, "qty", "")),
+                    "side": str(getattr(order, "side", "")),
+                    "status": str(getattr(order, "status", "")),
+                    "submitted_at": str(getattr(order, "submitted_at", "")),
+                    "filled_at": str(getattr(order, "filled_at", "")),
+                    "filled_qty": str(getattr(order, "filled_qty", "")),
+                    "filled_avg_price": str(getattr(order, "filled_avg_price", "")),
+                    "rejected_reason": getattr(order, "rejected_reason", None),
                 }
                 order_list.append(order_data)
             except Exception as e:
@@ -79,9 +68,9 @@ async def get_alpaca_orders(
 async def get_account(
         current_user: User = Depends(get_current_verified_user)
 ):
-    """Ver info de cuenta Alpaca"""
+    """Ver info de cuenta del broker"""
     try:
-        account = alpaca_client.get_account()
+        account = broker_client.get_account()
 
         return {
             "buying_power": str(account.buying_power),

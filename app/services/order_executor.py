@@ -1,6 +1,6 @@
 # backend/app/services/order_executor.py
 from sqlalchemy.orm import Session
-from app.integrations.alpaca.client import alpaca_client
+
 from app.models.signal import Signal
 from app.config import settings
 from app.services.position_manager import position_manager
@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 class OrderExecutor:
     def __init__(self):
-        self.alpaca = alpaca_client
+        from app.integrations import broker_client
+        self.broker = broker_client
         self.position_manager = position_manager
 
     def is_crypto(self, symbol):
@@ -39,7 +40,7 @@ class OrderExecutor:
         print(f"💰 Calculating position size for {symbol} ({action})")
         print(f"🔍 Is crypto: {self.is_crypto(symbol)}")
 
-        account = self.alpaca.get_account()
+        account = self.broker.get_account()
         buying_power = float(account.buying_power)
         print(f"💰 Account buying power: ${buying_power:,.2f}")
 
@@ -50,21 +51,21 @@ class OrderExecutor:
         try:
             if self.is_crypto(symbol):
                 print("🔍 Trying crypto quote...")
-                quote = self.alpaca.get_latest_crypto_quote(mapped_symbol)
+                quote = self.broker.get_latest_crypto_quote(mapped_symbol)
                 current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
                 if current_price is None:
                     raise ValueError("No ask price found in crypto quote")
                 print(f"📊 Crypto quote for {mapped_symbol}: ${current_price}")
             else:
                 print("🔍 Trying stock quote...")
-                quote = self.alpaca.get_latest_quote(mapped_symbol)
+                quote = self.broker.get_latest_quote(mapped_symbol)
                 current_price = float(quote.ask_price)
                 print(f"📊 Stock quote for {mapped_symbol}: ${current_price}")
         except Exception as e:
             print(f"❌ Quote failed for {mapped_symbol}: {e}")
             raise
 
-        is_fractionable = self.alpaca.is_asset_fractionable(final_symbol)
+        is_fractionable = self.broker.is_asset_fractionable(final_symbol)
         print(f"🔍 Asset {final_symbol} is fractionable: {is_fractionable}")
 
         # Delegar a RiskManager para obtener cantidad base
@@ -175,11 +176,11 @@ class OrderExecutor:
         if current_positions >= limit:
             raise ValueError(f"Maximum positions limit reached ({limit})")
 
-        account = self.alpaca.get_account()
+        account = self.broker.get_account()
         available_cash = float(account.cash)
         print(f"💵 Available cash: ${available_cash:,.2f}")
 
-        is_fractionable = self.alpaca.is_asset_fractionable(correct_symbol)
+        is_fractionable = self.broker.is_asset_fractionable(correct_symbol)
         print(f"🔍 Asset {correct_symbol} is fractionable: {is_fractionable}")
 
         if isinstance(signal.quantity, float) and signal.quantity != int(signal.quantity) and not is_fractionable:
@@ -189,12 +190,12 @@ class OrderExecutor:
 
         try:
             if self.is_crypto(signal.symbol):
-                quote = self.alpaca.get_latest_crypto_quote(correct_symbol)
+                quote = self.broker.get_latest_crypto_quote(correct_symbol)
                 current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
                 if current_price is None:
                     raise ValueError("No ask price found in crypto quote")
             else:
-                quote = self.alpaca.get_latest_quote(correct_symbol)
+                quote = self.broker.get_latest_quote(correct_symbol)
                 current_price = float(quote.ask_price)
         except Exception as e:
             print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
@@ -215,14 +216,14 @@ class OrderExecutor:
 
         print("📤 Submitting order to Alpaca...")
         if self.is_crypto(signal.symbol):
-            order = self.alpaca.submit_crypto_order(
+            order = self.broker.submit_crypto_order(
                 symbol=correct_symbol,
                 qty=signal.quantity,
                 side=signal.action
             )
             print(f"📤 Crypto order submitted: {order.id}")
         else:
-            order = self.alpaca.submit_order(
+            order = self.broker.submit_order(
                 symbol=correct_symbol,
                 qty=signal.quantity,
                 side=signal.action
@@ -278,12 +279,12 @@ class OrderExecutor:
 
         try:
             if self.is_crypto(signal.symbol):
-                quote = self.alpaca.get_latest_crypto_quote(correct_symbol)
+                quote = self.broker.get_latest_crypto_quote(correct_symbol)
                 current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
                 if current_price is None:
                     raise ValueError("No ask price found in crypto quote")
             else:
-                quote = self.alpaca.get_latest_quote(correct_symbol)
+                quote = self.broker.get_latest_quote(correct_symbol)
                 current_price = float(quote.ask_price)
         except Exception as e:
             print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
@@ -291,14 +292,14 @@ class OrderExecutor:
 
         print(f"📤 Submitting sell order to Alpaca for {correct_symbol}...")
         if self.is_crypto(signal.symbol):
-            order = self.alpaca.submit_crypto_order(
+            order = self.broker.submit_crypto_order(
                 symbol=correct_symbol,
                 qty=quantity_to_sell,
                 side=signal.action
             )
             print(f"📤 Crypto sell order submitted: {order.id}")
         else:
-            order = self.alpaca.submit_order(
+            order = self.broker.submit_order(
                 symbol=correct_symbol,
                 qty=quantity_to_sell,
                 side=signal.action

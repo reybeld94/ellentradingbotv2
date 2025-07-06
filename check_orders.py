@@ -1,14 +1,14 @@
 # check_orders.py
 
-from app.integrations.alpaca.client import alpaca_client
+from app.integrations import broker_client
 
 
 def run():
-    print("🔍 Verificando órdenes en Alpaca...")
-    orders = alpaca_client.list_orders(status='all', limit=10)
+    print("🔍 Verificando órdenes en broker...")
+    orders = broker_client.list_orders(status='all', limit=10)
 
     if not orders:
-        print("⚠️ No hay órdenes en Alpaca.")
+        print("⚠️ No hay órdenes en el broker.")
         return
 
     for o in orders:

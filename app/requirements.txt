@@ -24,6 +24,7 @@ python-jose[cryptography]==3.3.0
 cryptography==45.0.5
 passlib[bcrypt]==1.7.4
 werkzeug==3.0.1
+python-kraken-sdk==3.2.2
 
 # Testing
 pytest==7.4.3

@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     alpaca_secret_key: Optional[str] = None
     alpaca_base_url: str = "https://paper-api.alpaca.markets/v2"
 
+    # Kraken
+    kraken_api_key: Optional[str] = None
+    kraken_secret_key: Optional[str] = None
+    kraken_base_url: str = "https://api.kraken.com"
+
     # App
     app_name: str = "Trading Bot"
     debug: bool = True
@@ -47,24 +52,37 @@ class Settings(BaseSettings):
         self.alpaca_api_key = None
         self.alpaca_secret_key = None
 
+    def clear_kraken_credentials(self) -> None:
+        """Reset Kraken credentials."""
+        self.kraken_api_key = None
+        self.kraken_secret_key = None
+
     def update_from_portfolio(self, portfolio) -> None:
-        """Update Alpaca credentials from a Portfolio instance."""
+        """Update API credentials from a Portfolio instance."""
         if portfolio:
             if Fernet:
                 key = base64.urlsafe_b64encode(
                     hashlib.sha256(self.secret_key.encode()).digest()
                 )
                 f = Fernet(key)
-                self.alpaca_api_key = f.decrypt(
-                    portfolio.api_key_encrypted.encode()
-                ).decode()
-                self.alpaca_secret_key = f.decrypt(
+                api_key = f.decrypt(portfolio.api_key_encrypted.encode()).decode()
+                secret_key = f.decrypt(
                     portfolio.secret_key_encrypted.encode()
                 ).decode()
             else:
-                self.alpaca_api_key = portfolio.api_key_encrypted
-                self.alpaca_secret_key = portfolio.secret_key_encrypted
-            self.alpaca_base_url = portfolio.base_url
+                api_key = portfolio.api_key_encrypted
+                secret_key = portfolio.secret_key_encrypted
+
+            if "kraken" in portfolio.base_url.lower():
+                self.clear_alpaca_credentials()
+                self.kraken_api_key = api_key
+                self.kraken_secret_key = secret_key
+                self.kraken_base_url = portfolio.base_url
+            else:
+                self.clear_kraken_credentials()
+                self.alpaca_api_key = api_key
+                self.alpaca_secret_key = secret_key
+                self.alpaca_base_url = portfolio.base_url
 
     def __init__(self, **values):
         super().__init__(**values)
