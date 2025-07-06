@@ -1,0 +1,51 @@
+import asyncio
+import json
+from app.config import settings
+from app.websockets import ws_manager
+from app.integrations.kraken.client import kraken_client
+from app.services.position_manager import position_manager
+
+
+class KrakenStream:
+    """Simplified stream manager for Kraken."""
+
+    def __init__(self) -> None:
+        self._running_task: asyncio.Task | None = None
+
+    def refresh(self) -> None:
+        """No-op refresh to keep API parity."""
+        pass
+
+    def stop(self) -> None:
+        if self._running_task is not None:
+            self._running_task.cancel()
+            self._running_task = None
+
+    def start(self) -> None:
+        if self._running_task is None:
+            loop = asyncio.get_event_loop()
+            self._running_task = loop.create_task(self._run())
+
+    async def _run(self) -> None:
+        while True:
+            await asyncio.sleep(0.1)
+
+    def subscribe(self, symbol: str) -> None:
+        self.start()
+
+    async def _broadcast_account_update(self) -> None:
+        account = kraken_client.get_account()
+        summary = position_manager.get_portfolio_summary()
+        payload = {
+            "portfolio_value": float(getattr(account, "portfolio_value", 0)),
+            "cash": float(getattr(account, "cash", 0)),
+            "buying_power": float(getattr(account, "buying_power", 0)),
+            "total_positions": summary.get("total_positions", 0),
+        }
+        await ws_manager.broadcast(json.dumps({"event": "account_update", "payload": payload}))
+
+    async def _handle_trade_update(self, update) -> None:
+        await self._broadcast_account_update()
+
+
+kraken_stream = KrakenStream()

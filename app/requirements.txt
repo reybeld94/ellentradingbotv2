@@ -10,8 +10,6 @@ alembic==1.12.1
 # Redis para cola de mensajes
 redis==5.0.1
 
-# Alpaca trading
-alpaca-py==0.18.0
 
 # Validación y configuración
 pydantic==2.5.0

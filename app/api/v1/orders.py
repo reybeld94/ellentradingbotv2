@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("/orders")
-async def get_alpaca_orders(
+async def get_orders(
         current_user: User = Depends(get_current_verified_user)
 ):
     """Ver órdenes en la cuenta del broker"""

@@ -15,12 +15,6 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379"
 
-    # Alpaca
-    alpaca_portfolio: str = "DEFAULT"
-    alpaca_api_key: Optional[str] = None
-    alpaca_secret_key: Optional[str] = None
-    alpaca_base_url: str = "https://paper-api.alpaca.markets/v2"
-
     # Kraken
     kraken_api_key: Optional[str] = None
     kraken_secret_key: Optional[str] = None
@@ -47,11 +41,6 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = None
     from_email: Optional[str] = None
 
-    def clear_alpaca_credentials(self) -> None:
-        """Reset Alpaca credentials to ensure no connections are made."""
-        self.alpaca_api_key = None
-        self.alpaca_secret_key = None
-
     def clear_kraken_credentials(self) -> None:
         """Reset Kraken credentials."""
         self.kraken_api_key = None
@@ -73,16 +62,9 @@ class Settings(BaseSettings):
                 api_key = portfolio.api_key_encrypted
                 secret_key = portfolio.secret_key_encrypted
 
-            if "kraken" in portfolio.base_url.lower():
-                self.clear_alpaca_credentials()
-                self.kraken_api_key = api_key
-                self.kraken_secret_key = secret_key
-                self.kraken_base_url = portfolio.base_url
-            else:
-                self.clear_kraken_credentials()
-                self.alpaca_api_key = api_key
-                self.alpaca_secret_key = secret_key
-                self.alpaca_base_url = portfolio.base_url
+            self.kraken_api_key = api_key
+            self.kraken_secret_key = secret_key
+            self.kraken_base_url = portfolio.base_url
 
     def __init__(self, **values):
         super().__init__(**values)

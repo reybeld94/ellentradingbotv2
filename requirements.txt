@@ -1,5 +1,4 @@
 alembic==1.12.1
-alpaca-py==0.18.0
 cryptography==45.0.5
 fastapi==0.104.1
 passlib[bcrypt]==1.7.4
