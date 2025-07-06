@@ -5,15 +5,19 @@ import base64
 import hashlib
 import os
 import secrets
+import logging
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
 
 def _load_secret_key() -> str:
     """Load the SECRET_KEY from env or generate a persistent one."""
     env_key = os.getenv("SECRET_KEY")
     if env_key:
         return env_key
-    key_file = Path("secret.key")
+    # Ensure the key file is stored relative to the project root
+    base_dir = Path(__file__).resolve().parent.parent
+    key_file = base_dir / "secret.key"
     if key_file.exists():
         return key_file.read_text().strip()
     if Fernet:
@@ -74,10 +78,17 @@ class Settings(BaseSettings):
                     hashlib.sha256(self.secret_key.encode()).digest()
                 )
                 f = Fernet(key)
-                api_key = f.decrypt(portfolio.api_key_encrypted.encode()).decode()
-                secret_key = f.decrypt(
-                    portfolio.secret_key_encrypted.encode()
-                ).decode()
+                try:
+                    api_key = f.decrypt(portfolio.api_key_encrypted.encode()).decode()
+                    secret_key = f.decrypt(
+                        portfolio.secret_key_encrypted.encode()
+                    ).decode()
+                except Exception:
+                    logger.error(
+                        "Failed to decrypt stored API credentials. "
+                        "Ensure SECRET_KEY matches the key used during encryption."
+                    )
+                    return
             else:
                 api_key = portfolio.api_key_encrypted
                 secret_key = portfolio.secret_key_encrypted
