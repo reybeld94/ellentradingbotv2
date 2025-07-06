@@ -13,9 +13,13 @@ class KrakenClient:
         self.trade_client: Trade | None = None
         self.user_client: User | None = None
         if settings.kraken_api_key and settings.kraken_secret_key:
+            print("🔌 Kraken credentials detected, initializing clients...")
             self._init_clients()
+        else:
+            print("⚠️ Kraken API credentials not provided; clients not initialized")
 
     def _init_clients(self) -> None:
+        print("🔗 Establishing connection to Kraken API...")
         self.market_client = Market()
         self.trade_client = Trade(
             key=settings.kraken_api_key,
@@ -30,15 +34,18 @@ class KrakenClient:
 
     def _ensure_clients(self) -> None:
         if self.trade_client is None:
+            print("🔒 Ensuring Kraken API clients are initialized...")
             if not settings.kraken_api_key or not settings.kraken_secret_key:
                 raise RuntimeError("Kraken API credentials not configured")
             self._init_clients()
 
     def refresh(self) -> None:
         """Recreate clients with current settings credentials."""
+        print("🔄 Refreshing Kraken API clients...")
         if settings.kraken_api_key and settings.kraken_secret_key:
             self._init_clients()
         else:
+            print("❌ Credentials missing. Clearing Kraken clients")
             self.market_client = None
             self.trade_client = None
             self.user_client = None
@@ -47,6 +54,7 @@ class KrakenClient:
     def get_account(self):
         """Return a simplified account object with cash metrics."""
         self._ensure_clients()
+        print("📊 Retrieving account balance from Kraken...")
         balances = self.user_client.get_account_balance()
         cash = float(balances.get("ZUSD", balances.get("USD", 0)))
         return SimpleNamespace(cash=cash, buying_power=cash, portfolio_value=cash)
@@ -54,6 +62,7 @@ class KrakenClient:
     def get_positions(self):
         """Return current asset balances as positions."""
         self._ensure_clients()
+        print("📊 Fetching all asset positions from Kraken...")
         balances = self.user_client.get_account_balance()
         return [
             SimpleNamespace(symbol=s, qty=float(q))
@@ -64,6 +73,7 @@ class KrakenClient:
     def get_position(self, symbol: str):
         """Get balance for a single symbol."""
         self._ensure_clients()
+        print(f"🔎 Fetching position for {symbol} from Kraken...")
         qty = float(self.user_client.get_account_balance().get(symbol, 0))
         if qty:
             return SimpleNamespace(symbol=symbol, qty=qty)
@@ -79,6 +89,7 @@ class KrakenClient:
     def submit_crypto_order(self, symbol, qty, side, order_type="market"):
         """Create a crypto order on Kraken."""
         self._ensure_clients()
+        print(f"📤 Submitting {side.upper()} order to Kraken: {symbol} x {qty}")
         resp = self.trade_client.create_order(
             pair=symbol,
             type=side,
@@ -96,6 +107,7 @@ class KrakenClient:
     def get_latest_crypto_quote(self, symbol: str):
         """Fetch the latest ask and bid for ``symbol``."""
         self._ensure_clients()
+        print(f"📈 Fetching latest crypto quote for {symbol} from Kraken...")
         info = self.market_client.get_ticker(pair=symbol)
         data = next(iter(info.values()))
         ask = float(data["a"][0])
@@ -108,6 +120,7 @@ class KrakenClient:
     # --- Misc -----------------------------------------------------------------
     def list_orders(self, status="all", limit=10):
         self._ensure_clients()
+        print(f"📋 Retrieving {status} orders from Kraken (limit {limit})...")
         orders = []
         if status in ("all", "open"):
             res = self.user_client.get_open_orders()
