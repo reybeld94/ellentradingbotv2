@@ -29,3 +29,4 @@ env/
 # Otros
 *.DS_Store
 *.bak
+secret.key

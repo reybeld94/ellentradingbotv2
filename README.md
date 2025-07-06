@@ -11,6 +11,11 @@ active. The application no longer falls back to environment variables for
 credentials. Configuration now relies on environment variables provided by the
 shell; a `.env` file is no longer loaded automatically.
 
+If the `SECRET_KEY` environment variable is not set, the application will
+generate a new key and store it in a `secret.key` file. Keeping this file
+around ensures that encrypted portfolio credentials remain decryptable across
+restarts.
+
 Create a portfolio whose `base_url` contains `api.kraken.com` and provide your
 Kraken API and secret keys. The library `python-kraken-sdk` is required and
 listed in `requirements.txt`.

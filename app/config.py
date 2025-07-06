@@ -1,7 +1,27 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from pydantic import Field
 import base64
 import hashlib
+import os
+import secrets
+from pathlib import Path
+
+
+def _load_secret_key() -> str:
+    """Load the SECRET_KEY from env or generate a persistent one."""
+    env_key = os.getenv("SECRET_KEY")
+    if env_key:
+        return env_key
+    key_file = Path("secret.key")
+    if key_file.exists():
+        return key_file.read_text().strip()
+    if Fernet:
+        new_key = Fernet.generate_key().decode()
+    else:
+        new_key = secrets.token_urlsafe(32)
+    key_file.write_text(new_key)
+    return new_key
 
 try:
     from cryptography.fernet import Fernet
@@ -23,7 +43,7 @@ class Settings(BaseSettings):
     # App
     app_name: str = "Trading Bot"
     debug: bool = True
-    secret_key: str = "changeme"
+    secret_key: str = Field(default_factory=_load_secret_key)
 
     # Webhook
     webhook_secret: Optional[str] = None
