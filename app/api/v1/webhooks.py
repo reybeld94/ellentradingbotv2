@@ -97,7 +97,7 @@ async def receive_tradingview_webhook(
         logger.info(
             f"Signal created: ID {signal.id}, User: {current_user.username}, {signal.strategy_id}:{signal.symbol} {signal.action}")
 
-        # Ejecutar orden en Alpaca con gestión por estrategia
+        # Ejecutar orden en el broker con gestión por estrategia
         try:
             order = order_executor.execute_signal(signal, current_user)
             db.commit()

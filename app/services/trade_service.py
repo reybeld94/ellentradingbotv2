@@ -13,25 +13,25 @@ class TradeService:
     def __init__(self, db: Session):
         self.db = db
         from app.integrations import broker_client
-        self.alpaca = broker_client
+        self.broker = broker_client
 
     def _map_symbol(self, symbol: str) -> str:
         return self.SYMBOL_MAP.get(symbol, symbol)
 
     def _get_current_price(self, symbol: str) -> float:
         try:
-            if self.alpaca.is_crypto_symbol(symbol):
-                quote = self.alpaca.get_latest_crypto_quote(symbol)
+            if self.broker.is_crypto_symbol(symbol):
+                quote = self.broker.get_latest_crypto_quote(symbol)
                 return float(getattr(quote, 'ask_price', getattr(quote, 'ap', 0)))
             else:
-                quote = self.alpaca.get_latest_quote(symbol)
+                quote = self.broker.get_latest_quote(symbol)
                 return float(quote.ask_price)
         except Exception:
             return 0.0
 
     def _fetch_position(self, symbol: str):
         """Get position for ``symbol`` trying both crypto formats."""
-        position = self.alpaca.get_position(symbol)
+        position = self.broker.get_position(symbol)
         if position is None:
             if '/' in symbol:
                 alt_symbol = symbol.replace('/', '')
@@ -41,7 +41,7 @@ class TradeService:
                 else:
                     alt_symbol = None
             if alt_symbol:
-                position = self.alpaca.get_position(alt_symbol)
+                position = self.broker.get_position(alt_symbol)
         return position
 
     def refresh_user_trades(self, user_id: int, portfolio_id: int) -> None:
@@ -56,17 +56,17 @@ class TradeService:
         )
 
         try:
-            open_orders = self.alpaca.list_orders(status="open", limit=50)
+            open_orders = self.broker.list_orders(status="open", limit=50)
             symbols_with_open_orders = {o.symbol for o in open_orders}
         except Exception:
             symbols_with_open_orders = set()
 
         for trade in open_trades:
-            alpaca_symbol = self._map_symbol(trade.symbol)
-            price = self._get_current_price(alpaca_symbol)
-            position = self._fetch_position(alpaca_symbol)
+            broker_symbol = self._map_symbol(trade.symbol)
+            price = self._get_current_price(broker_symbol)
+            position = self._fetch_position(broker_symbol)
 
-            if position is None and alpaca_symbol not in symbols_with_open_orders:
+            if position is None and broker_symbol not in symbols_with_open_orders:
                 trade.exit_price = price
                 trade.closed_at = datetime.utcnow()
                 trade.status = "closed"

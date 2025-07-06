@@ -25,8 +25,8 @@ class OrderExecutor:
         """Verificar si es un símbolo de crypto"""
         return '/' in symbol or symbol.endswith('USD')
 
-    def map_symbol_to_alpaca(self, symbol):
-        """Convertir símbolos de TradingView a formato Alpaca"""
+    def map_symbol(self, symbol: str) -> str:
+        """Convert TradingView symbols to Kraken format."""
         symbol_map = {
             'BTCUSD': 'BTC/USD',
             'ETHUSD': 'ETH/USD',
@@ -45,7 +45,7 @@ class OrderExecutor:
         print(f"💰 Account buying power: ${buying_power:,.2f}")
 
 
-        mapped_symbol = self.map_symbol_to_alpaca(symbol)
+        mapped_symbol = self.map_symbol(symbol)
         final_symbol = mapped_symbol
 
         try:
@@ -96,7 +96,7 @@ class OrderExecutor:
 
             try:
                 # MAPEAR símbolo
-                correct_symbol = self.map_symbol_to_alpaca(signal.symbol)
+                correct_symbol = self.map_symbol(signal.symbol)
 
                 if signal.action.lower() == 'buy':
                     if not signal.quantity:
@@ -115,7 +115,7 @@ class OrderExecutor:
                             f"Strategy {signal.strategy_id} has no position in {signal.symbol} to sell"
                         )
 
-                    # Get current quantity from Alpaca to avoid overselling due to rounding
+                    # Get current quantity from broker to avoid overselling due to rounding
                     account_qty = self.position_manager.get_position_quantity(correct_symbol)
                     print(f"📊 Account position for {correct_symbol}: {account_qty}")
 
@@ -205,7 +205,7 @@ class OrderExecutor:
 
         print("💰 Order details:")
         print(f"   - Original symbol: {signal.symbol}")
-        print(f"   - Alpaca symbol: {correct_symbol}")
+        print(f"   - Broker symbol: {correct_symbol}")
         print(f"   - Price: ${current_price}")
         print(f"   - Quantity: {signal.quantity}")
         print(f"   - Estimated cost: ${estimated_cost:,.2f}")
@@ -214,7 +214,7 @@ class OrderExecutor:
         if estimated_cost > available_cash:
             raise ValueError(f"Insufficient cash. Need: ${estimated_cost:.2f}, Available: ${available_cash:.2f}")
 
-        print("📤 Submitting order to Alpaca...")
+        print("📤 Submitting order to broker...")
         if self.is_crypto(signal.symbol):
             order = self.broker.submit_crypto_order(
                 symbol=correct_symbol,
@@ -290,7 +290,7 @@ class OrderExecutor:
             print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
             raise
 
-        print(f"📤 Submitting sell order to Alpaca for {correct_symbol}...")
+        print(f"📤 Submitting sell order to broker for {correct_symbol}...")
         if self.is_crypto(signal.symbol):
             order = self.broker.submit_crypto_order(
                 symbol=correct_symbol,

@@ -4,8 +4,6 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-os.environ.setdefault('ALPACA_API_KEY', 'key')
-os.environ.setdefault('ALPACA_SECRET_KEY', 'secret')
 os.environ.setdefault('SECRET_KEY', 'secret')
 
 from app.database import Base

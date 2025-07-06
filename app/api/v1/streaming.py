@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.integrations.alpaca import alpaca_stream
+from app.integrations.kraken import kraken_stream
 
 router = APIRouter()
 
@@ -8,5 +8,5 @@ router = APIRouter()
 @router.post("/stream/subscribe/{symbol}")
 async def subscribe_symbol(symbol: str):
     """Subscribe to real time trades for a given symbol."""
-    alpaca_stream.subscribe(symbol)
+    kraken_stream.subscribe(symbol)
     return {"status": "subscribed", "symbol": symbol}

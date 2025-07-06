@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Kraken integration client mirroring the AlpacaClient interface."""
+"""Kraken integration client used as the main broker interface."""
 
 from types import SimpleNamespace
 from kraken.spot import Market, Trade, User

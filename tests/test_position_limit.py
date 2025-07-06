@@ -3,8 +3,6 @@ import pytest
 import os
 
 os.environ.setdefault('SECRET_KEY', 'secret')
-os.environ.setdefault('ALPACA_API_KEY', 'key')
-os.environ.setdefault('ALPACA_SECRET_KEY', 'secret')
 
 from app.services.order_executor import OrderExecutor
 from app.models.signal import Signal
