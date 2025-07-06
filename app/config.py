@@ -10,7 +10,7 @@ except Exception:
 
 class Settings(BaseSettings):
     # Database
-    database_url: str = "sqlite:///./trading_bot.db"
+    database_url: str = "postgresql://postgres:ellentrading@localhost:5432/ellentrading"
 
     # Redis
     redis_url: str = "redis://localhost:6379"
