@@ -3,83 +3,86 @@ from __future__ import annotations
 """Kraken integration client used as the main broker interface."""
 
 from types import SimpleNamespace
-from kraken.spot import Market, Trade, User
+from urllib.parse import urlencode
+import time
+import hmac
+import hashlib
+import base64
+import requests
+
 from app.config import settings
 
 # Kraken REST API base URL
 DEFAULT_KRAKEN_BASE_URL = "https://api.kraken.com"
 
-
 class KrakenClient:
     def __init__(self) -> None:
-        self.market_client: Market | None = None
-        self.trade_client: Trade | None = None
-        self.user_client: User | None = None
-        if settings.kraken_api_key and settings.kraken_secret_key:
-            print("🔌 Kraken credentials detected, initializing REST client...")
-            self._init_client()
+        self.session = requests.Session()
+        self.base_url = settings.kraken_base_url or DEFAULT_KRAKEN_BASE_URL
+        self.api_key = settings.kraken_api_key or ""
+        self.api_secret = settings.kraken_secret_key or ""
+        if self.api_key and self.api_secret:
+            print("🔌 Kraken credentials detected, REST client ready")
         else:
             print("⚠️ Kraken API credentials not provided; REST client not initialized")
 
-    def _init_client(self) -> None:
-        print("🔗 Preparing Kraken REST clients...")
-        base_url = settings.kraken_base_url or DEFAULT_KRAKEN_BASE_URL
-        self.market_client = Market(
-            key=settings.kraken_api_key or "",
-            secret=settings.kraken_secret_key or "",
-            url=base_url,
-        )
-        self.trade_client = Trade(
-            key=settings.kraken_api_key or "",
-            secret=settings.kraken_secret_key or "",
-            url=base_url,
-        )
-        self.user_client = User(
-            key=settings.kraken_api_key or "",
-            secret=settings.kraken_secret_key or "",
-            url=base_url,
-        )
+    def _sign(self, urlpath: str, data: dict) -> str:
+        nonce = data["nonce"]
+        postdata = urlencode(data)
+        message = (str(nonce) + postdata).encode()
+        sha = hashlib.sha256(message).digest()
+        mac = hmac.new(base64.b64decode(self.api_secret), urlpath.encode() + sha, hashlib.sha512)
+        return base64.b64encode(mac.digest()).decode()
 
-    def _ensure_client(self) -> None:
-        if self.market_client is None or self.trade_client is None or self.user_client is None:
-            print("🔒 Ensuring Kraken REST client is initialized...")
-            if not settings.kraken_api_key or not settings.kraken_secret_key:
-                raise RuntimeError("Kraken API credentials not configured")
-            self._init_client()
+    def _private_post(self, endpoint: str, data: dict | None = None) -> dict:
+        if not self.api_key or not self.api_secret:
+            raise RuntimeError("Kraken API credentials not configured")
+        data = data or {}
+        data["nonce"] = str(int(time.time() * 1000))
+        urlpath = f"/0/private/{endpoint}"
+        url = self.base_url.rstrip("/") + urlpath
+        headers = {
+            "API-Key": self.api_key,
+            "API-Sign": self._sign(urlpath, data),
+        }
+        resp = self.session.post(url, headers=headers, data=data)
+        resp.raise_for_status()
+        res = resp.json()
+        if res.get("error"):
+            raise RuntimeError(f"Kraken API error: {res['error']}")
+        return res.get("result", {})
+
+    def _public_get(self, endpoint: str, params: dict | None = None) -> dict:
+        url = self.base_url.rstrip("/") + f"/0/public/{endpoint}"
+        resp = self.session.get(url, params=params)
+        resp.raise_for_status()
+        res = resp.json()
+        if res.get("error"):
+            raise RuntimeError(f"Kraken API error: {res['error']}")
+        return res.get("result", {})
 
     def refresh(self) -> None:
-        """Recreate clients with current settings credentials."""
-        print("🔄 Refreshing Kraken API clients...")
-        if settings.kraken_api_key and settings.kraken_secret_key:
-            self._init_client()
-        else:
-            print("❌ Credentials missing. Clearing Kraken clients")
-            self.market_client = None
-            self.trade_client = None
-            self.user_client = None
+        """Refresh credentials from settings."""
+        self.base_url = settings.kraken_base_url or DEFAULT_KRAKEN_BASE_URL
+        self.api_key = settings.kraken_api_key or ""
+        self.api_secret = settings.kraken_secret_key or ""
 
     # --- Basic account helpers -------------------------------------------------
     def get_account(self):
-        """Return a simplified account object with cash metrics using REST."""
-        self._ensure_client()
-        balances = self.user_client.get_account_balance()
-        cash = float(balances.get("ZUSD", balances.get("USD", 0)))
+        result = self._private_post("Balance")
+        cash = float(result.get("ZUSD", result.get("USD", 0)))
         return SimpleNamespace(cash=cash, buying_power=cash, portfolio_value=cash)
 
     def get_positions(self):
-        """Return current asset balances as positions using REST."""
-        self._ensure_client()
-        balances = self.user_client.get_account_balance()
+        result = self._private_post("Balance")
         return [
             SimpleNamespace(symbol=s, qty=float(q))
-            for s, q in balances.items()
+            for s, q in result.items()
             if float(q) > 0
         ]
 
     def get_position(self, symbol: str):
-        """Get balance for a single symbol using REST."""
-        self._ensure_client()
-        balances = self.user_client.get_account_balance()
+        balances = self._private_post("Balance")
         qty = float(balances.get(symbol, 0))
         if qty:
             return SimpleNamespace(symbol=symbol, qty=qty)
@@ -93,38 +96,35 @@ class KrakenClient:
         return self.submit_crypto_order(symbol, qty, side, order_type)
 
     def submit_crypto_order(self, symbol, qty, side, order_type="market"):
-        """Create a crypto order on Kraken via REST."""
-        self._ensure_client()
-        resp = self.trade_client.create_order(
-            ordertype=order_type,
-            side=side,
-            pair=symbol,
-            volume=str(qty),
-        )
-        txids = resp.get("txid", [""])
+        data = {
+            "pair": symbol,
+            "type": side,
+            "ordertype": order_type,
+            "volume": str(qty),
+        }
+        result = self._private_post("AddOrder", data)
+        txids = result.get("txid", [""])
         order_id = txids[0] if txids else ""
         return SimpleNamespace(id=order_id, symbol=symbol, qty=qty, side=side)
 
     # --- Market data -----------------------------------------------------------
     def get_latest_crypto_quote(self, symbol: str):
-        """Fetch the latest ask and bid for ``symbol`` using REST."""
-        self._ensure_client()
-        data = self.market_client.get_ticker(pair=symbol)
+        data = self._public_get("Ticker", {"pair": symbol})
         ticker = next(iter(data.values())) if isinstance(data, dict) else {}
-        ask = float(ticker.get("ask", ticker.get("a", [0])[0] if isinstance(ticker.get("a", []), list) else ticker.get("a", 0)))
-        bid = float(ticker.get("bid", ticker.get("b", [0])[0] if isinstance(ticker.get("b", []), list) else ticker.get("b", 0)))
+        a = ticker.get("a", [])
+        b = ticker.get("b", [])
+        ask = float(a[0]) if isinstance(a, list) and a else float(a or 0)
+        bid = float(b[0]) if isinstance(b, list) and b else float(b or 0)
         return SimpleNamespace(ask_price=ask, bid_price=bid)
 
     def get_latest_quote(self, symbol: str):
         return self.get_latest_crypto_quote(symbol)
 
-    # --- Misc -----------------------------------------------------------------
+    # --- Misc ------------------------------------------------------------------
     def list_orders(self, status="all", limit=10):
-        """List orders via REST."""
-        self._ensure_client()
         orders = []
         if status in ("open", "all"):
-            data = self.user_client.get_open_orders()
+            data = self._private_post("OpenOrders")
             for oid, info in data.get("open", {}).items():
                 orders.append(
                     SimpleNamespace(
@@ -136,7 +136,7 @@ class KrakenClient:
                     )
                 )
         if status in ("closed", "all"):
-            data = self.user_client.get_closed_orders()
+            data = self._private_post("ClosedOrders")
             for oid, info in data.get("closed", {}).items():
                 orders.append(
                     SimpleNamespace(
@@ -156,28 +156,25 @@ class KrakenClient:
         return True
 
     def get_crypto_assets(self):
-        self._ensure_client()
-        data = self.market_client.get_asset_pairs()
+        data = self._public_get("AssetPairs")
         return list(data.keys())
 
     def get_latest_trade(self, symbol):
         return self.get_latest_crypto_quote(symbol)
 
     def list_assets(self, status="active", asset_class="crypto"):
-        self._ensure_client()
-        pairs = self.market_client.get_asset_pairs()
-        return [SimpleNamespace(symbol=s) for s in pairs.keys()]
+        data = self._public_get("AssetPairs")
+        return [SimpleNamespace(symbol=s) for s in data.keys()]
 
     def get_asset(self, symbol):
-        self._ensure_client()
-        pairs = self.market_client.get_asset_pairs()
-        if symbol in pairs:
+        data = self._public_get("AssetPairs")
+        if symbol in data:
             return SimpleNamespace(symbol=symbol)
         return None
 
     @property
     def api(self):
-        return self.market_client
+        return self
 
 
 # Global instance
