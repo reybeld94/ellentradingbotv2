@@ -6,6 +6,9 @@ from types import SimpleNamespace
 from kraken.spot import Market, Trade, User
 from app.config import settings
 
+# Kraken REST API base URL (hardcoded)
+KRAKEN_BASE_URL = "https://api.kraken.com"
+
 
 class KrakenClient:
     def __init__(self) -> None:
@@ -23,17 +26,17 @@ class KrakenClient:
         self.market_client = Market(
             key=settings.kraken_api_key or "",
             secret=settings.kraken_secret_key or "",
-            url=settings.kraken_base_url,
+            url=KRAKEN_BASE_URL,
         )
         self.trade_client = Trade(
             key=settings.kraken_api_key or "",
             secret=settings.kraken_secret_key or "",
-            url=settings.kraken_base_url,
+            url=KRAKEN_BASE_URL,
         )
         self.user_client = User(
             key=settings.kraken_api_key or "",
             secret=settings.kraken_secret_key or "",
-            url=settings.kraken_base_url,
+            url=KRAKEN_BASE_URL,
         )
 
     def _ensure_client(self) -> None:
