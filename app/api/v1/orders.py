@@ -73,15 +73,15 @@ async def get_account(
         account = broker_client.get_account()
 
         return {
-            "buying_power": str(account.buying_power),
-            "cash": str(account.cash),
-            "portfolio_value": str(account.portfolio_value),
-            "status": str(account.status),
-            "trading_blocked": getattr(account, 'trading_blocked', False),
-            "crypto_status": str(getattr(account, 'crypto_trading_enabled', False)),
-            "pattern_day_trader": getattr(account, 'pattern_day_trader', False),
-            "day_trade_count": getattr(account, 'day_trade_count', 0),
-            "user": current_user.username
+            "buying_power": str(getattr(account, "buying_power", 0)),
+            "cash": str(getattr(account, "cash", 0)),
+            "portfolio_value": str(getattr(account, "portfolio_value", 0)),
+            "status": str(getattr(account, "status", "N/A")),
+            "trading_blocked": getattr(account, "trading_blocked", False),
+            "crypto_status": str(getattr(account, "crypto_trading_enabled", False)),
+            "pattern_day_trader": getattr(account, "pattern_day_trader", False),
+            "day_trade_count": getattr(account, "day_trade_count", 0),
+            "user": current_user.username,
         }
     except Exception as e:
         return {"error": str(e)}
