@@ -56,22 +56,16 @@ class TradeService:
             .all()
         )
 
+        # Ensure broker connectivity, ignore errors as trade status is managed
+        # internally now
         try:
-            open_orders = self.broker.list_orders(status="open", limit=50)
-            symbols_with_open_orders = {o.symbol for o in open_orders}
+            self.broker.list_orders(status="open", limit=50)
         except Exception:
-            symbols_with_open_orders = set()
+            pass
 
         for trade in open_trades:
             broker_symbol = self._map_symbol(trade.symbol)
             price = self._get_current_price(broker_symbol)
-            position = self._fetch_position(broker_symbol)
-
-            if position is None and broker_symbol not in symbols_with_open_orders:
-                trade.exit_price = price
-                trade.closed_at = datetime.utcnow()
-                trade.status = "closed"
-
             trade.pnl = (price - trade.entry_price) * trade.quantity
 
         self.db.commit()
