@@ -30,6 +30,7 @@ class OrderExecutor:
         symbol_map = {
             'BTCUSD': 'BTC/USD',
             'ETHUSD': 'ETH/USD',
+            'SOLUSD': 'SOL/USD',
         }
         mapped = symbol_map.get(symbol, symbol)
         print(f"🔄 Symbol mapping: {symbol} -> {mapped}")

@@ -8,6 +8,7 @@ class TradeService:
     SYMBOL_MAP = {
         'BTCUSD': 'BTC/USD',
         'ETHUSD': 'ETH/USD',
+        'SOLUSD': 'SOL/USD',
     }
 
     def __init__(self, db: Session):
