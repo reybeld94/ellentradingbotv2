@@ -83,9 +83,28 @@ class KrakenClient:
 
     def get_position(self, symbol: str):
         balances = self._private_post("Balance")
+
+        # Direct match first
         qty = float(balances.get(symbol, 0))
         if qty:
             return SimpleNamespace(symbol=symbol, qty=qty)
+
+        # Try alternate asset representations for crypto pairs
+        candidates = []
+        if "/" in symbol:
+            base = symbol.split("/")[0]
+            candidates.extend([base, f"X{base}", f"X{base}ZUSD"])
+        elif symbol.upper().endswith("USD") and len(symbol) > 3:
+            base = symbol[:-3]
+            candidates.extend([base, f"X{base}", f"X{base}ZUSD"])
+        else:
+            candidates.append(f"X{symbol}")
+
+        for alt in candidates:
+            qty = float(balances.get(alt, 0))
+            if qty:
+                return SimpleNamespace(symbol=alt, qty=qty)
+
         return None
 
     # --- Trading ---------------------------------------------------------------
