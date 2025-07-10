@@ -377,7 +377,6 @@ const TradingDashboard: React.FC = () => {
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [winRate, setWinRate] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -393,13 +392,12 @@ const TradingDashboard: React.FC = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const [accountData, signalsData, portfolioData, equityData, tradesData, ordersData] = await Promise.all([
+      const [accountData, signalsData, portfolioData, equityData, tradesData] = await Promise.all([
         api.getAccount(),
         api.getSignals(),
         api.getPositions(),
         api.getEquityCurve(),
-        api.getTrades(),
-        api.getOrders()
+        api.getTrades()
       ]);
 
       console.log('✅ All data fetched successfully');
@@ -409,7 +407,6 @@ const TradingDashboard: React.FC = () => {
       setPortfolio(portfolioData);
       setEquityCurve(equityData);
       setTrades(tradesData);
-      setOrders(ordersData);
 
       const closedTrades = tradesData.filter((t) => t.status === 'closed');
       const winningTrades = closedTrades.filter((t) => t.pnl !== null && t.pnl > 0);

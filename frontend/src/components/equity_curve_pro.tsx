@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, Target, BarChart3, Maximize2, Settings, Download, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Maximize2, Download, RefreshCw } from 'lucide-react';
+import type { EquityPoint } from './EquityCurveChart';
 
-const EquityCurvePro = ({ data = [], initialEquity = 10000 }) => {
+interface EquityCurveProProps {
+  data?: EquityPoint[];
+  initialEquity?: number;
+}
+
+const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoint[], initialEquity = 10000 }) => {
   const [timeframe, setTimeframe] = useState('1M');
   const [showDrawdown, setShowDrawdown] = useState(true);
   const [showBenchmark, setShowBenchmark] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [animationProgress, setAnimationProgress] = useState(0);
 
   // Generar datos de ejemplo si no se proporcionan
   const generateEquityData = () => {
@@ -57,7 +62,7 @@ const EquityCurvePro = ({ data = [], initialEquity = 10000 }) => {
     let maxEquity = initialEquity;
     let benchmark = initialEquity;
 
-    return data.map((point: any, idx: number) => {
+    return data.map((point: any) => {
       if (point.equity > maxEquity) {
         maxEquity = point.equity;
       }
@@ -81,10 +86,7 @@ const EquityCurvePro = ({ data = [], initialEquity = 10000 }) => {
 
   const equityData = augmentData();
   
-  useEffect(() => {
-    const timer = setTimeout(() => setAnimationProgress(100), 1000);
-    return () => clearTimeout(timer);
-  }, [timeframe]);
+
 
   // Calcular métricas
   const currentEquity = equityData[equityData.length - 1]?.equity || initialEquity;
@@ -95,12 +97,18 @@ const EquityCurvePro = ({ data = [], initialEquity = 10000 }) => {
   const calmarRatio = 2.34; // Simulated
 
   // Custom tooltip
-  const CustomTooltip = ({ active, payload, label }) => {
+  interface CustomTooltipProps {
+    active?: boolean;
+    payload?: any[];
+    label?: string;
+  }
+
+  const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-4 rounded-lg shadow-xl border border-gray-200">
           <p className="text-sm font-medium text-gray-600 mb-2">{label}</p>
-          {payload.map((entry, index) => (
+          {payload.map((entry: any, index: number) => (
             <div key={index} className="flex items-center gap-2 mb-1">
               <div 
                 className="w-3 h-3 rounded-full" 
