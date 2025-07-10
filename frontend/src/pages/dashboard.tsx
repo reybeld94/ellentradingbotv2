@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import EquityCurveChart from '../components/EquityCurveChart';
 import type { EquityPoint } from '../components/EquityCurveChart';
+import WinRateSpeedometer from '../components/winrate_speedometer';
 
 // Tipos TypeScript
 interface Account {
@@ -42,6 +43,20 @@ interface Order {
   filled_at?: string;
   rejected_reason?: string;
   user?: string;
+}
+
+interface Trade {
+  id: number;
+  strategy_id: string;
+  symbol: string;
+  action: string;
+  quantity: number;
+  entry_price: number;
+  exit_price: number | null;
+  status: string;
+  opened_at: string;
+  closed_at: string | null;
+  pnl: number | null;
 }
 
 interface PortfolioData {
@@ -143,6 +158,12 @@ const api = {
     const data = await response.json();
     console.log('✅ Orders data received:', data);
     return Array.isArray(data.orders) ? data.orders : [];
+  },
+
+  async getTrades(): Promise<Trade[]> {
+    const response = await authenticatedFetch(`${this.baseUrl}/trades`);
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   },
 
   async getPositions(): Promise<PortfolioData | null> {
@@ -355,6 +376,8 @@ const TradingDashboard: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [winRate, setWinRate] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -369,12 +392,13 @@ const TradingDashboard: React.FC = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const [accountData, signalsData, ordersData, portfolioData, equityData] = await Promise.all([
+      const [accountData, signalsData, ordersData, portfolioData, equityData, tradesData] = await Promise.all([
         api.getAccount(),
         api.getSignals(),
         api.getOrders(),
         api.getPositions(),
-        api.getEquityCurve()
+        api.getEquityCurve(),
+        api.getTrades()
       ]);
 
       console.log('✅ All data fetched successfully');
@@ -384,6 +408,11 @@ const TradingDashboard: React.FC = () => {
       setOrders(ordersData);
       setPortfolio(portfolioData);
       setEquityCurve(equityData);
+      setTrades(tradesData);
+
+      const closedTrades = tradesData.filter((t) => t.status === 'closed');
+      const winningTrades = closedTrades.filter((t) => t.pnl !== null && t.pnl > 0);
+      setWinRate(closedTrades.length ? (winningTrades.length / closedTrades.length) * 100 : 0);
       setError(null);
       setLastUpdate(new Date());
     } catch (err: any) {
@@ -537,26 +566,8 @@ const TradingDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Orders */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
-            <span className="text-sm text-gray-500">{orders.length} total</span>
-          </div>
-          <div className="space-y-4">
-            {orders.length === 0 ? (
-              <div className="text-center py-8">
-                <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No orders executed yet</p>
-                <p className="text-sm text-gray-400">Orders will appear here when signals are processed</p>
-              </div>
-            ) : (
-              orders.slice(0, 3).map((order) => (
-                <ActivityItem key={order.id} type="order" data={order} />
-              ))
-            )}
-          </div>
-        </div>
+        {/* Win Rate */}
+        <WinRateSpeedometer winRate={winRate} totalTrades={trades.filter((t) => t.status === 'closed').length} />
       </div>
 
       {/* Equity Curve */}
