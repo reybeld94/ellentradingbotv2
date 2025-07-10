@@ -22,6 +22,21 @@ interface Trade {
   pnl: number | null;
 }
 
+type Side = 'LONG' | 'SHORT';
+
+interface ProcessedTrade {
+  id: number;
+  symbol: string;
+  side: Side;
+  size: number;
+  entryPrice: number;
+  currentPrice: number;
+  pnl: number;
+  pnlPercent: number;
+  openTime: string;
+  exchange: string;
+}
+
 interface ActiveTradesPanelProps {
   trades?: Trade[];
 }
@@ -29,14 +44,15 @@ interface ActiveTradesPanelProps {
 const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   const [showPnL, setShowPnL] = useState(true);
 
-  const processedTrades = trades.map((t) => {
+  const processedTrades: ProcessedTrade[] = trades.map((t) => {
     const pnl = t.pnl ?? 0;
     const currentPrice = t.entry_price + pnl / t.quantity;
     const pnlPercent = t.quantity ? (pnl / (t.entry_price * t.quantity)) * 100 : 0;
+    const side: Side = t.action.toLowerCase() === 'buy' ? 'LONG' : 'SHORT';
     return {
       id: t.id,
       symbol: t.symbol,
-      side: t.action.toLowerCase() === 'buy' ? 'LONG' : 'SHORT' as const,
+      side,
       size: t.quantity,
       entryPrice: t.entry_price,
       currentPrice,
@@ -50,11 +66,11 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   const totalPnL = processedTrades.reduce((sum, trade) => sum + trade.pnl, 0);
   const profitableTrades = processedTrades.filter(trade => trade.pnl > 0).length;
 
-  const getSideColor = (side: 'LONG' | 'SHORT') => {
+  const getSideColor = (side: Side) => {
     return side === 'LONG' ? 'text-green-600' : 'text-red-600';
   };
 
-  const getSideBg = (side: 'LONG' | 'SHORT') => {
+  const getSideBg = (side: Side) => {
     return side === 'LONG' ? 'bg-green-100' : 'bg-red-100';
   };
 
