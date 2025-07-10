@@ -484,7 +484,7 @@ const TradingDashboard: React.FC = () => {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <a href="/portfolio-monitor.html" target="_blank" rel="noopener noreferrer">
           <StatsCard
             title="Portfolio Value"
@@ -500,13 +500,6 @@ const TradingDashboard: React.FC = () => {
           value={account ? formatCurrency(account.cash) : '--'}
           icon={DollarSign}
           gradient="bg-gradient-to-r from-emerald-500 to-green-500"
-          loading={loading}
-        />
-        <StatsCard
-          title="Buying Power"
-          value={account ? formatCurrency(account.buying_power) : '--'}
-          icon={TrendingUp}
-          gradient="bg-gradient-to-r from-purple-500 to-pink-500"
           loading={loading}
         />
         <StatsCard
