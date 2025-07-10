@@ -49,7 +49,37 @@ const EquityCurvePro = ({ data = [], initialEquity = 10000 }) => {
     return data;
   };
 
-  const equityData = data.length > 0 ? data : generateEquityData();
+  const augmentData = () => {
+    if (!data || data.length === 0) {
+      return generateEquityData();
+    }
+
+    let maxEquity = initialEquity;
+    let benchmark = initialEquity;
+
+    return data.map((point: any, idx: number) => {
+      if (point.equity > maxEquity) {
+        maxEquity = point.equity;
+      }
+      const drawdown = ((point.equity - maxEquity) / maxEquity) * 100;
+      const ts = new Date(point.timestamp);
+      const benchmarkChange = (Math.random() - 0.49) * 0.0015 + 0.00005;
+      benchmark *= 1 + benchmarkChange;
+
+      return {
+        ...point,
+        time:
+          timeframe === '1D'
+            ? ts.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            : ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        drawdown: parseFloat(drawdown.toFixed(2)),
+        benchmark: parseFloat(benchmark.toFixed(2)),
+        maxEquity: parseFloat(maxEquity.toFixed(2)),
+      };
+    });
+  };
+
+  const equityData = augmentData();
   
   useEffect(() => {
     const timer = setTimeout(() => setAnimationProgress(100), 1000);

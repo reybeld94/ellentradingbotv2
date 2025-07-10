@@ -5,7 +5,7 @@ import {
   ArrowUp, ArrowDown, PieChart, Target, Briefcase,
   Clock, Shield, Zap
 } from 'lucide-react';
-import EquityCurveChart from '../components/EquityCurveChart';
+import EquityCurvePro from '../components/equity_curve_pro';
 import type { EquityPoint } from '../components/EquityCurveChart';
 import WinRateSpeedometer from '../components/winrate_speedometer';
 import ActiveTradesPanel from '../components/active_trades_panel';
@@ -574,7 +574,10 @@ const TradingDashboard: React.FC = () => {
 
       {/* Equity Curve */}
       <div className="mb-8">
-        <EquityCurveChart data={equityCurve} />
+        <EquityCurvePro
+          data={equityCurve}
+          initialEquity={equityCurve.length ? equityCurve[0].equity : 10000}
+        />
       </div>
 
       {/* System Status */}
