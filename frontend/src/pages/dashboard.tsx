@@ -8,7 +8,7 @@ import {
 import EquityCurveChart from '../components/EquityCurveChart';
 import type { EquityPoint } from '../components/EquityCurveChart';
 import WinRateSpeedometer from '../components/winrate_speedometer';
-import RecentOrdersPanel from '../components/recent_orders_panel';
+import ActiveTradesPanel from '../components/active_trades_panel';
 
 // Tipos TypeScript
 interface Account {
@@ -565,8 +565,8 @@ const TradingDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Recent Orders */}
-        <RecentOrdersPanel orders={orders} />
+        {/* Active Trades */}
+        <ActiveTradesPanel trades={trades.filter((t) => t.status === 'open')} />
 
         {/* Win Rate */}
         <WinRateSpeedometer winRate={winRate} totalTrades={trades.filter((t) => t.status === 'closed').length} />
