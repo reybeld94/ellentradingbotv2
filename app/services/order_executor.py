@@ -1,11 +1,8 @@
 # backend/app/services/order_executor.py
-from sqlalchemy.orm import Session
-
 from app.models.signal import Signal
-from app.config import settings
 from app.services.position_manager import position_manager
 from app.services.strategy_position_manager import StrategyPositionManager
-from app.database import get_db
+from typing import TYPE_CHECKING
 import logging
 from app.models.trades import Trade
 from sqlalchemy.sql import func
@@ -13,6 +10,9 @@ from app.websockets import ws_manager
 import asyncio
 import json
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 class OrderExecutor:
@@ -167,7 +167,7 @@ class OrderExecutor:
             logger.error(f"Error executing signal for {signal.symbol}: {e}")
             raise
 
-    def _execute_buy_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, limit: int, db: Session):
+    def _execute_buy_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, limit: int, db: "Session"):
 
         print(f"🟢 Executing BUY for {signal.strategy_id}:{signal.symbol} (as {correct_symbol})")
 
@@ -263,7 +263,7 @@ class OrderExecutor:
         logger.info(f"Buy order executed: {signal.strategy_id} bought {signal.quantity} {signal.symbol}")
         return order
 
-    def _execute_sell_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, db: Session):
+    def _execute_sell_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, db: "Session"):
 
         print(f"🔴 Executing SELL for {signal.strategy_id}:{signal.symbol} (as {correct_symbol})")
 
