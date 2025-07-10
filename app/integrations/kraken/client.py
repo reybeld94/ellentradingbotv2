@@ -69,9 +69,28 @@ class KrakenClient:
 
     # --- Basic account helpers -------------------------------------------------
     def get_account(self):
+        """Return basic account information including portfolio value."""
         result = self._private_post("Balance")
+
         cash = float(result.get("ZUSD", result.get("USD", 0)))
-        return SimpleNamespace(cash=cash, buying_power=cash, portfolio_value=cash)
+        portfolio_value = cash
+
+        for asset, qty in result.items():
+            amount = float(qty)
+            if amount <= 0 or asset in ("ZUSD", "USD"):
+                continue
+
+            pair = asset if asset.endswith("USD") else f"{asset}ZUSD"
+
+            try:
+                quote = self.get_latest_crypto_quote(pair)
+                price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)))
+                portfolio_value += price * amount
+            except Exception:
+                # Ignore pricing errors for unsupported assets
+                continue
+
+        return SimpleNamespace(cash=cash, buying_power=cash, portfolio_value=portfolio_value)
 
     def get_positions(self):
         result = self._private_post("Balance")
