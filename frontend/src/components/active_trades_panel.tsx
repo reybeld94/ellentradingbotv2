@@ -12,14 +12,14 @@ import {
 interface Trade {
   id: number;
   symbol: string;
-  side: 'LONG' | 'SHORT';
-  size: number;
-  entryPrice: number;
-  currentPrice: number;
-  pnl: number;
-  pnlPercent: number;
-  openTime: string;
-  exchange: string;
+  action: string;
+  quantity: number;
+  entry_price: number;
+  exit_price: number | null;
+  status: string;
+  opened_at: string;
+  closed_at: string | null;
+  pnl: number | null;
 }
 
 interface ActiveTradesPanelProps {
@@ -29,67 +29,32 @@ interface ActiveTradesPanelProps {
 const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   const [showPnL, setShowPnL] = useState(true);
 
-  // Datos de ejemplo si no se proporcionan trades
-  const defaultTrades: Trade[] = [
-    {
-      id: 1,
-      symbol: 'AAPL',
-      side: 'LONG',
-      size: 100,
-      entryPrice: 178.50,
-      currentPrice: 180.25,
-      pnl: 175.00,
-      pnlPercent: 0.98,
-      openTime: '10:30',
-      exchange: 'Alpaca'
-    },
-    {
-      id: 2,
-      symbol: 'TSLA',
-      side: 'SHORT',
-      size: 50,
-      entryPrice: 248.80,
-      currentPrice: 245.20,
-      pnl: 180.00,
-      pnlPercent: 1.45,
-      openTime: '11:15',
-      exchange: 'Alpaca'
-    },
-    {
-      id: 3,
-      symbol: 'NVDA',
-      side: 'LONG',
-      size: 25,
-      entryPrice: 485.20,
-      currentPrice: 492.80,
-      pnl: 190.00,
-      pnlPercent: 1.56,
-      openTime: '12:45',
-      exchange: 'Kraken'
-    },
-    {
-      id: 4,
-      symbol: 'BTC/USD',
-      side: 'LONG',
-      size: 0.5,
-      entryPrice: 43250.00,
-      currentPrice: 43680.00,
-      pnl: 215.00,
-      pnlPercent: 0.99,
-      openTime: '09:20',
-      exchange: 'Kraken'
-    }
-  ];
+  const processedTrades = trades.map((t) => {
+    const pnl = t.pnl ?? 0;
+    const currentPrice = t.entry_price + pnl / t.quantity;
+    const pnlPercent = t.quantity ? (pnl / (t.entry_price * t.quantity)) * 100 : 0;
+    return {
+      id: t.id,
+      symbol: t.symbol,
+      side: t.action.toLowerCase() === 'buy' ? 'LONG' : 'SHORT' as const,
+      size: t.quantity,
+      entryPrice: t.entry_price,
+      currentPrice,
+      pnl,
+      pnlPercent,
+      openTime: new Date(t.opened_at).toLocaleTimeString(),
+      exchange: 'Alpaca',
+    };
+  });
 
-  const activeTrades = trades.length > 0 ? trades : defaultTrades;
-  const totalPnL = activeTrades.reduce((sum, trade) => sum + trade.pnl, 0);
-  const profitableTrades = activeTrades.filter(trade => trade.pnl > 0).length;
+  const totalPnL = processedTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+  const profitableTrades = processedTrades.filter(trade => trade.pnl > 0).length;
 
-  const getSideColor = (side: Trade['side']) => {
+  const getSideColor = (side: 'LONG' | 'SHORT') => {
     return side === 'LONG' ? 'text-green-600' : 'text-red-600';
   };
 
-  const getSideBg = (side: Trade['side']) => {
+  const getSideBg = (side: 'LONG' | 'SHORT') => {
     return side === 'LONG' ? 'bg-green-100' : 'bg-red-100';
   };
 
@@ -97,7 +62,7 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
     return pnl >= 0 ? 'text-green-600' : 'text-red-600';
   };
 
-  const getExchangeColor = (exchange: Trade['exchange']) => {
+  const getExchangeColor = (exchange: string) => {
     return exchange === 'Alpaca' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
   };
 
@@ -128,7 +93,7 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
       <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
         <div className="text-center">
           <div className="text-sm text-gray-600">Total</div>
-          <div className="text-lg font-bold text-gray-800">{activeTrades.length}</div>
+          <div className="text-lg font-bold text-gray-800">{processedTrades.length}</div>
         </div>
         <div className="text-center">
           <div className="text-sm text-gray-600">P&L Total</div>
@@ -140,8 +105,14 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
 
       {/* Lista de Trades */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {activeTrades.map((trade) => (
-          <div key={trade.id} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors">
+        {processedTrades.length === 0 ? (
+          <div className="text-center py-8">
+            <Activity className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No active trades</p>
+          </div>
+        ) : (
+          processedTrades.map((trade) => (
+            <div key={trade.id} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors">
             {/* Primera fila: Symbol, Side, Exchange */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -199,14 +170,15 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
                 </div>
               </div>
             )}
-          </div>
-        ))}
+            </div>
+          ))
+        )}
       </div>
 
       {/* Footer con estadísticas */}
       <div className="mt-4 pt-3 border-t border-gray-200">
         <div className="flex justify-between text-xs text-gray-600">
-          <span>{profitableTrades}/{activeTrades.length} rentables</span>
+          <span>{profitableTrades}/{processedTrades.length} rentables</span>
           <span>Última actualización: hace 2m</span>
         </div>
       </div>
