@@ -8,6 +8,7 @@ import {
 import EquityCurveChart from '../components/EquityCurveChart';
 import type { EquityPoint } from '../components/EquityCurveChart';
 import WinRateSpeedometer from '../components/winrate_speedometer';
+import RecentOrdersPanel from '../components/recent_orders_panel';
 
 // Tipos TypeScript
 interface Account {
@@ -376,6 +377,7 @@ const TradingDashboard: React.FC = () => {
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [winRate, setWinRate] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -391,12 +393,13 @@ const TradingDashboard: React.FC = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const [accountData, signalsData, portfolioData, equityData, tradesData] = await Promise.all([
+      const [accountData, signalsData, portfolioData, equityData, tradesData, ordersData] = await Promise.all([
         api.getAccount(),
         api.getSignals(),
         api.getPositions(),
         api.getEquityCurve(),
-        api.getTrades()
+        api.getTrades(),
+        api.getOrders()
       ]);
 
       console.log('✅ All data fetched successfully');
@@ -406,6 +409,7 @@ const TradingDashboard: React.FC = () => {
       setPortfolio(portfolioData);
       setEquityCurve(equityData);
       setTrades(tradesData);
+      setOrders(ordersData);
 
       const closedTrades = tradesData.filter((t) => t.status === 'closed');
       const winningTrades = closedTrades.filter((t) => t.pnl !== null && t.pnl > 0);
@@ -540,27 +544,29 @@ const TradingDashboard: React.FC = () => {
 
 
       {/* Activity Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Recent Signals */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Signals</h3>
-            <span className="text-sm text-gray-500">{signals.length} total</span>
-          </div>
-          <div className="space-y-4">
-            {signals.length === 0 ? (
-              <div className="text-center py-8">
-                <Activity className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No signals received yet</p>
-                <p className="text-sm text-gray-400">Signals from TradingView will appear here</p>
-              </div>
-            ) : (
-              signals.slice(0, 3).map((signal) => (
-                <ActivityItem key={signal.id} type="signal" data={signal} />
-              ))
-            )}
-          </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Recent Signals</h3>
+          <span className="text-sm text-gray-500">{signals.length} total</span>
         </div>
+        <div className="space-y-4">
+          {signals.length === 0 ? (
+            <div className="text-center py-8">
+              <Activity className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No signals received yet</p>
+              <p className="text-sm text-gray-400">Signals from TradingView will appear here</p>
+            </div>
+          ) : (
+            signals.slice(0, 3).map((signal) => (
+              <ActivityItem key={signal.id} type="signal" data={signal} />
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Recent Orders */}
+        <RecentOrdersPanel orders={orders} />
 
         {/* Win Rate */}
         <WinRateSpeedometer winRate={winRate} totalTrades={trades.filter((t) => t.status === 'closed').length} />
