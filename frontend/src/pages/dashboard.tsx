@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { connectWebSocket } from '../services/ws';
 import {
-  BarChart3, DollarSign, TrendingUp, Activity, AlertCircle, RefreshCw,
+  DollarSign, TrendingUp, Activity, AlertCircle, RefreshCw,
   ArrowUp, ArrowDown, PieChart, Target, Briefcase,
   Clock, Shield, Zap
 } from 'lucide-react';
@@ -373,7 +373,6 @@ const SystemStatus: React.FC<{ account: Account | null }> = ({ account }) => {
 const TradingDashboard: React.FC = () => {
   const [account, setAccount] = useState<Account | null>(null);
   const [signals, setSignals] = useState<Signal[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -392,10 +391,9 @@ const TradingDashboard: React.FC = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const [accountData, signalsData, ordersData, portfolioData, equityData, tradesData] = await Promise.all([
+      const [accountData, signalsData, portfolioData, equityData, tradesData] = await Promise.all([
         api.getAccount(),
         api.getSignals(),
-        api.getOrders(),
         api.getPositions(),
         api.getEquityCurve(),
         api.getTrades()
@@ -405,7 +403,6 @@ const TradingDashboard: React.FC = () => {
 
       setAccount(accountData);
       setSignals(signalsData);
-      setOrders(ordersData);
       setPortfolio(portfolioData);
       setEquityCurve(equityData);
       setTrades(tradesData);
@@ -427,7 +424,6 @@ const TradingDashboard: React.FC = () => {
     fetchAllData();
     const ws = connectWebSocket({
       onSignal: (sig) => setSignals((prev) => [sig, ...prev]),
-      onOrder: (order) => setOrders((prev) => [order, ...prev]),
       onTrade: () => fetchAllData(),
       onAccountUpdate: (data) => {
         setAccount((prev) => prev ? { ...prev, ...data } : data);

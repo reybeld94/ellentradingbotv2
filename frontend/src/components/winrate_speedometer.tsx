@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
 
-const WinRateSpeedometer = ({ winRate = 68.5, totalTrades = 250 }) => {
+interface WinRateProps {
+  winRate?: number;
+  totalTrades?: number;
+}
+const WinRateSpeedometer: React.FC<WinRateProps> = ({ winRate = 68.5, totalTrades = 250 }) => {
   const [animatedRate, setAnimatedRate] = useState(0);
 
   useEffect(() => {
@@ -15,21 +19,21 @@ const WinRateSpeedometer = ({ winRate = 68.5, totalTrades = 250 }) => {
   const angle = (animatedRate / 100) * 180;
   
   // Calcular el color basado en el win rate
-  const getColor = (rate) => {
+  const getColor = (rate: number): string => {
     if (rate >= 80) return '#10B981'; // Verde
     if (rate >= 70) return '#F59E0B'; // Amarillo
     if (rate >= 60) return '#F97316'; // Naranja
     return '#EF4444'; // Rojo
   };
 
-  const getGradientColor = (rate) => {
+  const getGradientColor = (rate: number): string => {
     if (rate >= 80) return 'from-green-400 to-green-600';
     if (rate >= 70) return 'from-yellow-400 to-yellow-600';
     if (rate >= 60) return 'from-orange-400 to-orange-600';
     return 'from-red-400 to-red-600';
   };
 
-  const getPerformanceText = (rate) => {
+  const getPerformanceText = (rate: number): string => {
     if (rate >= 80) return 'Excelente';
     if (rate >= 70) return 'Bueno';
     if (rate >= 60) return 'Regular';
