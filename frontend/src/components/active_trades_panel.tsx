@@ -1,12 +1,36 @@
-import React, { useState } from 'react';
-import { TrendingUp, TrendingDown, Activity, Clock, DollarSign, MoreVertical, Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
+import {
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Clock,
+  DollarSign,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 
-const ActiveTradesPanel = ({ trades = [] }) => {
+interface Trade {
+  id: number;
+  symbol: string;
+  side: 'LONG' | 'SHORT';
+  size: number;
+  entryPrice: number;
+  currentPrice: number;
+  pnl: number;
+  pnlPercent: number;
+  openTime: string;
+  exchange: string;
+}
+
+interface ActiveTradesPanelProps {
+  trades?: Trade[];
+}
+
+const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   const [showPnL, setShowPnL] = useState(true);
-  const [expandedTrade, setExpandedTrade] = useState(null);
 
   // Datos de ejemplo si no se proporcionan trades
-  const defaultTrades = [
+  const defaultTrades: Trade[] = [
     {
       id: 1,
       symbol: 'AAPL',
@@ -61,23 +85,23 @@ const ActiveTradesPanel = ({ trades = [] }) => {
   const totalPnL = activeTrades.reduce((sum, trade) => sum + trade.pnl, 0);
   const profitableTrades = activeTrades.filter(trade => trade.pnl > 0).length;
 
-  const getSideColor = (side) => {
+  const getSideColor = (side: Trade['side']) => {
     return side === 'LONG' ? 'text-green-600' : 'text-red-600';
   };
 
-  const getSideBg = (side) => {
+  const getSideBg = (side: Trade['side']) => {
     return side === 'LONG' ? 'bg-green-100' : 'bg-red-100';
   };
 
-  const getPnLColor = (pnl) => {
+  const getPnLColor = (pnl: number) => {
     return pnl >= 0 ? 'text-green-600' : 'text-red-600';
   };
 
-  const getExchangeColor = (exchange) => {
+  const getExchangeColor = (exchange: Trade['exchange']) => {
     return exchange === 'Alpaca' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
   };
 
-  const formatPrice = (price) => {
+  const formatPrice = (price: number) => {
     return price > 1000 ? price.toLocaleString() : price.toFixed(2);
   };
 
