@@ -87,7 +87,7 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 h-fit">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 w-full h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

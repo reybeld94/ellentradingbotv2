@@ -95,7 +95,7 @@ const WinRateSpeedometer: React.FC<WinRateProps> = ({ winRate = 68.5, totalTrade
   const needleY = 150 + 80 * Math.sin((angle - 90) * Math.PI / 180);
 
   return (
-    <div className="flex flex-col items-center p-6 bg-white rounded-xl shadow-lg border border-gray-200 max-w-md mx-auto">
+    <div className="flex flex-col items-center p-6 bg-white rounded-xl shadow-lg border border-gray-200 w-full h-full">
       {/* Header */}
       <div className="text-center mb-4">
         <div className="flex items-center justify-center gap-2 mb-2">

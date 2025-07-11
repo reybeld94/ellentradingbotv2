@@ -561,7 +561,7 @@ const TradingDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 auto-rows-fr">
         {/* Active Trades */}
         <ActiveTradesPanel trades={trades.filter((t) => t.status === 'open')} />
 
