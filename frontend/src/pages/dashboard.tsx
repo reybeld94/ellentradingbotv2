@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { connectWebSocket } from '../services/ws';
 import {
-  DollarSign, TrendingUp, AlertCircle, RefreshCw,
+  DollarSign, AlertCircle, RefreshCw,
   ArrowUp, ArrowDown, PieChart, Target, Briefcase,
   Clock, Shield, Zap
 } from 'lucide-react';
@@ -302,7 +302,6 @@ const SystemStatus: React.FC<{ account: Account | null }> = ({ account }) => {
 // Main Dashboard Component
 const TradingDashboard: React.FC = () => {
   const [account, setAccount] = useState<Account | null>(null);
-  const [signals, setSignals] = useState<Signal[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -321,9 +320,8 @@ const TradingDashboard: React.FC = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const [accountData, signalsData, portfolioData, equityData, tradesData] = await Promise.all([
+      const [accountData, portfolioData, equityData, tradesData] = await Promise.all([
         api.getAccount(),
-        api.getSignals(),
         api.getPositions(),
         api.getEquityCurve(),
         api.getTrades()
@@ -332,7 +330,6 @@ const TradingDashboard: React.FC = () => {
       console.log('✅ All data fetched successfully');
 
       setAccount(accountData);
-      setSignals(signalsData);
       setPortfolio(portfolioData);
       setEquityCurve(equityData);
       setTrades(tradesData);
@@ -353,7 +350,6 @@ const TradingDashboard: React.FC = () => {
   useEffect(() => {
     fetchAllData();
     const ws = connectWebSocket({
-      onSignal: (sig) => setSignals((prev) => [sig, ...prev]),
       onTrade: () => fetchAllData(),
       onAccountUpdate: (data) => {
         setAccount((prev) => prev ? { ...prev, ...data } : data);
