@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { connectWebSocket } from '../services/ws';
 import {
-  DollarSign, TrendingUp, Activity, AlertCircle, RefreshCw,
+  DollarSign, TrendingUp, AlertCircle, RefreshCw,
   ArrowUp, ArrowDown, PieChart, Target, Briefcase,
   Clock, Shield, Zap
 } from 'lucide-react';
@@ -241,77 +241,6 @@ const StatsCard: React.FC<{
   </div>
 );
 
-// Component: Recent Activity Item
-const ActivityItem: React.FC<{
-  type: 'signal' | 'order';
-  data: Signal | Order;
-}> = ({ type, data }) => {
-  if (type === 'signal') {
-    const signal = data as Signal;
-    return (
-      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
-        <div className="flex items-center">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-            signal.action === 'buy' ? 'bg-emerald-100' : 'bg-red-100'
-          }`}>
-            {signal.action === 'buy' ?
-              <TrendingUp className="h-5 w-5 text-emerald-600" /> :
-              <TrendingUp className="h-5 w-5 text-red-600 rotate-180" />
-            }
-          </div>
-          <div className="ml-3">
-            <p className="font-semibold text-gray-900">{signal.symbol}</p>
-            <p className="text-sm text-gray-600">{signal.strategy_id || 'Strategy'}</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            signal.status === 'processed' ? 'bg-emerald-100 text-emerald-800' :
-            signal.status === 'error' ? 'bg-red-100 text-red-800' :
-            'bg-yellow-100 text-yellow-800'
-          }`}>
-            {signal.status}
-          </span>
-          {signal.confidence && (
-            <p className="text-xs text-gray-500 mt-1">{signal.confidence}% confidence</p>
-          )}
-        </div>
-      </div>
-    );
-  } else {
-    const order = data as Order;
-    return (
-      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
-        <div className="flex items-center">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-            order.side === 'buy' ? 'bg-blue-100' : 'bg-purple-100'
-          }`}>
-            {order.side === 'buy' ?
-              <TrendingUp className="h-5 w-5 text-blue-600" /> :
-              <TrendingUp className="h-5 w-5 text-purple-600 rotate-180" />
-            }
-          </div>
-          <div className="ml-3">
-            <p className="font-semibold text-gray-900">{order.symbol}</p>
-            <p className="text-sm text-gray-600">{order.qty} shares</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            order.status === 'filled' ? 'bg-emerald-100 text-emerald-800' :
-            order.status === 'rejected' ? 'bg-red-100 text-red-800' :
-            'bg-blue-100 text-blue-800'
-          }`}>
-            {order.status}
-          </span>
-          <p className="text-xs text-gray-500 mt-1">
-            {new Date(order.submitted_at).toLocaleTimeString()}
-          </p>
-        </div>
-      </div>
-    );
-  }
-};
 
 // Component: System Status
 const SystemStatus: React.FC<{ account: Account | null }> = ({ account }) => {
@@ -540,26 +469,6 @@ const TradingDashboard: React.FC = () => {
 
 
 
-      {/* Activity Sections */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Signals</h3>
-          <span className="text-sm text-gray-500">{signals.length} total</span>
-        </div>
-        <div className="space-y-4">
-          {signals.length === 0 ? (
-            <div className="text-center py-8">
-              <Activity className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No signals received yet</p>
-              <p className="text-sm text-gray-400">Signals from TradingView will appear here</p>
-            </div>
-          ) : (
-            signals.slice(0, 3).map((signal) => (
-              <ActivityItem key={signal.id} type="signal" data={signal} />
-            ))
-          )}
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Active Trades */}
