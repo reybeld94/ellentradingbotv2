@@ -4,6 +4,7 @@ from app.config import settings
 from app.websockets import ws_manager
 from app.integrations.kraken.client import kraken_client
 from app.services.position_manager import position_manager
+from kraken.spot import SpotWSClient
 
 
 class KrakenStream:
@@ -11,6 +12,7 @@ class KrakenStream:
 
     def __init__(self) -> None:
         self._running_task: asyncio.Task | None = None
+        self._ws: SpotWSClient | None = None
 
     def refresh(self) -> None:
         """No-op refresh to keep API parity."""
@@ -27,8 +29,22 @@ class KrakenStream:
             self._running_task = loop.create_task(self._run())
 
     async def _run(self) -> None:
-        while True:
-            await asyncio.sleep(0.1)
+        if settings.kraken_api_key and settings.kraken_secret_key:
+            self._ws = SpotWSClient(
+                key=settings.kraken_api_key,
+                secret=settings.kraken_secret_key,
+                callback=self._on_ws_message,
+            )
+            await self._ws.subscribe({"name": "ownTrades"})
+            await self._ws.subscribe({"name": "balances"})
+            # keep connection running
+            while True:
+                await asyncio.sleep(0.1)
+        else:
+            # fallback: periodically poll account to simulate real time
+            while True:
+                await self._broadcast_account_update()
+                await asyncio.sleep(5)
 
     def subscribe(self, symbol: str) -> None:
         self.start()
@@ -46,6 +62,14 @@ class KrakenStream:
 
     async def _handle_trade_update(self, update) -> None:
         await self._broadcast_account_update()
+
+    async def _on_ws_message(self, message: dict) -> None:
+        if isinstance(message, dict):
+            channel = message.get("channel")
+            if channel == "ownTrades":
+                await self._handle_trade_update(message)
+            elif channel == "balances":
+                await self._broadcast_account_update()
 
 
 kraken_stream = KrakenStream()
