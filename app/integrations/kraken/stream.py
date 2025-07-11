@@ -4,7 +4,15 @@ from app.config import settings
 from app.websockets import ws_manager
 from app.integrations.kraken.client import kraken_client
 from app.services.position_manager import position_manager
-from kraken.spot import SpotWSClient
+try:
+    # Newer versions of python-kraken-sdk (>=3.x)
+    from kraken.spot import SpotWSClient
+except (ImportError, AttributeError):  # pragma: no cover - fallback for older versions
+    try:  # Older (<3.x) versions expose the client in the client module
+        from kraken.spot.client import KrakenSpotWSClient as SpotWSClient
+    except (ImportError, AttributeError):
+        # Very old versions (<1.x) provide the class in the ws_client package
+        from kraken.spot.ws_client.ws_client import SpotWsClientCl as SpotWSClient
 
 
 class KrakenStream:
