@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { connectWebSocket } from '../services/ws';
 import {
   DollarSign, TrendingUp, Activity, AlertCircle, RefreshCw,
-  ArrowUp, ArrowDown, PieChart, Target, Briefcase,
-  Clock, Shield, Zap
+  ArrowUp, ArrowDown, PieChart, Target,
+  Clock
 } from 'lucide-react';
 import EquityCurvePro from '../components/equity_curve_pro';
 import type { EquityPoint } from '../components/EquityCurveChart';
@@ -199,7 +199,6 @@ const formatCurrency = (value: string | number | null | undefined) => {
   }).format(num);
 };
 
-
 // Component: Enhanced Stats Card
 const StatsCard: React.FC<{
   title: string;
@@ -313,62 +312,6 @@ const ActivityItem: React.FC<{
   }
 };
 
-// Component: System Status
-const SystemStatus: React.FC<{ account: Account | null }> = ({ account }) => {
-  const statusItems = [
-    {
-      name: 'Trading Account',
-      status: account?.status === 'ACTIVE',
-      description: account?.status || 'Unknown',
-      icon: Briefcase
-    },
-    {
-      name: 'Trading Engine',
-      status: !account?.trading_blocked,
-      description: account?.trading_blocked ? 'Blocked' : 'Active',
-      icon: Zap
-    },
-    {
-      name: 'Crypto Trading',
-      status: account?.crypto_status === 'ACTIVE',
-      description: account?.crypto_status || 'Unknown',
-      icon: Shield
-    }
-  ];
-
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">System Status</h3>
-        <div className="flex items-center text-emerald-600">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
-          <span className="text-sm font-medium">All Systems Operational</span>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {statusItems.map((item, index) => (
-          <div key={index} className="flex items-center">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 ${
-              item.status ? 'bg-emerald-100' : 'bg-red-100'
-            }`}>
-              <item.icon className={`h-6 w-6 ${
-                item.status ? 'text-emerald-600' : 'text-red-600'
-              }`} />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">{item.name}</p>
-              <p className={`text-sm ${
-                item.status ? 'text-emerald-600' : 'text-red-600'
-              }`}>
-                {item.description}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 // Main Dashboard Component
 const TradingDashboard: React.FC = () => {
@@ -577,8 +520,6 @@ const TradingDashboard: React.FC = () => {
         />
       </div>
 
-      {/* System Status */}
-      <SystemStatus account={account} />
     </div>
   );
 };
