@@ -11,8 +11,11 @@ except (ImportError, AttributeError):  # pragma: no cover - fallback for older v
     try:  # Older (<3.x) versions expose the client in the client module
         from kraken.spot.client import KrakenSpotWSClient as SpotWSClient
     except (ImportError, AttributeError):
-        # Very old versions (<1.x) provide the class in the ws_client package
-        from kraken.spot.ws_client.ws_client import SpotWsClientCl as SpotWSClient
+        try:
+            # Very old versions (<1.x) provide the class in the ws_client package
+            from kraken.spot.ws_client.ws_client import SpotWsClientCl as SpotWSClient
+        except (ImportError, AttributeError):  # pragma: no cover - optional dep missing
+            SpotWSClient = None  # type: ignore[misc]
 
 
 class KrakenStream:
@@ -20,7 +23,7 @@ class KrakenStream:
 
     def __init__(self) -> None:
         self._running_task: asyncio.Task | None = None
-        self._ws: SpotWSClient | None = None
+        self._ws: object | None = None
 
     def refresh(self) -> None:
         """No-op refresh to keep API parity."""
@@ -37,7 +40,11 @@ class KrakenStream:
             self._running_task = loop.create_task(self._run())
 
     async def _run(self) -> None:
-        if settings.kraken_api_key and settings.kraken_secret_key:
+        if (
+            SpotWSClient is not None
+            and settings.kraken_api_key
+            and settings.kraken_secret_key
+        ):
             self._ws = SpotWSClient(
                 key=settings.kraken_api_key,
                 secret=settings.kraken_secret_key,
