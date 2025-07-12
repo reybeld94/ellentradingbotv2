@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models.user import User
 from app.schemas.auth import TokenData
-import secrets
 
 # Configuración de encriptación
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
