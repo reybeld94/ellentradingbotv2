@@ -1,4 +1,5 @@
 from datetime import datetime
+import statistics
 from sqlalchemy.orm import Session
 from app.models.trades import Trade
 
@@ -145,3 +146,64 @@ class TradeService:
             if drawdown > max_dd:
                 max_dd = drawdown
         return -max_dd
+
+    def _trade_returns(self, trades):
+        """Helper to compute fractional returns for trades."""
+        returns = []
+        for t in trades:
+            if t.entry_price and t.quantity:
+                capital = t.entry_price * t.quantity
+                if capital != 0:
+                    returns.append((t.pnl or 0.0) / capital)
+        return returns
+
+    def calculate_sharpe_ratio(self, strategy_id: str, risk_free_rate: float = 0.02) -> float:
+        """Calculate Sharpe Ratio using trade returns."""
+        trades = self._get_strategy_trades(strategy_id)
+        returns = self._trade_returns(trades)
+        if not returns:
+            return 0.0
+        rf_per_trade = risk_free_rate / 252
+        mean_ret = statistics.mean(returns)
+        if len(returns) == 1:
+            return 0.0
+        std_dev = statistics.stdev(returns)
+        if std_dev == 0:
+            return 0.0
+        return (mean_ret - rf_per_trade) / std_dev
+
+    def calculate_sortino_ratio(self, strategy_id: str, risk_free_rate: float = 0.02) -> float:
+        """Calculate Sortino Ratio using negative trade returns."""
+        trades = self._get_strategy_trades(strategy_id)
+        returns = self._trade_returns(trades)
+        if not returns:
+            return 0.0
+        rf_per_trade = risk_free_rate / 252
+        mean_ret = statistics.mean(returns)
+        downside = [r for r in returns if r < 0]
+        if len(downside) < 2:
+            return 0.0
+        downside_dev = statistics.stdev(downside)
+        if downside_dev == 0:
+            return 0.0
+        return (mean_ret - rf_per_trade) / downside_dev
+
+    def calculate_avg_win_loss(self, strategy_id: str) -> dict:
+        """Return average win/loss and ratio."""
+        trades = self._get_strategy_trades(strategy_id)
+        wins = [t.pnl or 0.0 for t in trades if (t.pnl or 0.0) > 0]
+        losses = [-(t.pnl or 0.0) for t in trades if (t.pnl or 0.0) < 0]
+        avg_win = statistics.mean(wins) if wins else 0.0
+        avg_loss = statistics.mean(losses) if losses else 0.0
+        wl_ratio = (avg_win / avg_loss) if avg_loss != 0 else 0.0
+        return {"avg_win": avg_win, "avg_loss": avg_loss, "win_loss_ratio": wl_ratio}
+
+    def calculate_expectancy(self, strategy_id: str) -> float:
+        """Expected value per trade."""
+        trades = self._get_strategy_trades(strategy_id)
+        if not trades:
+            return 0.0
+        metrics = self.calculate_avg_win_loss(strategy_id)
+        win_rate = self.calculate_win_rate(strategy_id)
+        loss_rate = 1 - win_rate
+        return win_rate * metrics["avg_win"] - loss_rate * metrics["avg_loss"]
