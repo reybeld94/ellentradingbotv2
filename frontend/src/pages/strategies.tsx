@@ -5,6 +5,7 @@ interface Strategy {
   id: number;
   name: string;
   description?: string;
+  is_active?: boolean;
 }
 
 interface StrategyMetrics {
@@ -21,6 +22,7 @@ const StrategiesPage: React.FC = () => {
   const [form, setForm] = useState({ name: '', description: '' });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
+  const [metricsStrategy, setMetricsStrategy] = useState<Strategy | null>(null);
   const [metrics, setMetrics] = useState<StrategyMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
@@ -29,7 +31,13 @@ const StrategiesPage: React.FC = () => {
       const res = await api.strategies.list();
       if (!res.ok) throw new Error('Failed to load strategies');
       const data = await res.json();
-      setStrategies(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setStrategies(list);
+      if (list.length > 0) {
+        setSelectedStrategy((prev) => prev ?? list[0]);
+      } else {
+        setSelectedStrategy(null);
+      }
     } catch (e) {
       console.error('Error loading strategies:', e);
     } finally {
@@ -76,7 +84,7 @@ const StrategiesPage: React.FC = () => {
   };
 
   const viewMetrics = async (strategy: Strategy) => {
-    setSelectedStrategy(strategy);
+    setMetricsStrategy(strategy);
     setMetrics(null);
     setMetricsLoading(true);
     try {
@@ -133,6 +141,36 @@ const StrategiesPage: React.FC = () => {
         </div>
       </form>
 
+      {strategies.length > 0 && (
+        <>
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Select Strategy</label>
+            <select
+              value={selectedStrategy?.id ?? strategies[0].id}
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                const strat = strategies.find((s) => s.id === id) || null;
+                setSelectedStrategy(strat);
+              }}
+              className="w-full border border-gray-300 rounded-lg p-2"
+            >
+              {strategies.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.is_active === false ? '🔴' : '🟢'} {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedStrategy && (
+            <div className="bg-white p-4 rounded-xl shadow mb-8">
+              <h2 className="text-lg font-semibold mb-2">Strategy Name: {selectedStrategy.name}</h2>
+              <p className="mb-4">Description: {selectedStrategy.description || '--'}</p>
+              <div className="text-gray-500">[Aquí irá contenido futuro]</div>
+            </div>
+          )}
+        </>
+      )}
+
       {loading ? (
         <p>Loading strategies...</p>
       ) : strategies.length === 0 ? (
@@ -169,10 +207,10 @@ const StrategiesPage: React.FC = () => {
           </table>
         </div>
       )}
-      {selectedStrategy && (
+      {metricsStrategy && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-xl w-96 shadow-lg">
-            <h3 className="text-lg font-semibold mb-4">Metrics for {selectedStrategy.name}</h3>
+            <h3 className="text-lg font-semibold mb-4">Metrics for {metricsStrategy.name}</h3>
             {metricsLoading ? (
               <p>Loading metrics...</p>
             ) : metrics ? (
@@ -186,7 +224,7 @@ const StrategiesPage: React.FC = () => {
               <p>No metrics available.</p>
             )}
             <button
-              onClick={() => { setSelectedStrategy(null); setMetrics(null); }}
+              onClick={() => { setMetricsStrategy(null); setMetrics(null); }}
               className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg"
             >
               Close
