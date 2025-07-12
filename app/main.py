@@ -8,6 +8,7 @@ from app.api.v1.trades import router as trades_router
 from app.api.v1.strategies import router as strategies_router
 from app.api.v1.portfolios import router as portfolios_router
 from app.api.v1.streaming import router as streaming_router
+from app.api.v1 import risk
 from app.api.ws import router as ws_router
 from app.database import SessionLocal
 from app.services import portfolio_service
@@ -34,6 +35,7 @@ app.include_router(strategies_router, prefix="/api/v1", tags=["strategies"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(portfolios_router, prefix="/api/v1", tags=["portfolios"])
 app.include_router(streaming_router, prefix="/api/v1", tags=["streaming"])
+app.include_router(risk.router, prefix="/api/v1", tags=["risk"])
 app.include_router(ws_router)
 
 
