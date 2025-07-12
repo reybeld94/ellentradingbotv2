@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import api from '../services/api';
-import EquityCurveChart, { EquityPoint } from '../components/EquityCurveChart';
+import EquityCurveChart, { type EquityPoint } from '../components/EquityCurveChart';
 
 interface Strategy {
   id: number;
