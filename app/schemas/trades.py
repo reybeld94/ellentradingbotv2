@@ -24,6 +24,7 @@ class TradeSchema(BaseModel):
 
 
 class EquityPointSchema(BaseModel):
+    strategy_id: Optional[str] = None
     timestamp: datetime
     equity: float
 

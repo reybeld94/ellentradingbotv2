@@ -87,8 +87,9 @@ export const api = {
       return authenticatedFetch(`${API_BASE_URL}/trades`);
     },
 
-    getEquityCurve: async () => {
-      return authenticatedFetch(`${API_BASE_URL}/trades/equity-curve`);
+    getEquityCurve: async (strategyId?: string) => {
+      const query = strategyId ? `?strategy_id=${strategyId}` : '';
+      return authenticatedFetch(`${API_BASE_URL}/trades/equity-curve${query}`);
     },
 
     getPositions: async () => {

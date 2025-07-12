@@ -42,13 +42,16 @@ async def get_user_trades(
 async def get_equity_curve(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_verified_user),
+    strategy_id: str | None = None,
 ):
     """Return equity curve points for the current user."""
     service = TradeService(db)
     active_portfolio = portfolio_service.get_active(db, current_user)
     if not active_portfolio:
         return []
-    data = service.get_equity_curve(current_user.id, active_portfolio.id)
+    data = service.get_equity_curve(
+        current_user.id, active_portfolio.id, strategy_id=strategy_id
+    )
     return data
 
 

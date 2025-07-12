@@ -72,21 +72,33 @@ class TradeService:
 
         self.db.commit()
 
-    def get_equity_curve(self, user_id: int, portfolio_id: int):
-        """Return equity curve data for the given user."""
+    def get_equity_curve(
+        self,
+        user_id: int,
+        portfolio_id: int,
+        strategy_id: str | None = None,
+    ):
+        """Return equity curve data for the given user.
+
+        If ``strategy_id`` is provided only trades for that strategy will be
+        considered.
+        """
         # Ensure trade information is up to date
         self.refresh_user_trades(user_id, portfolio_id)
 
-        trades = (
+        query = (
             self.db.query(Trade)
             .filter(
                 Trade.user_id == user_id,
                 Trade.portfolio_id == portfolio_id,
             )
             .filter(Trade.status == "closed")
-            .order_by(Trade.closed_at)
-            .all()
         )
+
+        if strategy_id is not None:
+            query = query.filter(Trade.strategy_id == strategy_id)
+
+        trades = query.order_by(Trade.closed_at).all()
 
         equity_curve = []
         cumulative = 0.0
@@ -94,7 +106,13 @@ class TradeService:
             pnl = trade.pnl or 0.0
             cumulative += pnl
             timestamp = trade.closed_at or trade.opened_at
-            equity_curve.append({"timestamp": timestamp, "equity": cumulative})
+            equity_curve.append(
+                {
+                    "strategy_id": trade.strategy_id,
+                    "timestamp": timestamp,
+                    "equity": cumulative,
+                }
+            )
         return equity_curve
 
     # New metrics calculation methods
