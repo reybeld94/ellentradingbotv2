@@ -9,6 +9,7 @@ class TradeService:
         'BTCUSD': 'BTC/USD',
         'ETHUSD': 'ETH/USD',
         'SOLUSD': 'SOL/USD',
+        'BCHUSD': 'BCH/USD',
     }
 
     def __init__(self, db: Session):
