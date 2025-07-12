@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import api from '../services/api';
+import EquityCurveChart, { EquityPoint } from '../components/EquityCurveChart';
 
 interface Strategy {
   id: number;
@@ -25,6 +27,9 @@ const StrategiesPage: React.FC = () => {
   const [metricsStrategy, setMetricsStrategy] = useState<Strategy | null>(null);
   const [metrics, setMetrics] = useState<StrategyMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
+  const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
+  const [equityLoading, setEquityLoading] = useState(false);
+  const [equityError, setEquityError] = useState<string | null>(null);
 
   const loadStrategies = async () => {
     try {
@@ -48,6 +53,14 @@ const StrategiesPage: React.FC = () => {
   useEffect(() => {
     loadStrategies();
   }, []);
+
+  useEffect(() => {
+    if (selectedStrategy) {
+      fetchEquityCurve(String(selectedStrategy.id));
+    } else {
+      setEquityCurve([]);
+    }
+  }, [selectedStrategy]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +109,25 @@ const StrategiesPage: React.FC = () => {
       console.error('Error loading metrics:', e);
     } finally {
       setMetricsLoading(false);
+    }
+  };
+
+  const fetchEquityCurve = async (strategyId: string) => {
+    setEquityLoading(true);
+    setEquityError(null);
+    try {
+      const res = await api.trading.getEquityCurve();
+      if (!res.ok) throw new Error('Failed to load equity curve');
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : [];
+      const filtered = list.filter((p: any) => String(p.strategy_id) === String(strategyId));
+      setEquityCurve(filtered);
+    } catch (e) {
+      console.error('Error loading equity curve:', e);
+      setEquityError('Failed to load equity curve');
+      setEquityCurve([]);
+    } finally {
+      setEquityLoading(false);
     }
   };
 
@@ -165,7 +197,18 @@ const StrategiesPage: React.FC = () => {
             <div className="bg-white p-4 rounded-xl shadow mb-8">
               <h2 className="text-lg font-semibold mb-2">Strategy Name: {selectedStrategy.name}</h2>
               <p className="mb-4">Description: {selectedStrategy.description || '--'}</p>
-              <div className="text-gray-500">[Aquí irá contenido futuro]</div>
+              {equityLoading ? (
+                <div className="flex flex-col items-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mb-2" />
+                  <p className="text-gray-600">Loading equity curve...</p>
+                </div>
+              ) : equityError ? (
+                <p className="text-red-600">{equityError}</p>
+              ) : equityCurve.length === 0 ? (
+                <p>No trades available for this strategy</p>
+              ) : (
+                <EquityCurveChart data={equityCurve} />
+              )}
             </div>
           )}
         </>
