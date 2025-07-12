@@ -172,12 +172,11 @@ const StrategiesPage: React.FC = () => {
     setEquityLoading(true);
     setEquityError(null);
     try {
-      const res = await api.trading.getEquityCurve();
+      const res = await api.trading.getEquityCurve(strategyId);
       if (!res.ok) throw new Error('Failed to load equity curve');
       const data = await res.json();
       const list = Array.isArray(data) ? data : [];
-      const filtered = list.filter((p: any) => String(p.strategy_id) === String(strategyId));
-      setEquityCurve(filtered);
+      setEquityCurve(list);
     } catch (e) {
       console.error('Error loading equity curve:', e);
       setEquityError('Failed to load equity curve');

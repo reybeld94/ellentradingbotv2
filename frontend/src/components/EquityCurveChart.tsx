@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 
 export interface EquityPoint {
+  strategy_id?: string;
   timestamp: string;
   equity: number;
 }
