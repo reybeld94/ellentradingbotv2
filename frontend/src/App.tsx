@@ -235,6 +235,7 @@ const MobileHeader: React.FC<{
     signals: 'Signals',
     orders: 'Orders',
     strategies: 'Strategies',
+    risk: 'Risk',
     settings: 'Settings',
     trades: 'Trades'
   };
