@@ -30,6 +30,9 @@ const StrategiesPage: React.FC = () => {
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
   const [equityLoading, setEquityLoading] = useState(false);
   const [equityError, setEquityError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'analysis' | 'metrics' | 'settings'>(
+    'analysis'
+  );
 
   const loadStrategies = async () => {
     try {
@@ -195,20 +198,64 @@ const StrategiesPage: React.FC = () => {
           </div>
           {selectedStrategy && (
             <div className="bg-white p-4 rounded-xl shadow mb-8">
-              <h2 className="text-lg font-semibold mb-2">Strategy Name: {selectedStrategy.name}</h2>
+              <h2 className="text-lg font-semibold">Dashboard for "{selectedStrategy.name}"</h2>
               <p className="mb-4">Description: {selectedStrategy.description || '--'}</p>
-              {equityLoading ? (
-                <div className="flex flex-col items-center py-8">
-                  <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mb-2" />
-                  <p className="text-gray-600">Loading equity curve...</p>
-                </div>
-              ) : equityError ? (
-                <p className="text-red-600">{equityError}</p>
-              ) : equityCurve.length === 0 ? (
-                <p>No trades available for this strategy</p>
-              ) : (
-                <EquityCurveChart data={equityCurve} />
-              )}
+              <div className="flex space-x-2 mb-4 overflow-x-auto">
+                <button
+                  onClick={() => setActiveTab('analysis')}
+                  className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+                    activeTab === 'analysis'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  Analysis
+                </button>
+                <button
+                  onClick={() => setActiveTab('metrics')}
+                  className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+                    activeTab === 'metrics'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  Metrics
+                </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`px-4 py-2 rounded-lg whitespace-nowrap ${
+                    activeTab === 'settings'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  Settings
+                </button>
+              </div>
+              <div>
+                {activeTab === 'analysis' && (
+                  <>
+                    {equityLoading ? (
+                      <div className="flex flex-col items-center py-8">
+                        <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mb-2" />
+                        <p className="text-gray-600">Loading equity curve...</p>
+                      </div>
+                    ) : equityError ? (
+                      <p className="text-red-600">{equityError}</p>
+                    ) : equityCurve.length === 0 ? (
+                      <p>No trades available for this strategy</p>
+                    ) : (
+                      <EquityCurveChart data={equityCurve} />
+                    )}
+                  </>
+                )}
+                {activeTab === 'metrics' && (
+                  <p>Metrics will be available here</p>
+                )}
+                {activeTab === 'settings' && (
+                  <p>Strategy settings will be available here</p>
+                )}
+              </div>
             </div>
           )}
         </>
