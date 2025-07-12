@@ -6,6 +6,8 @@ from app.core.auth import get_current_verified_user
 from app.services.risk_manager import risk_manager
 from app.services.position_manager import position_manager
 
+STABLE_COINS = {"USD", "ZUSD", "USDC", "USDT"}
+
 router = APIRouter()
 
 @router.get("/risk/status")
@@ -25,12 +27,17 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
         for symbol, qty in raw_positions.items():
             if abs(float(qty)) < 0.001:
                 continue
-            try:
-                quote = broker_client.get_latest_crypto_quote(symbol)
-                price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)))
-            except Exception:
-                price = 0.0
+            price = 1.0 if symbol in STABLE_COINS else 0.0
+            pair = symbol
+            if symbol not in STABLE_COINS:
+                pair = symbol if "/" in symbol or symbol.endswith("USD") else f"{symbol}ZUSD"
+                try:
+                    quote = broker_client.get_latest_crypto_quote(pair)
+                    price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)))
+                except Exception:
+                    price = 0.0
             market_value = price * float(qty)
+            print(f"DBG Position {symbol} ({pair}) qty={qty} price={price} value={market_value}")
             position_details.append({
                 "symbol": symbol,
                 "quantity": float(qty),
@@ -102,12 +109,17 @@ async def get_allocation_chart_data(current_user: User = Depends(get_current_ver
         for symbol, qty in raw_positions.items():
             if float(qty) <= 0:
                 continue
-            try:
-                quote = broker_client.get_latest_crypto_quote(symbol)
-                price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)))
-            except Exception:
-                price = 0.0
+            price = 1.0 if symbol in STABLE_COINS else 0.0
+            pair = symbol
+            if symbol not in STABLE_COINS:
+                pair = symbol if "/" in symbol or symbol.endswith("USD") else f"{symbol}ZUSD"
+                try:
+                    quote = broker_client.get_latest_crypto_quote(pair)
+                    price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)))
+                except Exception:
+                    price = 0.0
             market_value = price * float(qty)
+            print(f"DBG Chart {symbol} ({pair}) qty={qty} price={price} value={market_value}")
             if market_value > 0:
                 chart_data.append({
                     "name": symbol,
