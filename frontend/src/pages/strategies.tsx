@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import {
+  RefreshCw,
+  Target,
+  Plus,
+  Settings,
+  Edit2,
+  Trash2,
+  Pause,
+  Play,
+  X,
+} from 'lucide-react';
 import api from '../services/api';
 import EquityCurveChart, { type EquityPoint } from '../components/EquityCurveChart';
 
@@ -30,9 +40,6 @@ const StrategiesPage: React.FC = () => {
   const [form, setForm] = useState({ name: '', description: '' });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
-  const [metricsStrategy, setMetricsStrategy] = useState<Strategy | null>(null);
-  const [metrics, setMetrics] = useState<StrategyMetrics | null>(null);
-  const [metricsLoading, setMetricsLoading] = useState(false);
   const [tabMetrics, setTabMetrics] = useState<StrategyMetrics | null>(null);
   const [tabMetricsLoading, setTabMetricsLoading] = useState(false);
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
@@ -41,6 +48,7 @@ const StrategiesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'analysis' | 'metrics' | 'settings'>(
     'analysis'
   );
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadStrategies = async () => {
     try {
@@ -89,43 +97,59 @@ const StrategiesPage: React.FC = () => {
         const res = await api.strategies.create(form);
         if (!res.ok) throw new Error('Failed to create strategy');
       }
+
       setForm({ name: '', description: '' });
       setEditingId(null);
-      loadStrategies();
+      setShowCreateModal(false);
+      await loadStrategies();
     } catch (e) {
       console.error('Error saving strategy:', e);
     }
   };
 
-  const handleEdit = (strategy: Strategy) => {
-    setForm({ name: strategy.name, description: strategy.description || '' });
-    setEditingId(strategy.id);
-  };
-
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this strategy?')) return;
+    const strategy = strategies.find((s) => s.id === id);
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${strategy?.name}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
     try {
       const res = await api.strategies.delete(id);
       if (!res.ok) throw new Error('Failed to delete strategy');
-      loadStrategies();
+
+      if (selectedStrategy?.id === id) {
+        const remaining = strategies.filter((s) => s.id !== id);
+        setSelectedStrategy(remaining.length > 0 ? remaining[0] : null);
+      }
+
+      await loadStrategies();
     } catch (e) {
       console.error('Error deleting strategy:', e);
     }
   };
 
-  const viewMetrics = async (strategy: Strategy) => {
-    setMetricsStrategy(strategy);
-    setMetrics(null);
-    setMetricsLoading(true);
+  const handleToggleActive = async (id: number) => {
     try {
-      const res = await api.strategies.metrics(strategy.id);
-      if (!res.ok) throw new Error('Failed to load metrics');
-      const data = await res.json();
-      setMetrics(data);
+      const strategy = strategies.find((s) => s.id === id);
+      const res = await api.strategies.update(id, {
+        ...strategy,
+        is_active: !strategy?.is_active,
+      });
+      if (!res.ok) throw new Error('Failed to toggle strategy');
+
+      setStrategies((prev) =>
+        prev.map((s) =>
+          s.id === id ? { ...s, is_active: !s.is_active } : s
+        )
+      );
+
+      if (selectedStrategy?.id === id) {
+        setSelectedStrategy((prev) =>
+          prev ? { ...prev, is_active: !prev.is_active } : null
+        );
+      }
     } catch (e) {
-      console.error('Error loading metrics:', e);
-    } finally {
-      setMetricsLoading(false);
+      console.error('Error toggling strategy:', e);
     }
   };
 
@@ -165,47 +189,112 @@ const StrategiesPage: React.FC = () => {
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Strategies</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <Target className="h-8 w-8 text-blue-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Strategies</h1>
+            <p className="text-sm text-gray-500">{strategies.length} strategies configured</p>
+          </div>
+        </div>
 
-      <form onSubmit={handleSubmit} className="bg-white p-4 rounded-xl shadow mb-8 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg p-2"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg p-2"
-          />
-        </div>
-        <div className="flex space-x-2">
-          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg">
-            {editingId ? 'Update' : 'Create'}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Strategy</span>
           </button>
-          {editingId && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(null);
-                setForm({ name: '', description: '' });
-              }}
-              className="bg-gray-200 px-4 py-2 rounded-lg"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-      </form>
 
-      {strategies.length > 0 && (
+          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+            <Settings className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">
+                {editingId ? 'Edit Strategy' : 'Create New Strategy'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setEditingId(null);
+                  setForm({ name: '', description: '' });
+                }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="submit"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                >
+                  {editingId ? 'Update' : 'Create'}
+                </button>
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingId(null);
+                      setForm({ name: '', description: '' });
+                      setShowCreateModal(false);
+                    }}
+                    className="bg-gray-200 px-4 py-2 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex flex-col items-center py-12">
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mb-2" />
+          <p className="text-gray-600">Loading strategies...</p>
+        </div>
+      ) : strategies.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-xl">
+          <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No strategies yet</h3>
+          <p className="text-gray-500 mb-6">Create your first trading strategy to get started</p>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+          >
+            Create Strategy
+          </button>
+        </div>
+      ) : (
         <>
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">Select Strategy</label>
@@ -414,72 +503,61 @@ const StrategiesPage: React.FC = () => {
                   <p>Strategy settings will be available here</p>
                 )}
               </div>
+
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Quick Actions</h4>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingId(selectedStrategy.id);
+                      setForm({
+                        name: selectedStrategy.name,
+                        description: selectedStrategy.description || '',
+                      });
+                      setShowCreateModal(true);
+                    }}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    <Edit2 className="h-4 w-4 mr-1" />
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => handleToggleActive(selectedStrategy.id)}
+                    className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm ${
+                      selectedStrategy.is_active
+                        ? 'border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100'
+                        : 'border-green-300 text-green-700 bg-green-50 hover:bg-green-100'
+                    }`}
+                  >
+                    {selectedStrategy.is_active ? (
+                      <>
+                        <Pause className="h-4 w-4 mr-1" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-1" />
+                        Resume
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(selectedStrategy.id)}
+                    className="inline-flex items-center px-3 py-2 border border-red-300 rounded-lg text-sm text-red-700 bg-red-50 hover:bg-red-100"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+
             </div>
           )}
         </>
       )}
 
-      {loading ? (
-        <p>Loading strategies...</p>
-      ) : strategies.length === 0 ? (
-        <p>No strategies found.</p>
-      ) : (
-        <div className="overflow-x-auto border rounded-xl bg-white shadow-sm">
-          <table className="min-w-full text-sm text-left text-gray-600">
-            <thead className="bg-gray-100 text-gray-700 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {strategies.map((s) => (
-                <tr key={s.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2 font-medium">{s.name}</td>
-                  <td className="px-4 py-2">{s.description || '--'}</td>
-                  <td className="px-4 py-2 space-x-2">
-                    <button onClick={() => handleEdit(s)} className="text-blue-600 hover:underline">
-                      Edit
-                    </button>
-                    <button onClick={() => handleDelete(s.id)} className="text-red-600 hover:underline">
-                      Delete
-                    </button>
-                    <button onClick={() => viewMetrics(s)} className="text-indigo-600 hover:underline">
-                      Metrics
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {metricsStrategy && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-xl w-96 shadow-lg">
-            <h3 className="text-lg font-semibold mb-4">Metrics for {metricsStrategy.name}</h3>
-            {metricsLoading ? (
-              <p>Loading metrics...</p>
-            ) : metrics ? (
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li>Total P/L: {metrics.total_pl.toFixed(2)}</li>
-                <li>Win Rate: {(metrics.win_rate * 100).toFixed(2)}%</li>
-                <li>Profit Factor: {metrics.profit_factor.toFixed(2)}</li>
-                <li>Drawdown: {metrics.drawdown.toFixed(2)}</li>
-              </ul>
-            ) : (
-              <p>No metrics available.</p>
-            )}
-            <button
-              onClick={() => { setMetricsStrategy(null); setMetrics(null); }}
-              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
