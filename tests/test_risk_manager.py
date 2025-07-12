@@ -1,67 +1,39 @@
-import math
-from datetime import datetime
-import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest
 
-os.environ.setdefault('SECRET_KEY', 'secret')
-
-from app.database import Base
-from app.models.trades import Trade
 from app.services.risk_manager import RiskManager
 
 
-def _setup_session(wins: int, losses: int):
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    now = datetime.utcnow()
-    for _ in range(wins):
-        trade = Trade(
-            strategy_id="s",
-            symbol="AAPL",
-            action="buy",
-            quantity=1,
-            entry_price=100,
-            exit_price=110,
-            status="closed",
-            pnl=10,
-            opened_at=now,
-            closed_at=now,
-        )
-        session.add(trade)
-    for _ in range(losses):
-        trade = Trade(
-            strategy_id="s",
-            symbol="AAPL",
-            action="buy",
-            quantity=1,
-            entry_price=100,
-            exit_price=90,
-            status="closed",
-            pnl=-10,
-            opened_at=now,
-            closed_at=now,
-        )
-        session.add(trade)
-    session.commit()
-    return session, sessionmaker(bind=engine)
+def test_smart_allocation_no_positions(monkeypatch):
+    rm = RiskManager()
+    monkeypatch.setattr(rm, "_get_open_positions_count", lambda: 0)
+    qty = rm.calculate_optimal_position_size(price=100, buying_power=900, symbol="BTC/USD")
+    assert qty == pytest.approx(3.0)
 
 
-def test_risk_manager_default_percentage():
-    session, factory = _setup_session(5, 5)
-    rm = RiskManager(session_factory=factory)
-    qty = rm.calculate_optimal_position_size(price=100, buying_power=1000)
-    assert math.isclose(qty, 1.4, rel_tol=1e-6)
-    session.close()
+def test_smart_allocation_with_positions(monkeypatch):
+    rm = RiskManager()
+    monkeypatch.setattr(rm, "_get_open_positions_count", lambda: 2)
+    qty = rm.calculate_optimal_position_size(price=100, buying_power=1000, symbol="ETH/USD")
+    assert qty == pytest.approx(2.0)
 
 
-def test_risk_manager_with_monte_carlo():
-    # 33 wins, 27 losses -> win rate 55%, R=1 -> kelly ~= 0.10
-    session, factory = _setup_session(33, 27)
-    rm = RiskManager(session_factory=factory)
-    qty = rm.calculate_optimal_position_size(price=100, buying_power=1000)
-    assert math.isclose(qty, 1.0, rel_tol=1e-6)
-    session.close()
+def test_minimum_validation(monkeypatch):
+    rm = RiskManager()
+    monkeypatch.setattr(rm, "_get_open_positions_count", lambda: 0)
+    # price so high that calculated quantity is below minimum
+    qty = rm.calculate_optimal_position_size(price=1_000_000, buying_power=100, symbol="BTC/USD")
+    assert qty == 0.0
+    # price such that quantity exceeds minimum
+    qty2 = rm.calculate_optimal_position_size(price=50000, buying_power=100, symbol="BTC/USD")
+    assert qty2 > 0.0
+
+
+def test_reserved_slots_configuration():
+    rm = RiskManager()
+    rm.set_reserved_slots(5)
+    assert rm.reserved_slots == 5
+    with pytest.raises(ValueError):
+        rm.set_reserved_slots(0)
+    with pytest.raises(ValueError):
+        rm.set_reserved_slots(11)
 

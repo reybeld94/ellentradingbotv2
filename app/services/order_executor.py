@@ -38,14 +38,12 @@ class OrderExecutor:
         return mapped
 
     def calculate_position_size(self, symbol, action):
-        """Calcular tamaño de posición delegando en el RiskManager"""
+        """Calcular tamaño de posición usando el RiskManager"""
         print(f"💰 Calculating position size for {symbol} ({action})")
-        print(f"🔍 Is crypto: {self.is_crypto(symbol)}")
 
         account = self.broker.get_account()
         buying_power = float(account.buying_power)
         print(f"💰 Account buying power: ${buying_power:,.2f}")
-
 
         mapped_symbol = self.map_symbol(symbol)
         final_symbol = mapped_symbol
@@ -70,14 +68,20 @@ class OrderExecutor:
         is_fractionable = self.broker.is_asset_fractionable(final_symbol)
         print(f"🔍 Asset {final_symbol} is fractionable: {is_fractionable}")
 
-        # Delegar a RiskManager para obtener cantidad base
         from app.services.risk_manager import risk_manager
 
         base_qty = risk_manager.calculate_optimal_position_size(
             price=current_price,
             buying_power=buying_power,
+            symbol=mapped_symbol,
         )
-        print(f"📐 Risk manager base quantity: {base_qty}")
+
+        if base_qty == 0:
+            raise ValueError(
+                f"Insufficient capital for minimum quantity in {mapped_symbol}"
+            )
+
+        print(f"📐 Smart allocation quantity: {base_qty}")
 
         if self.is_crypto(symbol) or is_fractionable:
             final_quantity = max(0.000001, round(base_qty, 6))
