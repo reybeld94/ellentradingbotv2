@@ -72,7 +72,10 @@ async def delete_strategy(
     db.commit()
     return None
 
-@router.get("/strategies/{strategy_id}/metrics")
+from app.schemas.metrics import StrategyMetricsSchema
+
+
+@router.get("/strategies/{strategy_id}/metrics", response_model=StrategyMetricsSchema)
 async def get_strategy_metrics(
     strategy_id: str,
     db: Session = Depends(get_db),
@@ -80,11 +83,18 @@ async def get_strategy_metrics(
 ):
     """Return trading metrics for a given strategy."""
     service = TradeService(db)
+    wl = service.calculate_avg_win_loss(strategy_id)
     return {
         "strategy_id": strategy_id,
         "total_pl": service.calculate_total_pl(strategy_id),
         "win_rate": service.calculate_win_rate(strategy_id),
         "profit_factor": service.calculate_profit_factor(strategy_id),
         "drawdown": service.calculate_drawdown(strategy_id),
+        "sharpe_ratio": service.calculate_sharpe_ratio(strategy_id),
+        "sortino_ratio": service.calculate_sortino_ratio(strategy_id),
+        "avg_win": wl["avg_win"],
+        "avg_loss": wl["avg_loss"],
+        "win_loss_ratio": wl["win_loss_ratio"],
+        "expectancy": service.calculate_expectancy(strategy_id),
     }
 
