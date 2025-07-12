@@ -104,6 +104,16 @@ export const api = {
     },
   },
 
+  // Risk endpoints
+  risk: {
+    getStatus: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/risk/status`);
+    },
+    getAllocationChart: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/risk/allocation-chart`);
+    },
+  },
+
   // Strategy endpoints
   strategies: {
     list: async () => {

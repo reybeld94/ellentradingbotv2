@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   BarChart3, Activity, List, Settings, Menu, X, LogOut, User,
   Home, Briefcase, Bell, ChevronRight,
-  RefreshCw, Target
+  RefreshCw, Target, Shield
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
@@ -13,9 +13,10 @@ import OrdersPage from './pages/orders';
 import Profile from './pages/Profile';
 import TradesPage from './pages/trades';
 import StrategiesPage from './pages/strategies';
+import RiskDashboard from './pages/RiskDashboard';
 
 // Tipos para las páginas
-type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'settings';
+type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'risk' | 'settings';
 
 // Componente de navegación mejorado
 const Sidebar: React.FC<{
@@ -62,6 +63,13 @@ const Sidebar: React.FC<{
       name: 'Strategies',
       icon: Target,
       description: 'Strategy configs',
+      badge: null
+    },
+    {
+      id: 'risk' as Page,
+      name: 'Risk',
+      icon: Shield,
+      description: 'Risk management',
       badge: null
     },
     {
@@ -331,6 +339,8 @@ const AuthenticatedApp: React.FC = () => {
         return <TradesPage />;
       case 'strategies':
         return <StrategiesPage />;
+      case 'risk':
+        return <RiskDashboard />;
       case 'settings':
         return <Profile />;
       default:
