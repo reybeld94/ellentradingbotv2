@@ -16,6 +16,12 @@ interface StrategyMetrics {
   win_rate: number;
   profit_factor: number;
   drawdown: number;
+  sharpe_ratio: number;
+  sortino_ratio: number;
+  avg_win: number;
+  avg_loss: number;
+  win_loss_ratio: number;
+  expectancy: number;
 }
 
 const StrategiesPage: React.FC = () => {
@@ -27,6 +33,8 @@ const StrategiesPage: React.FC = () => {
   const [metricsStrategy, setMetricsStrategy] = useState<Strategy | null>(null);
   const [metrics, setMetrics] = useState<StrategyMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
+  const [tabMetrics, setTabMetrics] = useState<StrategyMetrics | null>(null);
+  const [tabMetricsLoading, setTabMetricsLoading] = useState(false);
   const [equityCurve, setEquityCurve] = useState<EquityPoint[]>([]);
   const [equityLoading, setEquityLoading] = useState(false);
   const [equityError, setEquityError] = useState<string | null>(null);
@@ -64,6 +72,12 @@ const StrategiesPage: React.FC = () => {
       setEquityCurve([]);
     }
   }, [selectedStrategy]);
+
+  useEffect(() => {
+    if (activeTab === 'metrics' && selectedStrategy) {
+      fetchMetricsForTab(selectedStrategy.id);
+    }
+  }, [activeTab, selectedStrategy]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +126,21 @@ const StrategiesPage: React.FC = () => {
       console.error('Error loading metrics:', e);
     } finally {
       setMetricsLoading(false);
+    }
+  };
+
+  const fetchMetricsForTab = async (strategyId: number) => {
+    setTabMetrics(null);
+    setTabMetricsLoading(true);
+    try {
+      const res = await api.strategies.metrics(strategyId);
+      if (!res.ok) throw new Error('Failed to load metrics');
+      const data = await res.json();
+      setTabMetrics(data);
+    } catch (e) {
+      console.error('Error loading metrics:', e);
+    } finally {
+      setTabMetricsLoading(false);
     }
   };
 
@@ -250,7 +279,136 @@ const StrategiesPage: React.FC = () => {
                   </>
                 )}
                 {activeTab === 'metrics' && (
-                  <p>Metrics will be available here</p>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Return Metrics */}
+                      <div>
+                        <h3 className="font-semibold flex items-center gap-1 mb-2">
+                          <span>📈</span> Return Metrics
+                        </h3>
+                        <div className="space-y-2">
+                          <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Total accumulated profit or loss">
+                            <span>Total P&amp;L:</span>
+                            {tabMetricsLoading ? (
+                              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                            ) : (
+                              <span className={`${tabMetrics && tabMetrics.total_pl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {tabMetrics ? tabMetrics.total_pl.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : '--'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Average expected profit or loss per trade">
+                            <span>Expectancy:</span>
+                            {tabMetricsLoading ? (
+                              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                            ) : (
+                              <span className={`${tabMetrics && tabMetrics.expectancy >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {tabMetrics ? tabMetrics.expectancy.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : '--'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Risk Metrics */}
+                      <div>
+                        <h3 className="font-semibold flex items-center gap-1 mb-2">
+                          <span>📊</span> Risk Metrics
+                        </h3>
+                        <div className="space-y-2">
+                          <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Largest peak-to-trough decline">
+                            <span>Max DD:</span>
+                            {tabMetricsLoading ? (
+                              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                            ) : (
+                              <span className={`text-red-600`}>
+                                {tabMetrics ? tabMetrics.drawdown.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : '--'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Return adjusted by volatility">
+                            <span>Sharpe:</span>
+                            {tabMetricsLoading ? (
+                              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                            ) : (
+                              <span className={`${tabMetrics && tabMetrics.sharpe_ratio >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {tabMetrics ? tabMetrics.sharpe_ratio.toFixed(2) : '--'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Return adjusted by downside risk">
+                            <span>Sortino:</span>
+                            {tabMetricsLoading ? (
+                              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                            ) : (
+                              <span className={`${tabMetrics && tabMetrics.sortino_ratio >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {tabMetrics ? tabMetrics.sortino_ratio.toFixed(2) : '--'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Trade Metrics */}
+                    <div>
+                      <h3 className="font-semibold flex items-center gap-1 mb-2">
+                        <span>🎯</span> Trade Metrics
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Percentage of winning trades">
+                          <span>Win Rate:</span>
+                          {tabMetricsLoading ? (
+                            <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                          ) : (
+                            <span className={`${tabMetrics && tabMetrics.win_rate >= 0.5 ? 'text-green-600' : 'text-red-600'}`}>
+                              {tabMetrics ? `${(tabMetrics.win_rate * 100).toFixed(1)}%` : '--'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Gross profit divided by gross loss">
+                          <span>Profit Factor:</span>
+                          {tabMetricsLoading ? (
+                            <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                          ) : (
+                            <span className={`${tabMetrics && tabMetrics.profit_factor >= 1 ? 'text-green-600' : 'text-red-600'}`}>
+                              {tabMetrics ? tabMetrics.profit_factor.toFixed(2) : '--'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Average profit of winning trades">
+                          <span>Avg Win:</span>
+                          {tabMetricsLoading ? (
+                            <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                          ) : (
+                            <span className="text-green-600">
+                              {tabMetrics ? tabMetrics.avg_win.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : '--'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Average loss of losing trades">
+                          <span>Avg Loss:</span>
+                          {tabMetricsLoading ? (
+                            <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                          ) : (
+                            <span className="text-red-600">
+                              {tabMetrics ? `-${tabMetrics.avg_loss.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}` : '--'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4 bg-white rounded-xl shadow flex justify-between" title="Average win to average loss ratio">
+                          <span>Win/Loss:</span>
+                          {tabMetricsLoading ? (
+                            <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                          ) : (
+                            <span className={`${tabMetrics && tabMetrics.win_loss_ratio >= 1 ? 'text-green-600' : 'text-red-600'}`}>
+                              {tabMetrics ? tabMetrics.win_loss_ratio.toFixed(2) : '--'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
                 {activeTab === 'settings' && (
                   <p>Strategy settings will be available here</p>
