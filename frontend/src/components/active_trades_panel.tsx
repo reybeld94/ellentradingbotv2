@@ -20,6 +20,7 @@ interface Trade {
   opened_at: string;
   closed_at: string | null;
   pnl: number | null;
+  exchange?: string;
 }
 
 type Side = 'LONG' | 'SHORT';
@@ -44,6 +45,8 @@ interface ActiveTradesPanelProps {
 const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   const [showPnL, setShowPnL] = useState(true);
 
+  const DEFAULT_EXCHANGE = import.meta.env.VITE_DEFAULT_EXCHANGE || 'Alpaca';
+
   const processedTrades: ProcessedTrade[] = trades.map((t) => {
     const pnl = t.pnl ?? 0;
     const currentPrice = t.entry_price + pnl / t.quantity;
@@ -59,7 +62,7 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
       pnl,
       pnlPercent,
       openTime: new Date(t.opened_at).toLocaleTimeString(),
-      exchange: 'Alpaca',
+      exchange: t.exchange ?? DEFAULT_EXCHANGE,
     };
   });
 
@@ -79,7 +82,9 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   };
 
   const getExchangeColor = (exchange: string) => {
-    return exchange === 'Alpaca' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
+    if (exchange === 'Alpaca') return 'bg-blue-100 text-blue-800';
+    if (exchange === 'Kraken') return 'bg-purple-100 text-purple-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   const formatPrice = (price: number) => {
