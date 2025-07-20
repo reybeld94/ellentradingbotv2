@@ -18,14 +18,27 @@ def _get_fernet():
 
 
 def create_portfolio(
-    db: Session, user: User, name: str, api_key: str, secret_key: str, base_url: str
+    db: Session,
+    user: User,
+    name: str,
+    api_key: str,
+    secret_key: str,
+    base_url: str,
+    broker: str | None = None,
 ) -> Portfolio:
     f = _get_fernet()
+    if broker is None:
+        url_lower = base_url.lower()
+        if "alpaca" in url_lower:
+            broker = "alpaca"
+        else:
+            broker = "kraken"
     portfolio = Portfolio(
         name=name,
         api_key_encrypted=f.encrypt(api_key.encode()).decode(),
         secret_key_encrypted=f.encrypt(secret_key.encode()).decode(),
         base_url=base_url,
+        broker=broker,
         user_id=user.id,
     )
     db.add(portfolio)

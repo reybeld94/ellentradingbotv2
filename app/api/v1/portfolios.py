@@ -42,6 +42,7 @@ def create_portfolio(
         portfolio.api_key,
         portfolio.secret_key,
         portfolio.base_url,
+        portfolio.broker,
     )
     return portfolio_obj
 
