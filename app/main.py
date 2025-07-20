@@ -12,6 +12,7 @@ from app.api.v1 import risk
 from app.api.ws import router as ws_router
 from app.database import SessionLocal
 from app.services import portfolio_service
+from app.integrations import refresh_broker_client
 
 app = FastAPI(
     title=settings.app_name,
@@ -47,6 +48,7 @@ async def start_streams():
         portfolio_service.get_active(db)
     finally:
         db.close()
+    refresh_broker_client()
 
 @app.get("/")
 async def root():
