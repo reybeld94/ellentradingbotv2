@@ -3,6 +3,7 @@ from app.models.portfolio import Portfolio
 from app.models.user import User
 from app.config import settings
 from app.integrations.kraken.client import kraken_client
+from app.integrations.alpaca.client import alpaca_client
 from app.integrations import refresh_broker_client
 import base64
 import hashlib
@@ -55,10 +56,16 @@ def get_active(db: Session, user: User | None = None) -> Portfolio | None:
     active = query.filter_by(is_active=True).first()
     if active:
         settings.update_from_portfolio(active)
-        kraken_client.refresh()
+        if settings.active_broker == "alpaca":
+            alpaca_client.refresh()
+        else:
+            kraken_client.refresh()
     else:
         settings.clear_kraken_credentials()
-        kraken_client.refresh()
+        if settings.active_broker == "alpaca":
+            alpaca_client.refresh()
+        else:
+            kraken_client.refresh()
     refresh_broker_client()
     return active
 
@@ -70,5 +77,8 @@ def activate_portfolio(db: Session, user: User, portfolio_id: int):
     db.commit()
     active = db.query(Portfolio).filter_by(id=portfolio_id, user_id=user.id).first()
     settings.update_from_portfolio(active)
-    kraken_client.refresh()
+    if settings.active_broker == "alpaca":
+        alpaca_client.refresh()
+    else:
+        kraken_client.refresh()
     refresh_broker_client()
