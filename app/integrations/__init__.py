@@ -4,6 +4,8 @@ from .alpaca import alpaca_client, alpaca_stream
 from .kraken import kraken_client, kraken_stream
 from app.config import settings
 
+__all__ = ["broker_client", "broker_stream", "refresh_broker_client"]
+
 
 broker_client = kraken_client
 broker_stream = kraken_stream
