@@ -15,3 +15,4 @@ pytest-asyncio==0.21.1
 python-kraken-sdk==3.2.2
 websockets==15.0.1
 aiohttp==3.12.13
+alpaca-py==0.42.0
