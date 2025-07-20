@@ -19,6 +19,8 @@ restarts.
 Create a portfolio whose `base_url` contains `api.kraken.com` and provide your
 Kraken API and secret keys. The library `python-kraken-sdk` is required and
 listed in `requirements.txt`.
+For trading with Alpaca, install the stable `alpaca-trade-api` package,
+also included in `requirements.txt` and `app/requirements.txt`.
 
 Each user has a **position_limit** value determining how many open positions they
 may hold at once. The default limit is 7 and can be modified from the profile
