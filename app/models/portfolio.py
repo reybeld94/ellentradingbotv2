@@ -11,6 +11,7 @@ class Portfolio(Base):
     api_key_encrypted = Column(String(255), nullable=False)
     secret_key_encrypted = Column(String(255), nullable=False)
     base_url = Column(String(255), nullable=False)
+    broker = Column(String(20), nullable=False, default="kraken")
     is_active = Column(Boolean, default=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 

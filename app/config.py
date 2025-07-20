@@ -117,7 +117,11 @@ class Settings(BaseSettings):
             if base_url.endswith("/0"):
                 base_url = base_url[:-2]
 
-            if "alpaca.markets" in base_url:
+            broker = getattr(portfolio, "broker", None)
+            if not broker:
+                broker = "alpaca" if "alpaca.markets" in base_url else "kraken"
+
+            if broker == "alpaca":
                 self.alpaca_api_key = api_key
                 self.alpaca_secret_key = secret_key
                 self.alpaca_base_url = base_url
