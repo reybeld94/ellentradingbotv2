@@ -6,6 +6,7 @@ class PortfolioCreate(BaseModel):
     secret_key: str
     base_url: str
     broker: str | None = None
+    is_paper: bool | None = None
 
 
 class PortfolioResponse(BaseModel):
@@ -13,6 +14,7 @@ class PortfolioResponse(BaseModel):
     name: str
     is_active: bool
     broker: str | None = None
+    is_paper: bool | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -22,7 +22,11 @@ class AlpacaStream:
         key = getattr(settings, "alpaca_api_key", None)
         secret = getattr(settings, "alpaca_secret_key", None)
         if key and secret:
-            self._stream = TradingStream(key, secret, paper=True)
+            base_url = getattr(settings, "alpaca_base_url", None) or ""
+            paper_mode = getattr(settings, "alpaca_paper", None)
+            if paper_mode is None:
+                paper_mode = "paper" in base_url.lower()
+            self._stream = TradingStream(key, secret, paper=paper_mode)
         else:
             self._stream = None
 

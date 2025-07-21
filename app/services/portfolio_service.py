@@ -25,6 +25,7 @@ def create_portfolio(
     secret_key: str,
     base_url: str,
     broker: str | None = None,
+    is_paper: bool | None = None,
 ) -> Portfolio:
     f = _get_fernet()
     if broker is None:
@@ -33,12 +34,15 @@ def create_portfolio(
             broker = "alpaca"
         else:
             broker = "kraken"
+    if is_paper is None and broker == "alpaca":
+        is_paper = "paper" in base_url.lower()
     portfolio = Portfolio(
         name=name,
         api_key_encrypted=f.encrypt(api_key.encode()).decode(),
         secret_key_encrypted=f.encrypt(secret_key.encode()).decode(),
         base_url=base_url,
         broker=broker,
+        is_paper=is_paper,
         user_id=user.id,
     )
     db.add(portfolio)
