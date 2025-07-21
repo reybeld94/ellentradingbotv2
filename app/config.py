@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     alpaca_api_key: Optional[str] = None
     alpaca_secret_key: Optional[str] = None
     alpaca_base_url: str = "https://paper-api.alpaca.markets"
+    alpaca_paper: bool = True
 
     # Active broker identifier
     active_broker: Optional[str] = None
@@ -120,11 +121,15 @@ class Settings(BaseSettings):
             broker = getattr(portfolio, "broker", None)
             if not broker:
                 broker = "alpaca" if "alpaca.markets" in base_url else "kraken"
+            paper = getattr(portfolio, "is_paper", None)
+            if paper is None and broker == "alpaca":
+                paper = "paper" in base_url.lower()
 
             if broker == "alpaca":
                 self.alpaca_api_key = api_key
                 self.alpaca_secret_key = secret_key
                 self.alpaca_base_url = base_url
+                self.alpaca_paper = bool(paper)
                 self.kraken_api_key = None
                 self.kraken_secret_key = None
                 self.active_broker = "alpaca"
@@ -134,6 +139,7 @@ class Settings(BaseSettings):
                 self.kraken_base_url = base_url
                 self.alpaca_api_key = None
                 self.alpaca_secret_key = None
+                self.alpaca_paper = True
                 self.active_broker = "kraken"
 
     def __init__(self, **values):

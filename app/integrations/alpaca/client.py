@@ -31,11 +31,14 @@ class AlpacaClient:
         self.api_key = getattr(settings, "alpaca_api_key", None) or ""
         self.api_secret = getattr(settings, "alpaca_secret_key", None) or ""
         self.base_url = getattr(settings, "alpaca_base_url", None)
+        paper_mode = getattr(settings, "alpaca_paper", None)
+        if paper_mode is None:
+            paper_mode = "paper" in (self.base_url or "").lower()
         if self.api_key and self.api_secret:
             self._trading = TradingClient(
                 self.api_key,
                 self.api_secret,
-                paper=True,
+                paper=paper_mode,
                 url_override=self.base_url,
             )
             self._stock_data = StockHistoricalDataClient(self.api_key, self.api_secret)
