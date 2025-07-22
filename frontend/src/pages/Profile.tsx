@@ -25,6 +25,7 @@ import {
   Clock,
   Activity,
 } from "lucide-react";
+import api from "../services/api";
 
 const Profile: React.FC = () => {
   const { user, token, logout } = useAuth();
@@ -54,6 +55,7 @@ const Profile: React.FC = () => {
     null,
   );
   const [showPortfolioForm, setShowPortfolioForm] = useState(false);
+  const [editingPortfolio, setEditingPortfolio] = useState<number | null>(null);
   const [newPortfolio, setNewPortfolio] = useState({
     name: "",
     api_key: "",
@@ -64,12 +66,11 @@ const Profile: React.FC = () => {
 
   const API_BASE_URL = "/api/v1";
 
+
   React.useEffect(() => {
     const fetchPortfolios = async () => {
       if (!token) return;
-      const res = await fetch(`${API_BASE_URL}/portfolios`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.portfolios.list();
       if (res.ok) {
         const data = await res.json();
         setPortfolios(data);
@@ -82,31 +83,71 @@ const Profile: React.FC = () => {
 
   const changePortfolio = async (id: number) => {
     setSelectedPortfolio(id);
-    await fetch(`${API_BASE_URL}/portfolios/${id}/activate`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    await api.portfolios.activate(id);
+    setPortfolios((prev) =>
+      prev.map((p) => ({ ...p, is_active: p.id === id }))
+    );
   };
 
-  const createPortfolio = async () => {
-    const res = await fetch(`${API_BASE_URL}/portfolios`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(newPortfolio),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      await changePortfolio(data.id);
-      setPortfolios((prev) => [
-        ...prev.map((p) => ({ ...p, is_active: false })),
-        { id: data.id, name: data.name, is_active: true },
-      ]);
-      setShowPortfolioForm(false);
-      setNewPortfolio({ name: "", api_key: "", secret_key: "", base_url: "" });
+  const savePortfolio = async () => {
+    if (editingPortfolio) {
+      const payload: any = {};
+      if (newPortfolio.name) payload.name = newPortfolio.name;
+      if (newPortfolio.api_key) payload.api_key = newPortfolio.api_key;
+      if (newPortfolio.secret_key) payload.secret_key = newPortfolio.secret_key;
+      if (newPortfolio.base_url) payload.base_url = newPortfolio.base_url;
+      const res = await api.portfolios.update(editingPortfolio, payload);
+      if (res.ok) {
+        const data = await res.json();
+        setPortfolios((prev) =>
+          prev.map((p) => (p.id === data.id ? { ...p, name: data.name } : p))
+        );
+      }
+    } else {
+      const res = await api.portfolios.create(newPortfolio);
+      if (res.ok) {
+        const data = await res.json();
+        await changePortfolio(data.id);
+        setPortfolios((prev) => [
+          ...prev.map((p) => ({ ...p, is_active: false })),
+          { id: data.id, name: data.name, is_active: true },
+        ]);
+      }
     }
+    setShowPortfolioForm(false);
+    setEditingPortfolio(null);
+    setNewPortfolio({ name: "", api_key: "", secret_key: "", base_url: "" });
+  };
+
+  const deletePortfolio = async (id: number) => {
+    if (!confirm("Delete portfolio?")) return;
+    const res = await api.portfolios.delete(id);
+    if (res.ok) {
+      setPortfolios((prev) => prev.filter((p) => p.id !== id));
+      if (selectedPortfolio === id) {
+        setSelectedPortfolio(null);
+      }
+    }
+  };
+
+  const toggleActivePortfolio = async (id: number, active: boolean) => {
+    if (active) {
+      await api.portfolios.deactivate(id);
+      setPortfolios((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, is_active: false } : p))
+      );
+      if (selectedPortfolio === id) setSelectedPortfolio(null);
+    } else {
+      await changePortfolio(id);
+    }
+  };
+
+  const startEditPortfolio = (id: number) => {
+    const pf = portfolios.find((p) => p.id === id);
+    if (!pf) return;
+    setEditingPortfolio(id);
+    setNewPortfolio({ name: pf.name, api_key: "", secret_key: "", base_url: "" });
+    setShowPortfolioForm(true);
   };
 
   const savePositionLimit = async () => {
@@ -622,12 +663,46 @@ const Profile: React.FC = () => {
       <InfoCard
         title="Trading Portfolio"
         action={
-          <button
-            onClick={() => setShowPortfolioForm(!showPortfolioForm)}
-            className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg"
-          >
-            {showPortfolioForm ? "Cancel" : "Add"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setShowPortfolioForm(!showPortfolioForm);
+                if (!showPortfolioForm) setEditingPortfolio(null);
+              }}
+              className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg"
+            >
+              {showPortfolioForm ? "Cancel" : "Add"}
+            </button>
+            {selectedPortfolio && !showPortfolioForm && (
+              <>
+                <button
+                  onClick={() => startEditPortfolio(selectedPortfolio)}
+                  className="px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() =>
+                    toggleActivePortfolio(
+                      selectedPortfolio,
+                      portfolios.find((p) => p.id === selectedPortfolio)?.is_active ?? false,
+                    )
+                  }
+                  className="px-3 py-2 text-sm bg-gray-200 rounded-lg"
+                >
+                  {portfolios.find((p) => p.id === selectedPortfolio)?.is_active
+                    ? "Deactivate"
+                    : "Activate"}
+                </button>
+                <button
+                  onClick={() => deletePortfolio(selectedPortfolio)}
+                  className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg"
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
         }
       >
         <select
@@ -680,7 +755,7 @@ const Profile: React.FC = () => {
               className="w-full p-2 border border-gray-300 rounded"
             />
             <button
-              onClick={createPortfolio}
+              onClick={savePortfolio}
               className="px-4 py-2 bg-emerald-600 text-white rounded-lg"
             >
               Save

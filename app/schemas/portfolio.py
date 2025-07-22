@@ -9,6 +9,15 @@ class PortfolioCreate(BaseModel):
     is_paper: bool | None = None
 
 
+class PortfolioUpdate(BaseModel):
+    name: str | None = None
+    api_key: str | None = None
+    secret_key: str | None = None
+    base_url: str | None = None
+    broker: str | None = None
+    is_paper: bool | None = None
+
+
 class PortfolioResponse(BaseModel):
     id: int
     name: str

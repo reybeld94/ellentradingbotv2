@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from app.models.portfolio import Portfolio
 from app.models.user import User
 from app.config import settings
@@ -99,3 +100,54 @@ def activate_portfolio(db: Session, user: User, portfolio_id: int):
     else:
         kraken_client.refresh()
     refresh_broker_client()
+
+
+def deactivate_portfolio(db: Session, user: User, portfolio_id: int):
+    portfolio = (
+        db.query(Portfolio)
+        .filter_by(id=portfolio_id, user_id=user.id)
+        .first()
+    )
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    portfolio.is_active = False
+    db.commit()
+    get_active(db, user)
+
+
+def update_portfolio(db: Session, user: User, portfolio_id: int, **updates) -> Portfolio:
+    portfolio = (
+        db.query(Portfolio)
+        .filter_by(id=portfolio_id, user_id=user.id)
+        .first()
+    )
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    f = _get_fernet()
+    for field, value in updates.items():
+        if value is None:
+            continue
+        if field == "api_key":
+            portfolio.api_key_encrypted = f.encrypt(value.encode()).decode()
+        elif field == "secret_key":
+            portfolio.secret_key_encrypted = f.encrypt(value.encode()).decode()
+        elif hasattr(portfolio, field):
+            setattr(portfolio, field, value)
+    db.commit()
+    db.refresh(portfolio)
+    return portfolio
+
+
+def delete_portfolio(db: Session, user: User, portfolio_id: int):
+    portfolio = (
+        db.query(Portfolio)
+        .filter_by(id=portfolio_id, user_id=user.id)
+        .first()
+    )
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    was_active = portfolio.is_active
+    db.delete(portfolio)
+    db.commit()
+    if was_active:
+        get_active(db, user)
