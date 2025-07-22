@@ -114,6 +114,40 @@ export const api = {
     },
   },
 
+  // Portfolio endpoints
+  portfolios: {
+    list: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/portfolios`);
+    },
+    create: async (data: any) => {
+      return authenticatedFetch(`${API_BASE_URL}/portfolios`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    update: async (id: number, data: any) => {
+      return authenticatedFetch(`${API_BASE_URL}/portfolios/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    },
+    delete: async (id: number) => {
+      return authenticatedFetch(`${API_BASE_URL}/portfolios/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    activate: async (id: number) => {
+      return authenticatedFetch(`${API_BASE_URL}/portfolios/${id}/activate`, {
+        method: 'POST',
+      });
+    },
+    deactivate: async (id: number) => {
+      return authenticatedFetch(`${API_BASE_URL}/portfolios/${id}/deactivate`, {
+        method: 'POST',
+      });
+    },
+  },
+
   // Strategy endpoints
   strategies: {
     list: async () => {
