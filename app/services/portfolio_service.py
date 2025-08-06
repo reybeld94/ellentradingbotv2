@@ -120,6 +120,10 @@ def update_portfolio(db: Session, user: User, portfolio_id: int, **updates) -> P
             setattr(portfolio, field, value)
     db.commit()
     db.refresh(portfolio)
+    if portfolio.is_active:
+        settings.update_from_portfolio(portfolio)
+        alpaca_client.refresh()
+        refresh_broker_client()
     return portfolio
 
 
