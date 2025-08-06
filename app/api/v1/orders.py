@@ -84,7 +84,7 @@ async def get_account(
             "user": current_user.username,
         }
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/positions")
