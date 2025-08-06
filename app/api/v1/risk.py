@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
@@ -94,7 +94,7 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
         }
     except Exception as e:
         print(f"Error getting risk status: {e}")
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/risk/allocation-chart")
 async def get_allocation_chart_data(current_user: User = Depends(get_current_verified_user)):
@@ -134,7 +134,7 @@ async def get_allocation_chart_data(current_user: User = Depends(get_current_ver
             })
         return {"chart_data": chart_data}
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 def _get_symbol_color(symbol: str) -> str:
     colors = {
