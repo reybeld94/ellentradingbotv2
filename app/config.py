@@ -39,11 +39,6 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379"
 
-    # Kraken
-    kraken_api_key: Optional[str] = None
-    kraken_secret_key: Optional[str] = None
-    kraken_base_url: str = "https://api.kraken.com"
-
     # Alpaca
     alpaca_api_key: Optional[str] = None
     alpaca_secret_key: Optional[str] = None
@@ -51,7 +46,7 @@ class Settings(BaseSettings):
     alpaca_paper: bool = True
 
     # Active broker identifier
-    active_broker: Optional[str] = None
+    active_broker: Optional[str] = "alpaca"
 
     # App
     app_name: str = "Trading Bot"
@@ -74,22 +69,11 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = None
     from_email: Optional[str] = None
 
-    def clear_kraken_credentials(self) -> None:
-        """Reset credentials based on the currently active broker."""
-        if self.active_broker == "alpaca":
-            self.clear_alpaca_credentials()
-            return
-        self.kraken_api_key = None
-        self.kraken_secret_key = None
-        if self.active_broker == "kraken":
-            self.active_broker = None
-
     def clear_alpaca_credentials(self) -> None:
         """Reset Alpaca credentials."""
         self.alpaca_api_key = None
         self.alpaca_secret_key = None
-        if self.active_broker == "alpaca":
-            self.active_broker = None
+        self.active_broker = None
 
     def update_from_portfolio(self, portfolio) -> None:
         """Update API credentials from a Portfolio instance."""
@@ -118,29 +102,15 @@ class Settings(BaseSettings):
             if base_url.endswith("/0"):
                 base_url = base_url[:-2]
 
-            broker = getattr(portfolio, "broker", None)
-            if not broker:
-                broker = "alpaca" if "alpaca.markets" in base_url else "kraken"
             paper = getattr(portfolio, "is_paper", None)
-            if paper is None and broker == "alpaca":
+            if paper is None:
                 paper = "paper" in base_url.lower()
 
-            if broker == "alpaca":
-                self.alpaca_api_key = api_key
-                self.alpaca_secret_key = secret_key
-                self.alpaca_base_url = base_url
-                self.alpaca_paper = bool(paper)
-                self.kraken_api_key = None
-                self.kraken_secret_key = None
-                self.active_broker = "alpaca"
-            else:
-                self.kraken_api_key = api_key
-                self.kraken_secret_key = secret_key
-                self.kraken_base_url = base_url
-                self.alpaca_api_key = None
-                self.alpaca_secret_key = None
-                self.alpaca_paper = True
-                self.active_broker = "kraken"
+            self.alpaca_api_key = api_key
+            self.alpaca_secret_key = secret_key
+            self.alpaca_base_url = base_url
+            self.alpaca_paper = bool(paper)
+            self.active_broker = "alpaca"
 
     def __init__(self, **values):
         super().__init__(**values)

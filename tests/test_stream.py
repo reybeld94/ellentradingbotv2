@@ -37,8 +37,7 @@ def test_trade_update_triggers_broadcast(monkeypatch):
         messages.append(json.loads(msg))
     monkeypatch.setattr(ws_manager, 'broadcast', fake_broadcast)
 
-    client_attr = 'kraken_client' if hasattr(stream_module, 'kraken_client') else 'alpaca_client'
-    monkeypatch.setattr(getattr(stream_module, client_attr), 'get_account', lambda: DummyAccount())
+    monkeypatch.setattr(stream_module.alpaca_client, 'get_account', lambda: DummyAccount())
     monkeypatch.setattr(
         stream_module.position_manager,
         'get_portfolio_summary',

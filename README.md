@@ -1,6 +1,6 @@
 # EllenTradingBot v2
 
-This repository contains a trading bot built with FastAPI and uses Kraken as
+This repository contains a trading bot built with FastAPI and uses Alpaca as
 its trading broker.
 
 ## Configuration
@@ -16,11 +16,9 @@ generate a new key and store it in a `secret.key` file. Keeping this file
 around ensures that encrypted portfolio credentials remain decryptable across
 restarts.
 
-Create a portfolio whose `base_url` contains `api.kraken.com` and provide your
-Kraken API and secret keys. The library `python-kraken-sdk` is required and
-listed in `requirements.txt`.
-For trading with Alpaca, install the stable `alpaca-trade-api` package,
-also included in `requirements.txt` and `app/requirements.txt`.
+Create a portfolio using your Alpaca API credentials. The libraries
+`alpaca-trade-api` and `alpaca-py` are required and are included in
+`requirements.txt` and `app/requirements.txt`.
 
 Each user has a **position_limit** value determining how many open positions they
 may hold at once. The default limit is 7 and can be modified from the profile

@@ -22,7 +22,6 @@ python-jose[cryptography]==3.3.0
 cryptography==45.0.5
 passlib[bcrypt]==1.7.4
 werkzeug==3.0.1
-python-kraken-sdk==3.2.2
 alpaca-py==0.42.0
 alpaca-trade-api==3.2.0
 

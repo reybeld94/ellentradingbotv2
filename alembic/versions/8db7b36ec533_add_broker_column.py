@@ -22,7 +22,7 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.add_column(
         "portfolios",
-        sa.Column("broker", sa.String(length=20), nullable=False, server_default="kraken"),
+        sa.Column("broker", sa.String(length=20), nullable=False, server_default="alpaca"),
     )
     op.alter_column("portfolios", "broker", server_default=None)
 

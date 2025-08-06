@@ -3,7 +3,6 @@ from fastapi import HTTPException
 from app.models.portfolio import Portfolio
 from app.models.user import User
 from app.config import settings
-from app.integrations.kraken.client import kraken_client
 from app.integrations.alpaca.client import alpaca_client
 from app.integrations import refresh_broker_client
 import base64
@@ -25,24 +24,17 @@ def create_portfolio(
     api_key: str,
     secret_key: str,
     base_url: str,
-    broker: str | None = None,
     is_paper: bool | None = None,
 ) -> Portfolio:
     f = _get_fernet()
-    if broker is None:
-        url_lower = base_url.lower()
-        if "alpaca" in url_lower:
-            broker = "alpaca"
-        else:
-            broker = "kraken"
-    if is_paper is None and broker == "alpaca":
+    if is_paper is None:
         is_paper = "paper" in base_url.lower()
     portfolio = Portfolio(
         name=name,
         api_key_encrypted=f.encrypt(api_key.encode()).decode(),
         secret_key_encrypted=f.encrypt(secret_key.encode()).decode(),
         base_url=base_url,
-        broker=broker,
+        broker="alpaca",
         is_paper=is_paper,
         user_id=user.id,
     )
@@ -74,16 +66,10 @@ def get_active(db: Session, user: User | None = None) -> Portfolio | None:
     active = query.filter_by(is_active=True).first()
     if active:
         settings.update_from_portfolio(active)
-        if settings.active_broker == "alpaca":
-            alpaca_client.refresh()
-        else:
-            kraken_client.refresh()
+        alpaca_client.refresh()
     else:
-        settings.clear_kraken_credentials()
-        if settings.active_broker == "alpaca":
-            alpaca_client.refresh()
-        else:
-            kraken_client.refresh()
+        settings.clear_alpaca_credentials()
+        alpaca_client.refresh()
     refresh_broker_client()
     return active
 
@@ -95,10 +81,7 @@ def activate_portfolio(db: Session, user: User, portfolio_id: int):
     db.commit()
     active = db.query(Portfolio).filter_by(id=portfolio_id, user_id=user.id).first()
     settings.update_from_portfolio(active)
-    if settings.active_broker == "alpaca":
-        alpaca_client.refresh()
-    else:
-        kraken_client.refresh()
+    alpaca_client.refresh()
     refresh_broker_client()
 
 
@@ -131,6 +114,8 @@ def update_portfolio(db: Session, user: User, portfolio_id: int, **updates) -> P
             portfolio.api_key_encrypted = f.encrypt(value.encode()).decode()
         elif field == "secret_key":
             portfolio.secret_key_encrypted = f.encrypt(value.encode()).decode()
+        elif field == "broker":
+            continue
         elif hasattr(portfolio, field):
             setattr(portfolio, field, value)
     db.commit()
