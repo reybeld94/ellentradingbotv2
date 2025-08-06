@@ -1,6 +1,7 @@
 # backend/app/api/v1/orders.py
 
 from fastapi import APIRouter, Depends, HTTPException
+from alpaca.common.exceptions import APIError
 from sqlalchemy.orm import Session
 from app.integrations import broker_client
 from app.services.position_manager import position_manager
@@ -83,8 +84,13 @@ async def get_account(
             "day_trade_count": getattr(account, "day_trade_count", 0),
             "user": current_user.username,
         }
+    except APIError as e:
+        raise HTTPException(
+            status_code=e.status_code or 502,
+            detail=f"Alpaca API error: {e.message}",
+        )
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/positions")
@@ -98,8 +104,13 @@ async def get_positions(
         )
         portfolio_summary["user"] = current_user.username
         return portfolio_summary
+    except APIError as e:
+        raise HTTPException(
+            status_code=e.status_code or 502,
+            detail=f"Alpaca API error: {e.message}",
+        )
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/signals")

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from alpaca.common.exceptions import APIError
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
@@ -92,9 +93,15 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
             },
             "next_positions_simulation": next_positions_simulation,
         }
+    except APIError as e:
+        print(f"Error getting risk status: {e}")
+        raise HTTPException(
+            status_code=e.status_code or 502,
+            detail=f"Alpaca API error: {e.message}",
+        )
     except Exception as e:
         print(f"Error getting risk status: {e}")
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/risk/allocation-chart")
 async def get_allocation_chart_data(current_user: User = Depends(get_current_verified_user)):
@@ -133,8 +140,13 @@ async def get_allocation_chart_data(current_user: User = Depends(get_current_ver
                 "color": "#10B981",
             })
         return {"chart_data": chart_data}
+    except APIError as e:
+        raise HTTPException(
+            status_code=e.status_code or 502,
+            detail=f"Alpaca API error: {e.message}",
+        )
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 def _get_symbol_color(symbol: str) -> str:
     colors = {
