@@ -663,59 +663,69 @@ const Profile: React.FC = () => {
       <InfoCard
         title="Trading Portfolio"
         action={
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setShowPortfolioForm(!showPortfolioForm);
-                if (!showPortfolioForm) setEditingPortfolio(null);
-              }}
-              className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg"
-            >
-              {showPortfolioForm ? "Cancel" : "Add"}
-            </button>
-            {selectedPortfolio && !showPortfolioForm && (
-              <>
-                <button
-                  onClick={() => startEditPortfolio(selectedPortfolio)}
-                  className="px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() =>
-                    toggleActivePortfolio(
-                      selectedPortfolio,
-                      portfolios.find((p) => p.id === selectedPortfolio)?.is_active ?? false,
-                    )
-                  }
-                  className="px-3 py-2 text-sm bg-gray-200 rounded-lg"
-                >
-                  {portfolios.find((p) => p.id === selectedPortfolio)?.is_active
-                    ? "Deactivate"
-                    : "Activate"}
-                </button>
-                <button
-                  onClick={() => deletePortfolio(selectedPortfolio)}
-                  className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg"
-                >
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
+          <button
+            onClick={() => {
+              setShowPortfolioForm(!showPortfolioForm);
+              if (!showPortfolioForm) setEditingPortfolio(null);
+            }}
+            className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg"
+          >
+            {showPortfolioForm ? "Cancel" : "Add"}
+          </button>
         }
       >
-        <select
-          value={selectedPortfolio ?? ""}
-          onChange={(e) => changePortfolio(Number(e.target.value))}
-          className="w-full p-3 border border-gray-300 rounded-lg mb-4"
-        >
-          {portfolios.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="overflow-x-auto mb-4">
+          <table className="w-full text-sm text-left border border-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {portfolios.map((p) => (
+                <tr
+                  key={p.id}
+                  onClick={() => changePortfolio(p.id)}
+                  className={`cursor-pointer ${selectedPortfolio === p.id ? 'bg-blue-50' : ''}`}
+                >
+                  <td className="px-4 py-2">{p.name}</td>
+                  <td className="px-4 py-2">{p.is_active ? 'Active' : 'Inactive'}</td>
+                  <td className="px-4 py-2 space-x-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditPortfolio(p.id);
+                      }}
+                      className="px-2 py-1 text-xs bg-yellow-500 text-white rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleActivePortfolio(p.id, p.is_active);
+                      }}
+                      className="px-2 py-1 text-xs bg-gray-200 rounded"
+                    >
+                      {p.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deletePortfolio(p.id);
+                      }}
+                      className="px-2 py-1 text-xs bg-red-600 text-white rounded"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {showPortfolioForm && (
           <div className="space-y-2">
             <input
