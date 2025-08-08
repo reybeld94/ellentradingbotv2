@@ -97,7 +97,7 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
         print(f"Error getting risk status: {e}")
         raise HTTPException(
             status_code=e.status_code or 502,
-            detail=f"Alpaca API error: {e.message}",
+            detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
         )
     except Exception as e:
         print(f"Error getting risk status: {e}")
@@ -143,7 +143,7 @@ async def get_allocation_chart_data(current_user: User = Depends(get_current_ver
     except APIError as e:
         raise HTTPException(
             status_code=e.status_code or 502,
-            detail=f"Alpaca API error: {e.message}",
+            detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
