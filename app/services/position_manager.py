@@ -37,7 +37,7 @@ class PositionManager:
             return {pos.symbol: float(pos.qty) for pos in positions}
         except Exception as e:
             logger.error(f"Error getting positions: {e}")
-            return {}
+            raise
 
     def get_position_quantity(self, symbol):
         """Obtener cantidad específica de un símbolo"""
@@ -153,7 +153,7 @@ class PositionManager:
             }
         except Exception as e:
             logger.error(f"Error getting portfolio summary: {e}")
-            return {}
+            raise
 
 
 # Instancia global
