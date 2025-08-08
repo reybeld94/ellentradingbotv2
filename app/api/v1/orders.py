@@ -87,7 +87,7 @@ async def get_account(
     except APIError as e:
         raise HTTPException(
             status_code=e.status_code or 502,
-            detail=f"Alpaca API error: {e.message}",
+            detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -107,7 +107,7 @@ async def get_positions(
     except APIError as e:
         raise HTTPException(
             status_code=e.status_code or 502,
-            detail=f"Alpaca API error: {e.message}",
+            detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
