@@ -17,7 +17,9 @@ interface Account {
   portfolio_value: string;
   status: string;
   trading_blocked: boolean;
-  crypto_status: string;
+  crypto_status: string | boolean;
+  pattern_day_trader?: boolean;
+  day_trade_count?: number;
   user?: string;
 }
 
@@ -244,6 +246,10 @@ const StatsCard: React.FC<{
 
 // Component: System Status
 const SystemStatus: React.FC<{ account: Account | null }> = ({ account }) => {
+  const cryptoEnabled =
+    String(account?.crypto_status).toLowerCase() === 'active' ||
+    String(account?.crypto_status).toLowerCase() === 'true';
+
   const statusItems = [
     {
       name: 'Trading Account',
@@ -259,22 +265,40 @@ const SystemStatus: React.FC<{ account: Account | null }> = ({ account }) => {
     },
     {
       name: 'Crypto Trading',
-      status: account?.crypto_status === 'ACTIVE',
-      description: account?.crypto_status || 'Unknown',
+      status: cryptoEnabled,
+      description: cryptoEnabled ? 'Enabled' : 'Disabled',
       icon: Shield
+    },
+    {
+      name: 'Pattern Day Trader',
+      status: account?.pattern_day_trader ?? false,
+      description: account?.pattern_day_trader ? 'Yes' : 'No',
+      icon: AlertCircle
+    },
+    {
+      name: 'Day Trade Count',
+      status: (account?.day_trade_count ?? 0) < 3,
+      description: String(account?.day_trade_count ?? 0),
+      icon: Clock
     }
   ];
+
+  const overallStatus = statusItems.every(item => item.status);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">System Status</h3>
-        <div className="flex items-center text-emerald-600">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
-          <span className="text-sm font-medium">All Systems Operational</span>
+        <div className={`flex items-center ${overallStatus ? 'text-emerald-600' : 'text-red-600'}`}>
+          <div
+            className={`w-2 h-2 ${overallStatus ? 'bg-emerald-500' : 'bg-red-500'} rounded-full mr-2 animate-pulse`}
+          ></div>
+          <span className="text-sm font-medium">
+            {overallStatus ? 'All Systems Operational' : 'Issues Detected'}
+          </span>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {statusItems.map((item, index) => (
           <div key={index} className="flex items-center">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 ${
