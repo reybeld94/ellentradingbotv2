@@ -14,49 +14,9 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
   const [showBenchmark, setShowBenchmark] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Generar datos de ejemplo si no se proporcionan
-  const generateEquityData = () => {
-    const periods = timeframe === '1D' ? 48 : timeframe === '1W' ? 168 : timeframe === '1M' ? 720 : 2160;
-    const data = [];
-    let equity = initialEquity;
-    let maxEquity = initialEquity;
-    let benchmark = initialEquity;
-    
-    for (let i = 0; i < periods; i++) {
-      // Simular movimientos de equity más realistas
-      const volatility = 0.002;
-      const trend = 0.0001;
-      const change = (Math.random() - 0.48) * volatility + trend;
-      equity *= (1 + change);
-      
-      // Benchmark (S&P 500 aproximado)
-      const benchmarkChange = (Math.random() - 0.49) * 0.0015 + 0.00005;
-      benchmark *= (1 + benchmarkChange);
-      
-      // Calcular max equity y drawdown
-      if (equity > maxEquity) maxEquity = equity;
-      const drawdown = ((equity - maxEquity) / maxEquity) * 100;
-      
-      const now = new Date();
-      const timestamp = new Date(now.getTime() - (periods - i) * (timeframe === '1D' ? 30 : timeframe === '1W' ? 60 : 60) * 60000);
-      
-      data.push({
-        timestamp: timestamp.toISOString(),
-        time: timeframe === '1D' ? 
-          timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) :
-          timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        equity: parseFloat(equity.toFixed(2)),
-        drawdown: parseFloat(drawdown.toFixed(2)),
-        benchmark: parseFloat(benchmark.toFixed(2)),
-        maxEquity: parseFloat(maxEquity.toFixed(2))
-      });
-    }
-    return data;
-  };
-
   const augmentData = () => {
     if (!data || data.length === 0) {
-      return generateEquityData();
+      return [];
     }
 
     let maxEquity = initialEquity;
@@ -85,8 +45,20 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
   };
 
   const equityData = augmentData();
-  
 
+  if (equityData.length === 0) {
+    return (
+      <div
+        className={`bg-white rounded-xl shadow-lg border border-gray-200 ${
+          isFullscreen ? 'fixed inset-4 z-50' : 'p-6'
+        }`}
+      >
+        <div className="flex items-center justify-center h-64 text-gray-500">
+          Sin datos disponibles
+        </div>
+      </div>
+    );
+  }
 
   // Calcular métricas
   const currentEquity = equityData[equityData.length - 1]?.equity || initialEquity;
