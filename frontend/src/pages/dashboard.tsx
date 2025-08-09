@@ -476,10 +476,16 @@ const TradingDashboard: React.FC = () => {
 
       {/* Equity Curve */}
       <div className="mb-8">
-        <EquityCurvePro
-          data={equityCurve}
-          initialEquity={equityCurve.length ? equityCurve[0].equity : 10000}
-        />
+        {equityCurve.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 text-center text-gray-500">
+            Sin datos de equity disponibles
+          </div>
+        ) : (
+          <EquityCurvePro
+            data={equityCurve}
+            initialEquity={equityCurve[0].equity}
+          />
+        )}
       </div>
 
       {/* System Status */}
