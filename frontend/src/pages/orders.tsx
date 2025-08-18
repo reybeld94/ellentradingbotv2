@@ -6,6 +6,7 @@ import {
   ArrowUp, ArrowDown, Eye, MoreHorizontal, Target, PieChart
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
+import SymbolLogo from '../components/SymbolLogo';
 
 interface Order {
   id: string;
@@ -265,9 +266,7 @@ const OrdersPage: React.FC = () => {
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-              <span className="text-xs font-bold text-gray-600">{order.symbol.slice(0, 2)}</span>
-            </div>
+            <SymbolLogo symbol={order.symbol} className="mr-3" />
             <span className="text-sm font-semibold text-gray-900">{order.symbol}</span>
           </div>
         </td>

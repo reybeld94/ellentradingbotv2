@@ -7,6 +7,7 @@ import {
   ArrowUp, ArrowDown, Calendar, Eye, Settings2
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
+import SymbolLogo from '../components/SymbolLogo';
 
 interface Signal {
   id: number;
@@ -222,9 +223,7 @@ const SignalsPage: React.FC = () => {
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-              <span className="text-xs font-bold text-gray-600">{signal.symbol.slice(0, 2)}</span>
-            </div>
+            <SymbolLogo symbol={signal.symbol} className="mr-3" />
             <span className="text-sm font-semibold text-gray-900">{signal.symbol}</span>
           </div>
         </td>
