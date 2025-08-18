@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Shield, AlertTriangle, DollarSign, PieChart, Target, RefreshCw, Calculator } from 'lucide-react';
+import SymbolLogo from '../components/SymbolLogo';
 import api from '../services/api';
 
 interface RiskStatus {
@@ -204,11 +205,14 @@ const RiskDashboard: React.FC = () => {
                   key={position.symbol}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                 >
-                  <div>
-                    <p className="font-medium">{position.symbol}</p>
-                    <p className="text-sm text-gray-600">
-                      {position.quantity} units • {position.percentage.toFixed(1)}%
-                    </p>
+                  <div className="flex items-center">
+                    <SymbolLogo symbol={position.symbol} className="mr-3" />
+                    <div>
+                      <p className="font-medium">{position.symbol}</p>
+                      <p className="text-sm text-gray-600">
+                        {position.quantity} units • {position.percentage.toFixed(1)}%
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
@@ -245,11 +249,14 @@ const RiskDashboard: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{sim.symbol}</p>
-                    <p className="text-sm text-gray-600">
-                      @ ${sim.current_price.toLocaleString()}
-                    </p>
+                  <div className="flex items-center">
+                    <SymbolLogo symbol={sim.symbol} className="mr-3" />
+                    <div>
+                      <p className="font-medium">{sim.symbol}</p>
+                      <p className="text-sm text-gray-600">
+                        @ ${sim.current_price.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     {sim.can_enter ? (

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import Pagination from '../components/Pagination';
+import SymbolLogo from '../components/SymbolLogo';
 
 interface Trade {
   id: number;
@@ -90,7 +91,12 @@ const TradesPage: React.FC = () => {
                 {paginatedTrades.map((trade) => (
                   <tr key={trade.id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-2">{trade.strategy_id}</td>
-                    <td className="px-4 py-2">{trade.symbol}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center">
+                        <SymbolLogo symbol={trade.symbol} className="mr-2" size={24} />
+                        <span>{trade.symbol}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-2">{trade.action.toUpperCase()}</td>
                     <td className="px-4 py-2">{trade.quantity}</td>
                     <td className="px-4 py-2">${trade.entry_price.toFixed(2)}</td>

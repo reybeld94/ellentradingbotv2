@@ -1,5 +1,6 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import SymbolLogo from './SymbolLogo';
 
 interface Order {
   id: string;
@@ -31,7 +32,8 @@ const OrderItem: React.FC<{ order: Order }> = ({ order }) => {
     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
       <div className="flex items-center">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${sideBg}`}>{sideIcon}</div>
-        <div className="ml-3">
+        <SymbolLogo symbol={order.symbol} className="ml-3 mr-3" />
+        <div>
           <p className="font-semibold text-gray-900">{order.symbol}</p>
           <p className="text-sm text-gray-600">{order.qty} units</p>
         </div>

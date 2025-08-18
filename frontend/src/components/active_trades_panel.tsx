@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
+import SymbolLogo from './SymbolLogo';
 
 interface Trade {
   id: number;
@@ -137,6 +138,7 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
             {/* Primera fila: Symbol, Side, Exchange */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
+                <SymbolLogo symbol={trade.symbol} size={24} />
                 <span className="font-bold text-gray-800">{trade.symbol}</span>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSideBg(trade.side)} ${getSideColor(trade.side)}`}>
                   {trade.side}
