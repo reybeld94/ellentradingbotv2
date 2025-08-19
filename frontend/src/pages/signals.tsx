@@ -194,7 +194,11 @@ const SignalsPage: React.FC = () => {
         case 'processed':
           return <CheckCircle className="h-5 w-5 text-emerald-600" />;
         case 'error':
-          return <XCircle className="h-5 w-5 text-red-600" title={signal.error_message} />;
+          return (
+            <span title={signal.error_message}>
+              <XCircle className="h-5 w-5 text-red-600" />
+            </span>
+          );
         case 'pending':
           return <Clock className="h-5 w-5 text-yellow-600" />;
         default:
