@@ -77,10 +77,32 @@ class AlpacaClient:
             return None
 
     # --- Trading --------------------------------------------------------------
-    def submit_order(self, symbol, qty, side, order_type="market"):
+    def submit_order(self, symbol, qty, side, order_type="market", price=None):
         if not self._trading:
             raise RuntimeError("Alpaca API credentials not configured")
-        order = self._trading.submit_order(symbol=symbol, qty=qty, side=side, type=order_type)
+
+        from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
+        from alpaca.trading.enums import OrderSide, TimeInForce
+
+        order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
+
+        if order_type == "market":
+            order_data = MarketOrderRequest(
+                symbol=symbol,
+                qty=qty,
+                side=order_side,
+                time_in_force=TimeInForce.DAY,
+            )
+        else:
+            order_data = LimitOrderRequest(
+                symbol=symbol,
+                qty=qty,
+                side=order_side,
+                time_in_force=TimeInForce.DAY,
+                limit_price=price,
+            )
+
+        order = self._trading.submit_order(order_data)
         return SimpleNamespace(id=order.id, symbol=symbol, qty=qty, side=side, status=order.status)
 
     def submit_crypto_order(self, symbol, qty, side, order_type="market"):
