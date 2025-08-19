@@ -12,15 +12,10 @@ class RiskManager:
         self.reserved_slots = 3
         # Minimum quantities required per symbol
         self.symbol_minimums = {
-            "BTC/USD": 0.00005,
-            "ETH/USD": 0.002,
-            "SOL/USD": 0.02,
-            "BCH/USD": 0.01,
-            # TradingView format fallback
-            "BTCUSD": 0.00005,
-            "ETHUSD": 0.002,
-            "SOLUSD": 0.02,
-            "BCHUSD": 0.01,
+            "AAPL": 1,
+            "MSFT": 1,
+            "AMZN": 1,
+            "GOOG": 1,
         }
 
     def _get_open_positions_count(self) -> int:
