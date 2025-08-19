@@ -7,6 +7,7 @@ from app.core.auth import get_current_verified_user
 from app.services.risk_manager import risk_manager
 from app.services.position_manager import position_manager
 
+# Symbols that should be treated as cash equivalents
 STABLE_COINS = {"USD", "ZUSD", "USDC", "USDT"}
 
 router = APIRouter()
@@ -29,16 +30,14 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
             if abs(float(qty)) < 0.001:
                 continue
             price = 1.0 if symbol in STABLE_COINS else 0.0
-            pair = symbol
             if symbol not in STABLE_COINS:
-                pair = symbol if "/" in symbol or symbol.endswith("USD") else f"{symbol}ZUSD"
                 try:
-                    quote = broker_client.get_latest_crypto_quote(pair)
+                    quote = broker_client.get_latest_quote(symbol)
                     price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)))
                 except Exception:
                     price = 0.0
             market_value = price * float(qty)
-            print(f"DBG Position {symbol} ({pair}) qty={qty} price={price} value={market_value}")
+            print(f"DBG Position {symbol} qty={qty} price={price} value={market_value}")
             position_details.append({
                 "symbol": symbol,
                 "quantity": float(qty),
@@ -48,15 +47,12 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
             })
 
         # Simulate next positions
-        symbols_to_simulate = ["BTC/USD", "ETH/USD", "SOL/USD", "BCH/USD"]
+        symbols_to_simulate = ["AAPL", "MSFT", "AMZN", "GOOG"]
         next_positions_simulation = []
         for symbol in symbols_to_simulate:
             try:
-                if "/" in symbol:
-                    quote = broker_client.get_latest_crypto_quote(symbol)
-                    price = float(getattr(quote, "ask_price", getattr(quote, "ap", 100000)))
-                else:
-                    price = 50000
+                quote = broker_client.get_latest_quote(symbol)
+                price = float(getattr(quote, "ask_price", getattr(quote, "ap", 100000)))
                 simulated_qty = risk_manager.calculate_optimal_position_size(
                     price=price,
                     buying_power=buying_power,
@@ -117,16 +113,14 @@ async def get_allocation_chart_data(current_user: User = Depends(get_current_ver
             if float(qty) <= 0:
                 continue
             price = 1.0 if symbol in STABLE_COINS else 0.0
-            pair = symbol
             if symbol not in STABLE_COINS:
-                pair = symbol if "/" in symbol or symbol.endswith("USD") else f"{symbol}ZUSD"
                 try:
-                    quote = broker_client.get_latest_crypto_quote(pair)
+                    quote = broker_client.get_latest_quote(symbol)
                     price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)))
                 except Exception:
                     price = 0.0
             market_value = price * float(qty)
-            print(f"DBG Chart {symbol} ({pair}) qty={qty} price={price} value={market_value}")
+            print(f"DBG Chart {symbol} qty={qty} price={price} value={market_value}")
             if market_value > 0:
                 chart_data.append({
                     "name": symbol,
@@ -150,9 +144,9 @@ async def get_allocation_chart_data(current_user: User = Depends(get_current_ver
 
 def _get_symbol_color(symbol: str) -> str:
     colors = {
-        "BTC/USD": "#F59E0B",
-        "ETH/USD": "#6366F1",
-        "SOL/USD": "#8B5CF6",
-        "BCH/USD": "#10B981",
+        "AAPL": "#F59E0B",
+        "MSFT": "#6366F1",
+        "AMZN": "#8B5CF6",
+        "GOOG": "#10B981",
     }
     return colors.get(symbol, "#6B7280")
