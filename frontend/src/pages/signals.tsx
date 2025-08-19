@@ -189,12 +189,12 @@ const SignalsPage: React.FC = () => {
 
   // Signal Row Component
   const SignalRow: React.FC<{ signal: Signal }> = ({ signal }) => {
-    const getStatusIcon = (status: string) => {
-      switch (status) {
+    const getStatusIcon = () => {
+      switch (signal.status) {
         case 'processed':
           return <CheckCircle className="h-5 w-5 text-emerald-600" />;
         case 'error':
-          return <XCircle className="h-5 w-5 text-red-600" />;
+          return <XCircle className="h-5 w-5 text-red-600" title={signal.error_message} />;
         case 'pending':
           return <Clock className="h-5 w-5 text-yellow-600" />;
         default:
@@ -215,10 +215,12 @@ const SignalsPage: React.FC = () => {
       <tr className="hover:bg-gray-50 transition-colors duration-200 group">
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center">
-            {getStatusIcon(signal.status)}
-            <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(signal.status)}`}>
-              {signal.status}
-            </span>
+            {getStatusIcon()}
+            {signal.status !== 'error' && (
+              <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(signal.status)}`}>
+                {signal.status}
+              </span>
+            )}
           </div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
@@ -276,16 +278,6 @@ const SignalsPage: React.FC = () => {
             <p>{new Date(signal.timestamp).toLocaleDateString()}</p>
             <p className="text-xs">{new Date(signal.timestamp).toLocaleTimeString()}</p>
           </div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          {signal.error_message && (
-            <div className="flex items-center max-w-48">
-              <AlertCircle className="h-4 w-4 text-red-500 mr-1 flex-shrink-0" />
-              <span className="text-sm text-red-600 truncate" title={signal.error_message}>
-                {signal.error_message}
-              </span>
-            </div>
-          )}
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -566,7 +558,6 @@ const SignalsPage: React.FC = () => {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Quantity</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Confidence</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Timestamp</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Error</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
