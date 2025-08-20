@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, ComponentType, SVGProps } from 'react';
 import {
   BarChart3, CheckCircle, XCircle, Clock, AlertCircle, RefreshCw, Filter,
   TrendingUp, TrendingDown, Search, Download, Calendar, DollarSign,
@@ -112,9 +112,10 @@ const OrdersPage: React.FC = () => {
         setOrders([]);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Error fetching orders:', err);
-      setError(err.message || 'Failed to load orders');
+      const message = err instanceof Error ? err.message : 'Failed to load orders';
+      setError(message);
       setOrders([]); // IMPORTANTE: asegurar que orders sea un array vacío en caso de error
     } finally {
       setLoading(false);
@@ -132,7 +133,7 @@ const OrdersPage: React.FC = () => {
     title: string;
     value: string | number;
     subtitle?: string;
-    icon: React.ComponentType<any>;
+    icon: ComponentType<SVGProps<SVGSVGElement>>;
     gradient: string;
     trend?: { value: string; positive: boolean };
   }> = ({ title, value, subtitle, icon: Icon, gradient, trend }) => (
@@ -205,6 +206,25 @@ const OrdersPage: React.FC = () => {
     </button>
   );
 
+  const parseDate = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
+  const formatDate = (dateStr?: string) => {
+    const date = parseDate(dateStr);
+    return date ? date.toLocaleDateString() : '--';
+  };
+
+  const formatTime = (dateStr?: string) => {
+    const date = parseDate(dateStr);
+    return date ? date.toLocaleTimeString() : '--';
+  };
+
+  const formatStatus = (status: string) =>
+    status ? status.split('_').join(' ').toUpperCase() : '--';
+
   // Order Row Component
   const OrderRow: React.FC<{ order: Order }> = ({ order }) => {
     const getStatusIcon = (status: string) => {
@@ -260,7 +280,7 @@ const OrdersPage: React.FC = () => {
           <div className="flex items-center">
             {getStatusIcon(order.status)}
             <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-              {order.status}
+              {formatStatus(order.status)}
             </span>
           </div>
         </td>
@@ -314,15 +334,15 @@ const OrdersPage: React.FC = () => {
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
           <div>
-            <p>{new Date(order.submitted_at).toLocaleDateString()}</p>
-            <p className="text-xs">{new Date(order.submitted_at).toLocaleTimeString()}</p>
+            <p>{formatDate(order.submitted_at)}</p>
+            <p className="text-xs">{formatTime(order.submitted_at)}</p>
           </div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
           {order.filled_at ? (
             <div>
-              <p>{new Date(order.filled_at).toLocaleDateString()}</p>
-              <p className="text-xs">{new Date(order.filled_at).toLocaleTimeString()}</p>
+              <p>{formatDate(order.filled_at)}</p>
+              <p className="text-xs">{formatTime(order.filled_at)}</p>
             </div>
           ) : (
             <span className="text-gray-400">--</span>
@@ -363,7 +383,8 @@ const OrdersPage: React.FC = () => {
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     return orders.filter(order => {
-      const orderDate = new Date(order.submitted_at);
+      const orderDate = parseDate(order.submitted_at);
+      if (!orderDate) return false;
       switch (selectedTimeRange) {
         case 'today':
           return orderDate >= today;
@@ -401,12 +422,12 @@ const OrdersPage: React.FC = () => {
           bVal = parseFloat(b.qty);
           break;
         case 'filled_at':
-          aVal = a.filled_at ? new Date(a.filled_at).getTime() : 0;
-          bVal = b.filled_at ? new Date(b.filled_at).getTime() : 0;
+          aVal = parseDate(a.filled_at)?.getTime() ?? 0;
+          bVal = parseDate(b.filled_at)?.getTime() ?? 0;
           break;
         default:
-          aVal = new Date(a.submitted_at).getTime();
-          bVal = new Date(b.submitted_at).getTime();
+          aVal = parseDate(a.submitted_at)?.getTime() ?? 0;
+          bVal = parseDate(b.submitted_at)?.getTime() ?? 0;
       }
 
       if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
@@ -618,8 +639,10 @@ const OrdersPage: React.FC = () => {
                   value={`${sortBy}-${sortOrder}`}
                   onChange={(e) => {
                     const [field, order] = e.target.value.split('-');
-                    setSortBy(field as any);
-                    setSortOrder(order as any);
+                    setSortBy(
+                      field as 'submitted_at' | 'filled_at' | 'symbol' | 'qty'
+                    );
+                    setSortOrder(order as 'asc' | 'desc');
                   }}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 >
