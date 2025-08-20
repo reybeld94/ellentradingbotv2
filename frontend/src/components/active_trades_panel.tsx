@@ -49,10 +49,14 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   const DEFAULT_EXCHANGE = import.meta.env.VITE_DEFAULT_EXCHANGE || 'Alpaca';
 
   const processedTrades: ProcessedTrade[] = trades.map((t) => {
+    // El PnL ya viene calculado correctamente desde la base de datos
     const pnl = t.pnl ?? 0;
-    const currentPrice = t.entry_price + pnl / t.quantity;
-    const pnlPercent = t.quantity ? (pnl / (t.entry_price * t.quantity)) * 100 : 0;
+
+    // Calcular el precio actual basado en el PnL si no está disponible
+    const currentPrice = t.quantity !== 0 ? t.entry_price + pnl / t.quantity : t.entry_price;
+    const pnlPercent = (t.entry_price * t.quantity) !== 0 ? (pnl / (t.entry_price * t.quantity)) * 100 : 0;
     const side: Side = t.action.toLowerCase() === 'buy' ? 'LONG' : 'SHORT';
+
     return {
       id: t.id,
       symbol: t.symbol,

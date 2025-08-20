@@ -185,6 +185,14 @@ const api = {
     const response = await authenticatedFetch(`${this.baseUrl}/trades/equity-curve`);
     const data = await response.json();
     return Array.isArray(data) ? data : [];
+  },
+
+  async getRealTimePortfolio(): Promise<any> {
+    console.log('🔄 Fetching real-time portfolio data...');
+    const response = await authenticatedFetch(`${this.baseUrl}/portfolio/realtime`);
+    const data = await response.json();
+    console.log('✅ Real-time portfolio data received:', data);
+    return data;
   }
 };
 
@@ -333,6 +341,7 @@ const TradingDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [realTimeData, setRealTimeData] = useState<any>(null);
 
   const fetchAllData = async () => {
     try {
@@ -344,19 +353,21 @@ const TradingDashboard: React.FC = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      const [accountData, portfolioData, equityData, tradesData] = await Promise.all([
+      const [accountData, portfolioData, tradesData, equityData, realTimeDataResp] = await Promise.all([
         api.getAccount(),
         api.getPositions(),
+        api.getTrades(),
         api.getEquityCurve(),
-        api.getTrades()
+        api.getRealTimePortfolio()
       ]);
 
       console.log('✅ All data fetched successfully');
 
       setAccount(accountData);
       setPortfolio(portfolioData);
-      setEquityCurve(equityData);
       setTrades(tradesData);
+      setEquityCurve(equityData);
+      setRealTimeData(realTimeDataResp);
 
       const closedTrades = tradesData.filter((t) => t.status === 'closed');
       const winningTrades = closedTrades.filter((t) => t.pnl !== null && t.pnl > 0);
@@ -394,13 +405,6 @@ const TradingDashboard: React.FC = () => {
     });
     return () => ws.close();
   }, []);
-
-  // Calculate portfolio performance
-  const portfolioChange = account ? {
-    value: '+2.5%',
-    positive: true
-  } : undefined;
-
 
   if (loading) {
     return (
@@ -466,7 +470,10 @@ const TradingDashboard: React.FC = () => {
             value={account ? formatCurrency(account.portfolio_value) : '--'}
             icon={PieChart}
             gradient="bg-gradient-to-r from-blue-500 to-indigo-500"
-            trend={portfolioChange}
+            trend={realTimeData?.account ? {
+              value: `${realTimeData.account.unrealized_pl >= 0 ? '+' : ''}$${realTimeData.account.unrealized_pl.toFixed(2)}`,
+              positive: realTimeData.account.unrealized_pl >= 0
+            } : undefined}
             loading={loading}
           />
         </a>
