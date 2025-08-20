@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.sql import func
+from app.utils.time import now_eastern
 
 from app.database import Base
 
@@ -11,8 +11,8 @@ class Strategy(Base):
 
     name = Column(String(100), unique=True, nullable=False, index=True)
     description = Column(String(255), nullable=True)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=now_eastern)
+    updated_at = Column(DateTime(timezone=True), default=now_eastern, onupdate=now_eastern)
 
     def __repr__(self):
         return f"<Strategy({self.id}, {self.name})>"

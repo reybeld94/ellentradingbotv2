@@ -8,7 +8,7 @@ from app.services.strategy_position_manager import StrategyPositionManager
 from app.database import get_db
 import logging
 from app.models.trades import Trade
-from sqlalchemy.sql import func
+from app.utils.time import now_eastern
 from app.websockets import ws_manager
 import asyncio
 import json
@@ -320,7 +320,7 @@ class OrderExecutor:
         ).order_by(Trade.opened_at.desc()).all()
 
         if open_trades:
-            now = func.now()
+            now = now_eastern()
             for trade in open_trades:
                 trade.exit_price = current_price
                 trade.closed_at = now

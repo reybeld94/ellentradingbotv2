@@ -1,8 +1,8 @@
 # backend/app/models/trade.py
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from app.utils.time import now_eastern
 from app.database import Base
 
 
@@ -17,8 +17,8 @@ class Trade(Base):
     entry_price = Column(Float)
     exit_price = Column(Float, nullable=True)
     status = Column(String(10), default="open")  # open, closed
-    opened_at = Column(DateTime, default=func.now())
-    closed_at = Column(DateTime, nullable=True)
+    opened_at = Column(DateTime(timezone=True), default=now_eastern)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
     pnl = Column(Float, nullable=True)
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)

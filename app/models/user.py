@@ -1,7 +1,7 @@
 # backend/app/models/user.py
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
-from sqlalchemy.sql import func
+from app.utils.time import now_eastern
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -31,12 +31,12 @@ class User(Base):
     # Tokens
     verification_token = Column(String(255), nullable=True)
     reset_token = Column(String(255), nullable=True)
-    reset_token_expires = Column(DateTime, nullable=True)
+    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    last_login = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=now_eastern)
+    updated_at = Column(DateTime(timezone=True), default=now_eastern, onupdate=now_eastern)
+    last_login = Column(DateTime(timezone=True), nullable=True)
 
     def set_password(self, password: str):
         """Hashear password"""
