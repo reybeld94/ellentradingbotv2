@@ -6,7 +6,32 @@ from app.api.v1 import risk
 
 
 def test_market_value_calculation(monkeypatch):
-    monkeypatch.setattr(risk.position_manager, "get_current_positions", lambda: {"AAPL": 5, "USD": 25.31})
+    monkeypatch.setattr(
+        risk.position_manager,
+        "get_detailed_positions",
+        lambda: [
+            {
+                'symbol': 'AAPL',
+                'quantity': 5,
+                'market_value': 5 * 180.0,
+                'unrealized_pl': 0.0,
+                'unrealized_plpc': 0.0,
+                'cost_basis': 0.0,
+                'avg_entry_price': 170.0,
+                'current_price': 180.0,
+            },
+            {
+                'symbol': 'USD',
+                'quantity': 25.31,
+                'market_value': 25.31,
+                'unrealized_pl': 0.0,
+                'unrealized_plpc': 0.0,
+                'cost_basis': 0.0,
+                'avg_entry_price': 1.0,
+                'current_price': 1.0,
+            }
+        ]
+    )
     monkeypatch.setattr(risk.risk_manager, "get_allocation_info", lambda buying_power: {})
     monkeypatch.setattr(risk.risk_manager, "calculate_optimal_position_size", lambda **k: 0)
     monkeypatch.setattr(risk.risk_manager, "get_symbol_minimum", lambda s: 0)

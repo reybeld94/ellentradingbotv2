@@ -39,6 +39,28 @@ class PositionManager:
             logger.error(f"Error getting positions: {e}")
             raise
 
+    def get_detailed_positions(self):
+        """Obtener posiciones con información detallada para mostrar en UI"""
+        try:
+            positions = self.broker.get_positions()
+            detailed_positions = []
+            for pos in positions:
+                if abs(pos.qty) >= 0.001:
+                    detailed_positions.append({
+                        'symbol': pos.symbol,
+                        'quantity': float(pos.qty),
+                        'market_value': getattr(pos, 'market_value', 0.0),
+                        'unrealized_pl': getattr(pos, 'unrealized_pl', 0.0),
+                        'unrealized_plpc': getattr(pos, 'unrealized_plpc', 0.0),
+                        'cost_basis': getattr(pos, 'cost_basis', 0.0),
+                        'avg_entry_price': getattr(pos, 'avg_entry_price', 0.0),
+                        'current_price': getattr(pos, 'current_price', 0.0)
+                    })
+            return detailed_positions
+        except Exception as e:
+            logger.error(f"Error getting detailed positions: {e}")
+            return []
+
     def get_position_quantity(self, symbol):
         """Obtener cantidad específica de un símbolo"""
         try:
