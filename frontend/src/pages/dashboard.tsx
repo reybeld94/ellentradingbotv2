@@ -358,7 +358,10 @@ const TradingDashboard: React.FC = () => {
         api.getPositions(),
         api.getTrades(),
         api.getEquityCurve(),
-        api.getRealTimePortfolio()
+        api.getRealTimePortfolio().catch(err => {
+          console.warn('Real-time portfolio data not available:', err);
+          return null; // Fallar silenciosamente
+        })
       ]);
 
       console.log('✅ All data fetched successfully');
