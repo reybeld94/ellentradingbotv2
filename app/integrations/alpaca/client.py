@@ -2,6 +2,8 @@ from __future__ import annotations
 """Alpaca integration client used as the main broker interface."""
 
 from types import SimpleNamespace
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import GetOrdersRequest
@@ -14,6 +16,14 @@ from alpaca.data import (
 )
 
 from app.config import settings
+
+
+def _in_regular_trading_hours(now: datetime | None = None) -> bool:
+    tz = ZoneInfo("America/New_York")
+    current = now.astimezone(tz) if now else datetime.now(tz)
+    start = time(9, 30)
+    end = time(16, 0)
+    return current.weekday() < 5 and start <= current.time() < end
 
 
 class AlpacaClient:
@@ -85,6 +95,7 @@ class AlpacaClient:
         from alpaca.trading.enums import OrderSide, TimeInForce
 
         order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
+        extended_hours = not _in_regular_trading_hours()
 
         if order_type == "market":
             order_data = MarketOrderRequest(
@@ -92,6 +103,7 @@ class AlpacaClient:
                 qty=qty,
                 side=order_side,
                 time_in_force=TimeInForce.DAY,
+                extended_hours=extended_hours,
             )
         else:
             order_data = LimitOrderRequest(
@@ -100,6 +112,7 @@ class AlpacaClient:
                 side=order_side,
                 time_in_force=TimeInForce.DAY,
                 limit_price=price,
+                extended_hours=extended_hours,
             )
 
         order = self._trading.submit_order(order_data)
