@@ -2,8 +2,8 @@
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from app.database import Base
+from app.utils.time import now_eastern
 
 
 class Signal(Base):
@@ -16,7 +16,7 @@ class Signal(Base):
     quantity = Column(Float, nullable=True)  # ✅ CHANGED: Float instead of Integer to support decimals
     price = Column(Float, nullable=True)
     source = Column(String(50), default="tradingview")
-    timestamp = Column(DateTime, server_default=func.now())
+    timestamp = Column(DateTime(timezone=True), default=now_eastern)
     processed = Column(Boolean, default=False)
     status = Column(String(20), default="pending")  # pending, processed, error
     error_message = Column(Text, nullable=True)

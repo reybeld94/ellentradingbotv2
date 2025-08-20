@@ -10,6 +10,7 @@ from app.models.signal import Signal
 from app.models.user import User
 from app.core.auth import get_current_verified_user, get_admin_user
 from app.services import portfolio_service
+from app.utils.time import to_eastern
 
 router = APIRouter()
 
@@ -145,7 +146,7 @@ async def get_signals(
             "quantity": signal.quantity,
             "status": signal.status,
             "error_message": signal.error_message,
-            "timestamp": signal.timestamp.isoformat(),
+            "timestamp": to_eastern(signal.timestamp).isoformat(),
             "strategy_id": signal.strategy_id,
             "source": "tradingview"
         }
@@ -170,7 +171,7 @@ async def get_all_signals(
             "strategy_id": signal.strategy_id,
             "quantity": signal.quantity,
             "status": signal.status,
-            "timestamp": signal.timestamp.isoformat(),
+            "timestamp": to_eastern(signal.timestamp).isoformat(),
             "user_id": signal.user_id,
             "username": signal.user.username if signal.user else "Unknown"
         }

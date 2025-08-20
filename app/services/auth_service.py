@@ -1,6 +1,7 @@
 # backend/app/services/auth_service.py
 
-from datetime import datetime, timedelta
+from datetime import timedelta
+from app.utils.time import now_eastern
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -33,9 +34,9 @@ class AuthService:
         to_encode = data.copy()
 
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = now_eastern() + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
+            expire = now_eastern() + timedelta(minutes=self.access_token_expire_minutes)
 
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
@@ -103,7 +104,7 @@ class AuthService:
 
     def update_last_login(self, db: Session, user: User):
         """Actualizar último login"""
-        user.last_login = datetime.utcnow()
+        user.last_login = now_eastern()
         db.commit()
 
     def generate_reset_token(self, db: Session, email: str) -> Optional[str]:
@@ -113,7 +114,7 @@ class AuthService:
             return None
 
         reset_token = user.generate_reset_token()
-        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # 1 hora
+        user.reset_token_expires = now_eastern() + timedelta(hours=1)  # 1 hora
 
         db.commit()
         return reset_token
@@ -125,7 +126,7 @@ class AuthService:
         if not user or not user.reset_token_expires:
             return False
 
-        if datetime.utcnow() > user.reset_token_expires:
+        if now_eastern() > user.reset_token_expires:
             return False
 
         # Actualizar password

@@ -13,6 +13,7 @@ from app.core.auth import get_current_verified_user
 from app.config import settings
 from app.websockets import ws_manager
 from app.services import portfolio_service
+from app.utils.time import to_eastern
 import asyncio
 import json
 import logging
@@ -75,7 +76,7 @@ async def receive_tradingview_webhook(
             "quantity": signal.quantity,
             "status": signal.status,
             "strategy_id": signal.strategy_id,
-            "timestamp": signal.timestamp.isoformat(),
+            "timestamp": to_eastern(signal.timestamp).isoformat(),
         }
         asyncio.create_task(
             ws_manager.broadcast(json.dumps({"event": "new_signal", "payload": signal_data}))
@@ -88,7 +89,7 @@ async def receive_tradingview_webhook(
             "quantity": signal.quantity,
             "status": signal.status,
             "strategy_id": signal.strategy_id,
-            "timestamp": signal.timestamp.isoformat(),
+            "timestamp": to_eastern(signal.timestamp).isoformat(),
         }
         asyncio.create_task(
             ws_manager.broadcast(json.dumps({"event": "new_signal", "payload": signal_data}))
@@ -159,7 +160,7 @@ async def get_signals(
             "quantity": signal.quantity,
             "status": signal.status,
             "error_message": signal.error_message,
-            "timestamp": signal.timestamp,
+            "timestamp": to_eastern(signal.timestamp),
             "reason": signal.reason,
             "confidence": signal.confidence,
             "tv_timestamp": signal.tv_timestamp,
