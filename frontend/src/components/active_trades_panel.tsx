@@ -151,23 +151,23 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
               </div>
             </div>
 
-            {/* Segunda fila: Tamaño y Hora */}
+            {/* Second row: Size and Time */}
             <div className="flex items-center justify-between mb-2 text-sm text-gray-600">
-              <span>Tamaño: {trade.size}</span>
+              <span>Size: {trade.size}</span>
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 <span>{trade.openTime}</span>
               </div>
             </div>
 
-            {/* Tercera fila: Precios */}
+            {/* Third row: Prices */}
             <div className="grid grid-cols-2 gap-2 text-xs mb-2">
               <div>
-                <span className="text-gray-500">Entrada: </span>
+                <span className="text-gray-500">Entry: </span>
                 <span className="font-medium">${formatPrice(trade.entryPrice)}</span>
               </div>
               <div>
-                <span className="text-gray-500">Actual: </span>
+                <span className="text-gray-500">Current: </span>
                 <span className="font-medium">${formatPrice(trade.currentPrice)}</span>
               </div>
             </div>
@@ -198,11 +198,11 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
         )}
       </div>
 
-      {/* Footer con estadísticas */}
+      {/* Footer with stats */}
       <div className="mt-4 pt-3 border-t border-gray-200">
         <div className="flex justify-between text-xs text-gray-600">
-          <span>{profitableTrades}/{processedTrades.length} rentables</span>
-          <span>Última actualización: hace 2m</span>
+          <span>{profitableTrades}/{processedTrades.length} profitable</span>
+          <span>Last updated: 2m ago</span>
         </div>
       </div>
     </div>
