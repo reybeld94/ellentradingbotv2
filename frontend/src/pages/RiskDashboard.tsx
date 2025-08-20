@@ -38,12 +38,38 @@ interface RiskStatus {
     can_enter: boolean;
     percentage_of_portfolio: number;
   }>;
+  debug_info?: any;
 }
 
 const RiskDashboard: React.FC = () => {
   const [riskStatus, setRiskStatus] = useState<RiskStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Debug info display component
+  const DebugInfo: React.FC<{ debugInfo: any }> = ({ debugInfo }) => {
+    const [showDebug, setShowDebug] = useState(false);
+
+    if (!debugInfo) return null;
+
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          className="text-yellow-800 font-medium mb-2 flex items-center"
+        >
+          🐛 Debug Info {showDebug ? '▼' : '▶'}
+        </button>
+        {showDebug && (
+          <div className="text-xs overflow-auto max-h-96">
+            <pre className="whitespace-pre-wrap text-yellow-800">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const fetchRiskStatus = async () => {
     try {
@@ -74,6 +100,10 @@ const RiskDashboard: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  if (riskStatus?.debug_info) {
+    return <DebugInfo debugInfo={riskStatus.debug_info} />;
   }
 
   if (!riskStatus) {

@@ -23,12 +23,47 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
 
         allocation_info = risk_manager.get_allocation_info(buying_power)
 
+        # DEBUG INFO - Vamos a incluir información de debug en la respuesta
+        debug_info = {
+            "alpaca_raw_positions": [],
+            "processed_positions": [],
+            "broker_client_type": str(type(broker_client)),
+            "has_trading_client": hasattr(broker_client, '_trading') and broker_client._trading is not None
+        }
+
+        # Obtener posiciones directamente de Alpaca para debug
+        if hasattr(broker_client, '_trading') and broker_client._trading:
+            try:
+                raw_alpaca_positions = broker_client._trading.get_all_positions()
+                for p in raw_alpaca_positions:
+                    debug_info["alpaca_raw_positions"].append({
+                        "symbol": p.symbol,
+                        "qty": str(p.qty),
+                        "has_market_value": hasattr(p, 'market_value'),
+                        "market_value_raw": str(getattr(p, 'market_value', 'NOT_FOUND')),
+                        "has_unrealized_pl": hasattr(p, 'unrealized_pl'),
+                        "unrealized_pl_raw": str(getattr(p, 'unrealized_pl', 'NOT_FOUND')),
+                        "has_unrealized_intraday_pl": hasattr(p, 'unrealized_intraday_pl'),
+                        "unrealized_intraday_pl_raw": str(getattr(p, 'unrealized_intraday_pl', 'NOT_FOUND')),
+                        "has_unrealized_today_pl": hasattr(p, 'unrealized_today_pl'),
+                        "unrealized_today_pl_raw": str(getattr(p, 'unrealized_today_pl', 'NOT_FOUND')),
+                        "all_attributes": [attr for attr in dir(p) if not attr.startswith('_') and 'pl' in attr.lower()]
+                    })
+            except Exception as e:
+                debug_info["alpaca_error"] = str(e)
+
         # Build detailed positions using the complete information of Alpaca
         detailed_positions = position_manager.get_detailed_positions()
         position_details = []
 
         for pos in detailed_positions:
             symbol = pos['symbol']
+
+            # DEBUG: Agregar info de esta posición procesada
+            debug_info["processed_positions"].append({
+                "symbol": symbol,
+                "original_pos_data": pos
+            })
 
             # Para stable coins, usar valores directos
             if symbol in STABLE_COINS:
@@ -39,13 +74,11 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
                 market_value = pos['market_value']
                 unrealized_pl = pos['unrealized_pl']
 
-            print(f"DBG Position {symbol} qty={pos['quantity']} market_value={market_value} unrealized_pl={unrealized_pl}")
-
             position_details.append({
                 "symbol": symbol,
                 "quantity": pos['quantity'],
                 "market_value": market_value,
-                "unrealized_pl": unrealized_pl,  # AHORA USA EL VALOR REAL DE ALPACA
+                "unrealized_pl": unrealized_pl,
                 "unrealized_plpc": pos.get('unrealized_plpc', 0.0),
                 "cost_basis": pos.get('cost_basis', 0.0),
                 "avg_entry_price": pos.get('avg_entry_price', 0.0),
@@ -53,7 +86,7 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
                 "percentage": (market_value / portfolio_value * 100) if portfolio_value > 0 else 0,
             })
 
-        # Simulate next positions
+        # Simulate next positions (mantener igual)
         symbols_to_simulate = ["AAPL", "MSFT", "AMZN", "GOOG"]
         next_positions_simulation = []
         for symbol in symbols_to_simulate:
@@ -77,7 +110,6 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
                     "percentage_of_portfolio": (simulated_value / buying_power * 100) if buying_power > 0 else 0,
                 })
             except Exception as e:
-                print(f"Error simulating {symbol}: {e}")
                 continue
 
         return {
@@ -96,15 +128,14 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
                 "concentration_risk": "High" if any(p["percentage"] > 40 for p in position_details) else "Medium" if any(p["percentage"] > 25 for p in position_details) else "Low",
             },
             "next_positions_simulation": next_positions_simulation,
+            "debug_info": debug_info  # NUEVA SECCIÓN DE DEBUG
         }
     except APIError as e:
-        print(f"Error getting risk status: {e}")
         raise HTTPException(
             status_code=e.status_code or 502,
             detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
         )
     except Exception as e:
-        print(f"Error getting risk status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/risk/allocation-chart")
