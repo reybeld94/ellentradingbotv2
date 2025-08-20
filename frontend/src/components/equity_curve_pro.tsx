@@ -54,7 +54,7 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
         }`}
       >
         <div className="flex items-center justify-center h-64 text-gray-500">
-          Sin datos disponibles
+          No data available
         </div>
       </div>
     );
@@ -125,7 +125,7 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-800">Equity Curve</h3>
-            <p className="text-sm text-gray-500">Rendimiento de la cuenta en tiempo real</p>
+            <p className="text-sm text-gray-500">Real-time account performance</p>
           </div>
         </div>
         
@@ -192,7 +192,7 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
         <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign className="w-4 h-4 text-green-600" />
-            <span className="text-sm font-medium text-green-800">Equity Actual</span>
+            <span className="text-sm font-medium text-green-800">Current Equity</span>
           </div>
           <div className="text-2xl font-bold text-green-700">
             ${currentEquity.toLocaleString()}
@@ -206,14 +206,14 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className={`w-4 h-4 ${totalReturn >= 0 ? 'text-blue-600' : 'text-red-600'}`} />
             <span className={`text-sm font-medium ${totalReturn >= 0 ? 'text-blue-800' : 'text-red-800'}`}>
-              Retorno Total
+              Total Return
             </span>
           </div>
           <div className={`text-2xl font-bold ${totalReturn >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
             {totalReturn >= 0 ? '+' : ''}{totalReturn.toFixed(2)}%
           </div>
           <div className={`text-sm ${totalReturn >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-            Desde inicio
+            Since start
           </div>
         </div>
 
@@ -226,7 +226,7 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
             {maxDrawdown.toFixed(2)}%
           </div>
           <div className="text-sm text-purple-600">
-            Pérdida máxima
+            Maximum loss
           </div>
         </div>
 
@@ -276,11 +276,11 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
             <Tooltip content={<CustomTooltip />} />
             
             {/* Línea de equity inicial */}
-            <ReferenceLine 
-              y={initialEquity} 
-              stroke="#6B7280" 
-              strokeDasharray="5 5" 
-              label={{ value: "Capital Inicial", position: "left" }}
+            <ReferenceLine
+              y={initialEquity}
+              stroke="#6B7280"
+              strokeDasharray="5 5"
+              label={{ value: "Initial Capital", position: "left" }}
             />
             
             {/* Área de equity */}
@@ -336,7 +336,7 @@ const EquityCurvePro: React.FC<EquityCurveProProps> = ({ data = [] as EquityPoin
             <div className="text-lg font-bold text-green-600">68.5%</div>
           </div>
           <div>
-            <div className="text-sm text-gray-500">Volatilidad</div>
+            <div className="text-sm text-gray-500">Volatility</div>
             <div className="text-lg font-bold text-blue-600">12.3%</div>
           </div>
           <div>

@@ -502,7 +502,7 @@ const TradingDashboard: React.FC = () => {
       <div className="mb-8">
         {equityCurve.length === 0 ? (
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 text-center text-gray-500">
-            Sin datos de equity disponibles
+            No equity data available
           </div>
         ) : (
           <EquityCurvePro

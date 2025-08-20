@@ -102,7 +102,7 @@ const WinRateSpeedometer: React.FC<WinRateProps> = ({ winRate = 68.5, totalTrade
           <BarChart3 className="w-6 h-6 text-gray-600" />
           <h3 className="text-lg font-semibold text-gray-800">Win Rate</h3>
         </div>
-        <p className="text-sm text-gray-500">Rendimiento General</p>
+        <p className="text-sm text-gray-500">Overall Performance</p>
       </div>
 
       {/* Speedometer */}
