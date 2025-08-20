@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from datetime import datetime, time
-from zoneinfo import ZoneInfo
+from app.utils.time import EASTERN_TZ, now_eastern
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import GetOrdersRequest
@@ -19,8 +19,7 @@ from app.config import settings
 
 
 def _in_regular_trading_hours(now: datetime | None = None) -> bool:
-    tz = ZoneInfo("America/New_York")
-    current = now.astimezone(tz) if now else datetime.now(tz)
+    current = now.astimezone(EASTERN_TZ) if now else now_eastern()
     start = time(9, 30)
     end = time(16, 0)
     return current.weekday() < 5 and start <= current.time() < end
