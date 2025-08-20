@@ -145,7 +145,7 @@ const RiskDashboard: React.FC = () => {
       </div>
 
       {/* Debug info without interrupting dashboard */}
-      {riskStatus.debug_info && <DebugInfo debugInfo={riskStatus.debug_info} />}
+      {!!riskStatus.debug_info && <DebugInfo debugInfo={riskStatus.debug_info} />}
 
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
