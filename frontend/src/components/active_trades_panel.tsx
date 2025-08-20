@@ -52,8 +52,9 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
     // El PnL ya viene calculado correctamente desde la base de datos
     const pnl = t.pnl ?? 0;
 
-    // Calcular el precio actual basado en el PnL si no está disponible
-    const currentPrice = t.quantity !== 0 ? t.entry_price + pnl / t.quantity : t.entry_price;
+    // Calcular precio actual basado en PnL por acción
+    const pnlPerShare = t.quantity !== 0 ? pnl / t.quantity : 0;
+    const currentPrice = t.entry_price + pnlPerShare;
     const pnlPercent = (t.entry_price * t.quantity) !== 0 ? (pnl / (t.entry_price * t.quantity)) * 100 : 0;
     const side: Side = t.action.toLowerCase() === 'buy' ? 'LONG' : 'SHORT';
 
