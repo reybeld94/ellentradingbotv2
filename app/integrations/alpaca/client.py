@@ -120,6 +120,19 @@ class AlpacaClient:
     def submit_crypto_order(self, symbol, qty, side, order_type="market"):
         return self.submit_order(symbol, qty, side, order_type)
 
+    def is_crypto_symbol(self, symbol: str) -> bool:
+        """Return True if ``symbol`` represents a crypto asset.
+
+        Alpaca identifies crypto either with a slash (``BTC/USD``) or by
+        concatenating the base and quote (``BTCUSD``). We use a simple heuristic
+        to detect these formats so the service can choose the appropriate quote
+        endpoint.
+        """
+        symbol = (symbol or "").upper()
+        if "/" in symbol:
+            return True
+        return symbol.endswith(("USD", "USDT", "USDC"))
+
     # --- Market data ----------------------------------------------------------
     def get_latest_quote(self, symbol: str):
         if not self._stock_data:
