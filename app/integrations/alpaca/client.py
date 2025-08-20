@@ -73,17 +73,40 @@ class AlpacaClient:
         )
 
     def get_positions(self):
+        """Get all positions with complete information including unrealized PnL"""
         if not self._trading:
             return []
         positions = self._trading.get_all_positions()
-        return [SimpleNamespace(symbol=p.symbol, qty=float(p.qty)) for p in positions]
+        return [
+            SimpleNamespace(
+                symbol=p.symbol,
+                qty=float(p.qty),
+                market_value=float(getattr(p, "market_value", 0) or 0),
+                unrealized_pl=float(getattr(p, "unrealized_pl", 0) or 0),
+                unrealized_plpc=float(getattr(p, "unrealized_plpc", 0) or 0),
+                cost_basis=float(getattr(p, "cost_basis", 0) or 0),
+                avg_entry_price=float(getattr(p, "avg_entry_price", 0) or 0),
+                current_price=float(getattr(p, "current_price", 0) or 0),
+            )
+            for p in positions
+        ]
 
     def get_position(self, symbol: str):
+        """Get single position with complete information"""
         if not self._trading:
             return None
         try:
             p = self._trading.get_open_position(symbol)
-            return SimpleNamespace(symbol=p.symbol, qty=float(p.qty))
+            return SimpleNamespace(
+                symbol=p.symbol,
+                qty=float(p.qty),
+                market_value=float(getattr(p, "market_value", 0) or 0),
+                unrealized_pl=float(getattr(p, "unrealized_pl", 0) or 0),
+                unrealized_plpc=float(getattr(p, "unrealized_plpc", 0) or 0),
+                cost_basis=float(getattr(p, "cost_basis", 0) or 0),
+                avg_entry_price=float(getattr(p, "avg_entry_price", 0) or 0),
+                current_price=float(getattr(p, "current_price", 0) or 0),
+            )
         except Exception:
             return None
 

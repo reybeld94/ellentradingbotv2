@@ -23,26 +23,33 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
 
         allocation_info = risk_manager.get_allocation_info(buying_power)
 
-        # Build detailed positions
-        raw_positions = position_manager.get_current_positions()
+        # Build detailed positions using the complete information of Alpaca
+        detailed_positions = position_manager.get_detailed_positions()
         position_details = []
-        for symbol, qty in raw_positions.items():
-            if abs(float(qty)) < 0.001:
-                continue
-            price = 1.0 if symbol in STABLE_COINS else 0.0
-            if symbol not in STABLE_COINS:
-                try:
-                    quote = broker_client.get_latest_quote(symbol)
-                    price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)))
-                except Exception:
-                    price = 0.0
-            market_value = price * float(qty)
-            print(f"DBG Position {symbol} qty={qty} price={price} value={market_value}")
+
+        for pos in detailed_positions:
+            symbol = pos['symbol']
+
+            # Para stable coins, usar valores directos
+            if symbol in STABLE_COINS:
+                market_value = pos['market_value']
+                unrealized_pl = 0.0  # Las stable coins no tienen PnL
+            else:
+                # Para activos normales, usar los valores de Alpaca directamente
+                market_value = pos['market_value']
+                unrealized_pl = pos['unrealized_pl']
+
+            print(f"DBG Position {symbol} qty={pos['quantity']} market_value={market_value} unrealized_pl={unrealized_pl}")
+
             position_details.append({
                 "symbol": symbol,
-                "quantity": float(qty),
+                "quantity": pos['quantity'],
                 "market_value": market_value,
-                "unrealized_pl": 0.0,
+                "unrealized_pl": unrealized_pl,  # AHORA USA EL VALOR REAL DE ALPACA
+                "unrealized_plpc": pos.get('unrealized_plpc', 0.0),
+                "cost_basis": pos.get('cost_basis', 0.0),
+                "avg_entry_price": pos.get('avg_entry_price', 0.0),
+                "current_price": pos.get('current_price', 0.0),
                 "percentage": (market_value / portfolio_value * 100) if portfolio_value > 0 else 0,
             })
 
@@ -78,6 +85,7 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
                 "buying_power": buying_power,
                 "portfolio_value": portfolio_value,
                 "cash_percentage": (buying_power / portfolio_value * 100) if portfolio_value > 0 else 100,
+                "total_unrealized_pl": sum(pos["unrealized_pl"] for pos in position_details),
             },
             "allocation_info": allocation_info,
             "current_positions": position_details,
