@@ -31,23 +31,37 @@ async def get_orders(
                 "total_count": 0
             }
 
+        def _get_value(obj, attr):
+            value = getattr(obj, attr, None)
+            if hasattr(value, "value"):
+                value = value.value
+            return value
+
+        def _to_str(value):
+            return "" if value is None else str(value)
+
+        def _format_dt(value):
+            return value.isoformat() if value else None
+
         order_list = []
         for order in orders:
             try:
                 order_data = {
-                    "id": str(getattr(order, "id", "")),
-                    "symbol": str(getattr(order, "symbol", "")),
-                    "qty": str(getattr(order, "qty", "")),
-                    "side": str(getattr(order, "side", "")),
-                    "status": str(getattr(order, "status", "")),
-                    "submitted_at": str(getattr(order, "submitted_at", "")),
-                    "filled_at": str(getattr(order, "filled_at", "")),
-                    "filled_qty": str(getattr(order, "filled_qty", "")),
-                    "filled_avg_price": str(getattr(order, "filled_avg_price", "")),
-                    "rejected_reason": getattr(order, "rejected_reason", None),
+                    "id": _to_str(_get_value(order, "id")),
+                    "symbol": _to_str(_get_value(order, "symbol")),
+                    "qty": _to_str(_get_value(order, "qty")),
+                    "side": _to_str(_get_value(order, "side")),
+                    "status": _to_str(_get_value(order, "status")),
+                    "order_type": _to_str(_get_value(order, "order_type")),
+                    "time_in_force": _to_str(_get_value(order, "time_in_force")),
+                    "submitted_at": _format_dt(_get_value(order, "submitted_at")),
+                    "filled_at": _format_dt(_get_value(order, "filled_at")),
+                    "filled_qty": _to_str(_get_value(order, "filled_qty")),
+                    "filled_avg_price": _to_str(_get_value(order, "filled_avg_price")),
+                    "rejected_reason": _get_value(order, "rejected_reason"),
                 }
                 order_list.append(order_data)
-            except Exception as e:
+            except Exception:
                 # Si hay error procesando una orden específica, continuar con las demás
                 continue
 
