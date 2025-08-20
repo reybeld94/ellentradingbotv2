@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, AlertTriangle, DollarSign, PieChart, Target, RefreshCw, Calculator } from 'lucide-react';
+import { AlertTriangle, DollarSign, PieChart, Target, RefreshCw, Calculator } from 'lucide-react';
 import SymbolLogo from '../components/SymbolLogo';
 import api from '../services/api';
 
@@ -38,7 +38,7 @@ interface RiskStatus {
     can_enter: boolean;
     percentage_of_portfolio: number;
   }>;
-  debug_info?: any;
+  debug_info?: unknown;
 }
 
 const RiskDashboard: React.FC = () => {
@@ -47,7 +47,7 @@ const RiskDashboard: React.FC = () => {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   // Debug info display component
-  const DebugInfo: React.FC<{ debugInfo: any }> = ({ debugInfo }) => {
+  const DebugInfo: React.FC<{ debugInfo: unknown }> = ({ debugInfo }) => {
     const [showDebug, setShowDebug] = useState(false);
 
     if (!debugInfo) return null;
@@ -102,10 +102,6 @@ const RiskDashboard: React.FC = () => {
     );
   }
 
-  if (riskStatus?.debug_info) {
-    return <DebugInfo debugInfo={riskStatus.debug_info} />;
-  }
-
   if (!riskStatus) {
     return (
       <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
@@ -128,25 +124,28 @@ const RiskDashboard: React.FC = () => {
   return (
     <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <Shield className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Risk Management</h1>
-            <p className="text-sm text-gray-500">
-              Last updated: {lastUpdate.toLocaleTimeString()}
-            </p>
-          </div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Risk Management</h1>
+          <p className="text-gray-600 mt-2">
+            Monitor portfolio allocation and risk metrics
+          </p>
         </div>
-
-        <button
-          onClick={fetchRiskStatus}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-        >
-          <RefreshCw className="h-4 w-4" />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-500">
+            Last updated: {lastUpdate.toLocaleTimeString()}
+          </div>
+          <button
+            onClick={fetchRiskStatus}
+            className="p-2 hover:bg-gray-100 rounded-full"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
+      {/* Debug info without interrupting dashboard */}
+      {riskStatus.debug_info && <DebugInfo debugInfo={riskStatus.debug_info} />}
 
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
