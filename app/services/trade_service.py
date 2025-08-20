@@ -25,10 +25,22 @@ class TradeService:
         try:
             if self.broker.is_crypto_symbol(symbol):
                 quote = self.broker.get_latest_crypto_quote(symbol)
-                return float(getattr(quote, 'ask_price', getattr(quote, 'ap', 0)))
+                price = float(
+                    getattr(quote, "ask_price", getattr(quote, "ap", 0)) or 0
+                )
+                if not price:
+                    price = float(
+                        getattr(quote, "bid_price", getattr(quote, "bp", 0)) or 0
+                    )
             else:
                 quote = self.broker.get_latest_quote(symbol)
-                return float(quote.ask_price)
+                price = float(getattr(quote, "ask_price", 0) or 0)
+                if not price:
+                    price = float(getattr(quote, "bid_price", 0) or 0)
+                if not price:
+                    trade = self.broker.get_latest_trade(symbol)
+                    price = float(getattr(trade, "price", getattr(trade, "p", 0)) or 0)
+            return price
         except Exception:
             return 0.0
 

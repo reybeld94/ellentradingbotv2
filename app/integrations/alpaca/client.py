@@ -13,6 +13,8 @@ from alpaca.data import (
     CryptoHistoricalDataClient,
     StockLatestQuoteRequest,
     CryptoLatestQuoteRequest,
+    StockLatestTradeRequest,
+    CryptoLatestTradeRequest,
 )
 
 from app.config import settings
@@ -148,6 +150,20 @@ class AlpacaClient:
         q = self._crypto_data.get_crypto_latest_quote(req)[symbol]
         return SimpleNamespace(ask_price=float(q.ask_price), bid_price=float(q.bid_price))
 
+    def get_latest_trade(self, symbol: str):
+        if self.is_crypto_symbol(symbol):
+            if not self._crypto_data:
+                raise RuntimeError("Alpaca API credentials not configured")
+            req = CryptoLatestTradeRequest(symbol_or_symbols=symbol)
+            t = self._crypto_data.get_crypto_latest_trade(req)[symbol]
+            return SimpleNamespace(price=float(t.price))
+        else:
+            if not self._stock_data:
+                raise RuntimeError("Alpaca API credentials not configured")
+            req = StockLatestTradeRequest(symbol_or_symbols=symbol)
+            t = self._stock_data.get_stock_latest_trade(req)[symbol]
+            return SimpleNamespace(price=float(t.price))
+
     # --- Misc -----------------------------------------------------------------
     def list_orders(self, status="all", limit=10):
         if not self._trading:
@@ -182,9 +198,6 @@ class AlpacaClient:
             return []
         assets = self._trading.get_all_assets(status="active", asset_class="crypto")
         return [a.symbol for a in assets]
-
-    def get_latest_trade(self, symbol):
-        return self.get_latest_crypto_quote(symbol)
 
     def list_assets(self, status="active", asset_class="us_equity"):
         if not self._trading:

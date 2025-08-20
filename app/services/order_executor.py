@@ -37,6 +37,34 @@ class OrderExecutor:
         print(f"🔄 Symbol mapping: {symbol} -> {mapped}")
         return mapped
 
+    def _get_market_price(self, symbol: str) -> float:
+        try:
+            if self.is_crypto(symbol):
+                quote = self.broker.get_latest_crypto_quote(symbol)
+                price = float(
+                    getattr(quote, "ask_price", getattr(quote, "ap", 0)) or 0
+                )
+                if not price:
+                    price = float(
+                        getattr(quote, "bid_price", getattr(quote, "bp", 0)) or 0
+                    )
+            else:
+                quote = self.broker.get_latest_quote(symbol)
+                price = float(getattr(quote, "ask_price", 0) or 0)
+                if not price:
+                    price = float(getattr(quote, "bid_price", 0) or 0)
+                if not price:
+                    trade = self.broker.get_latest_trade(symbol)
+                    price = float(
+                        getattr(trade, "price", getattr(trade, "p", 0)) or 0
+                    )
+            if not price:
+                raise ValueError(f"No price data for {symbol}")
+            return price
+        except Exception as e:
+            print(f"❌ Quote failed for {symbol}: {e}")
+            raise
+
     def calculate_position_size(self, symbol, action):
         """Calcular tamaño de posición usando el RiskManager"""
         print(f"💰 Calculating position size for {symbol} ({action})")
@@ -49,18 +77,8 @@ class OrderExecutor:
         final_symbol = mapped_symbol
 
         try:
-            if self.is_crypto(symbol):
-                print("🔍 Trying crypto quote...")
-                quote = self.broker.get_latest_crypto_quote(mapped_symbol)
-                current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
-                if current_price is None:
-                    raise ValueError("No ask price found in crypto quote")
-                print(f"📊 Crypto quote for {mapped_symbol}: ${current_price}")
-            else:
-                print("🔍 Trying stock quote...")
-                quote = self.broker.get_latest_quote(mapped_symbol)
-                current_price = float(quote.ask_price)
-                print(f"📊 Stock quote for {mapped_symbol}: ${current_price}")
+            current_price = self._get_market_price(mapped_symbol)
+            print(f"📊 Quote for {mapped_symbol}: ${current_price}")
         except Exception as e:
             print(f"❌ Quote failed for {mapped_symbol}: {e}")
             raise
@@ -195,14 +213,7 @@ class OrderExecutor:
             print(f"🔄 Adjusted quantity: {signal.quantity}")
 
         try:
-            if self.is_crypto(signal.symbol):
-                quote = self.broker.get_latest_crypto_quote(correct_symbol)
-                current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
-                if current_price is None:
-                    raise ValueError("No ask price found in crypto quote")
-            else:
-                quote = self.broker.get_latest_quote(correct_symbol)
-                current_price = float(quote.ask_price)
+            current_price = self._get_market_price(correct_symbol)
         except Exception as e:
             print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
             raise
@@ -284,14 +295,7 @@ class OrderExecutor:
         print(f"📊 Selling {quantity_to_sell} out of {strategy_position.quantity} available")
 
         try:
-            if self.is_crypto(signal.symbol):
-                quote = self.broker.get_latest_crypto_quote(correct_symbol)
-                current_price = float(getattr(quote, 'ask_price', getattr(quote, 'ap', None)))
-                if current_price is None:
-                    raise ValueError("No ask price found in crypto quote")
-            else:
-                quote = self.broker.get_latest_quote(correct_symbol)
-                current_price = float(quote.ask_price)
+            current_price = self._get_market_price(correct_symbol)
         except Exception as e:
             print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
             raise
