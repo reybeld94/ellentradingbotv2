@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
 from app.database import Base
 from app.models.trades import Trade
 from app.services.trade_service import TradeService
+from app.utils.time import now_eastern
 
 
 def _setup_db():
@@ -15,7 +15,7 @@ def _setup_db():
 
 def test_equity_curve_filters_by_strategy():
     db = _setup_db()
-    now = datetime.utcnow()
+    now = now_eastern()
     trades = [
         Trade(strategy_id="A", symbol="AAPL", action="buy", quantity=1, entry_price=100,
               status="closed", closed_at=now, pnl=10, user_id=1, portfolio_id=1),

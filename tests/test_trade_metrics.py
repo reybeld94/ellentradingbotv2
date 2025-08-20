@@ -1,8 +1,8 @@
 import math
 import os
-from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from app.utils.time import now_eastern
 
 os.environ.setdefault('SECRET_KEY', 'secret')
 
@@ -16,7 +16,7 @@ def _setup_trades(pnls):
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
-    now = datetime.utcnow()
+    now = now_eastern()
     for pnl in pnls:
         trade = Trade(
             strategy_id="s",
