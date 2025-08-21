@@ -49,10 +49,10 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   const DEFAULT_EXCHANGE = import.meta.env.VITE_DEFAULT_EXCHANGE || 'Alpaca';
 
   const processedTrades: ProcessedTrade[] = trades.map((t) => {
-    // El PnL ya viene calculado correctamente desde la base de datos
+    // EL PnL YA VIENE CALCULADO CORRECTAMENTE COMO PnL TOTAL
     const pnl = t.pnl ?? 0;
 
-    // Calcular precio actual basado en PnL por acción
+    // Calcular precio actual basado en PnL total
     const pnlPerShare = t.quantity !== 0 ? pnl / t.quantity : 0;
     const currentPrice = t.entry_price + pnlPerShare;
     const pnlPercent = (t.entry_price * t.quantity) !== 0 ? (pnl / (t.entry_price * t.quantity)) * 100 : 0;
@@ -65,7 +65,7 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
       size: t.quantity,
       entryPrice: t.entry_price,
       currentPrice,
-      pnl,
+      pnl, // PnL TOTAL del trade
       pnlPercent,
       openTime: new Date(t.opened_at).toLocaleTimeString(),
       exchange: t.exchange ?? DEFAULT_EXCHANGE,

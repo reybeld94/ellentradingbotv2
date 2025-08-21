@@ -82,7 +82,7 @@ class AlpacaClient:
                 symbol=p.symbol,
                 qty=float(p.qty),
                 market_value=float(getattr(p, "market_value", 0) or 0),
-                unrealized_pl=float(getattr(p, "unrealized_pl", 0) or 0),
+                unrealized_pl=float(getattr(p, "unrealized_pl", 0) or 0),  # SOLO PnL TOTAL
                 unrealized_plpc=float(getattr(p, "unrealized_plpc", 0) or 0),
                 cost_basis=float(getattr(p, "cost_basis", 0) or 0),
                 avg_entry_price=float(getattr(p, "avg_entry_price", 0) or 0),
@@ -101,7 +101,7 @@ class AlpacaClient:
                 symbol=p.symbol,
                 qty=float(p.qty),
                 market_value=float(getattr(p, "market_value", 0) or 0),
-                unrealized_pl=float(getattr(p, "unrealized_pl", 0) or 0),
+                unrealized_pl=float(getattr(p, "unrealized_pl", 0) or 0),  # SOLO PnL TOTAL
                 unrealized_plpc=float(getattr(p, "unrealized_plpc", 0) or 0),
                 cost_basis=float(getattr(p, "cost_basis", 0) or 0),
                 avg_entry_price=float(getattr(p, "avg_entry_price", 0) or 0),

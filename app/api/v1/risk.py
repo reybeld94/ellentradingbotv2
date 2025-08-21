@@ -72,13 +72,13 @@ async def get_risk_status(current_user: User = Depends(get_current_verified_user
             else:
                 # Para activos normales, usar los valores de Alpaca directamente
                 market_value = pos['market_value']
-                unrealized_pl = pos['unrealized_pl']
+                unrealized_pl = pos['unrealized_pl']  # SOLO PnL TOTAL desde compra
 
             position_details.append({
                 "symbol": symbol,
                 "quantity": pos['quantity'],
                 "market_value": market_value,
-                "unrealized_pl": unrealized_pl,
+                "unrealized_pl": unrealized_pl,  # PnL TOTAL
                 "unrealized_plpc": pos.get('unrealized_plpc', 0.0),
                 "cost_basis": pos.get('cost_basis', 0.0),
                 "avg_entry_price": pos.get('avg_entry_price', 0.0),

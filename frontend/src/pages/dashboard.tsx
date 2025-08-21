@@ -468,6 +468,7 @@ const TradingDashboard: React.FC = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <a href="/portfolio-monitor.html" target="_blank" rel="noopener noreferrer">
+          {/* En el StatsCard de Portfolio Value */}
           <StatsCard
             title="Portfolio Value"
             value={account ? formatCurrency(account.portfolio_value) : '--'}
