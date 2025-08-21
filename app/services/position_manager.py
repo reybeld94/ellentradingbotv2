@@ -50,7 +50,7 @@ class PositionManager:
                         'symbol': pos.symbol,
                         'quantity': float(pos.qty),
                         'market_value': getattr(pos, 'market_value', 0.0),
-                        'unrealized_pl': getattr(pos, 'unrealized_pl', 0.0),
+                        'unrealized_pl': getattr(pos, 'unrealized_pl', 0.0),  # SOLO PnL TOTAL
                         'unrealized_plpc': getattr(pos, 'unrealized_plpc', 0.0),
                         'cost_basis': getattr(pos, 'cost_basis', 0.0),
                         'avg_entry_price': getattr(pos, 'avg_entry_price', 0.0),

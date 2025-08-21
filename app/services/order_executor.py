@@ -329,6 +329,7 @@ class OrderExecutor:
                 trade.exit_price = current_price
                 trade.closed_at = now
                 trade.status = 'closed'
+                # Calcular PnL total del trade al cerrarse
                 trade.pnl = (current_price - trade.entry_price) * trade.quantity
             db.commit()
             logger.info(

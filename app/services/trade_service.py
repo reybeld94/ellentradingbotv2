@@ -80,6 +80,7 @@ class TradeService:
         for trade in open_trades:
             broker_symbol = self._map_symbol(trade.symbol)
             price = self._get_current_price(broker_symbol)
+            # Calcular PnL total del trade desde el precio de entrada
             trade.pnl = (price - trade.entry_price) * trade.quantity
 
         self.db.commit()

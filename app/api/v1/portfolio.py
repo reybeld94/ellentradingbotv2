@@ -20,7 +20,7 @@ async def get_realtime_portfolio(current_user: User = Depends(get_current_verifi
         # Obtener posiciones con PnL real
         detailed_positions = position_manager.get_detailed_positions()
 
-        # Calcular PnL total no realizado
+        # Calcular PnL total no realizado (SOLO total, no intraday)
         total_unrealized_pl = sum(pos.get('unrealized_pl', 0.0) for pos in detailed_positions)
 
         return {
@@ -28,7 +28,7 @@ async def get_realtime_portfolio(current_user: User = Depends(get_current_verifi
                 "buying_power": str(buying_power),
                 "portfolio_value": str(portfolio_value),
                 "cash": str(cash),
-                "unrealized_pl": total_unrealized_pl,
+                "unrealized_pl": total_unrealized_pl,  # PnL TOTAL
                 "day_change": total_unrealized_pl,
                 "day_change_percent": (total_unrealized_pl / (portfolio_value - total_unrealized_pl) * 100) if portfolio_value > total_unrealized_pl else 0
             },
