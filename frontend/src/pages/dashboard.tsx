@@ -1,5 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Target, Activity, Clock, CheckCircle, XCircle, AlertTriangle, Zap, Brain } from 'lucide-react';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  Target, 
+  Activity, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle, 
+  Zap, 
+  Brain,
+  ArrowUpRight,
+  ArrowDownRight,
+  BarChart3,
+  PieChart,
+  Calendar,
+  Users,
+  Eye,
+  EyeOff
+} from 'lucide-react';
 
 interface AccountData {
   cash: number;
@@ -56,6 +76,7 @@ const Dashboard: React.FC = () => {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
   const [strategyMetrics, setStrategyMetrics] = useState<StrategyMetrics | null>(null);
+  const [showValues, setShowValues] = useState(true);
 
   const getAuthToken = (): string | null => {
     return localStorage.getItem('token');
@@ -166,12 +187,13 @@ const Dashboard: React.FC = () => {
   const winRate = trades.length > 0 ? (winningTrades / trades.length) * 100 : 0;
 
   const formatCurrency = (value: number) => {
+    if (!showValues) return '••••••';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    }).format(Math.abs(value));
   };
 
   const formatTime = (dateString: string) => {
@@ -181,221 +203,346 @@ const Dashboard: React.FC = () => {
     });
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const getSignalStatusIcon = (status: string) => {
     switch (status) {
-      case 'executed': return <CheckCircle className="h-3 w-3 text-green-500" />;
-      case 'pending': return <Clock className="h-3 w-3 text-yellow-500" />;
-      case 'rejected': return <XCircle className="h-3 w-3 text-red-500" />;
-      default: return <AlertTriangle className="h-3 w-3 text-gray-500" />;
+      case 'executed': return <CheckCircle className="w-3 h-3 text-emerald-500" />;
+      case 'pending': return <Clock className="w-3 h-3 text-amber-500" />;
+      case 'rejected': return <XCircle className="w-3 h-3 text-rose-500" />;
+      default: return <AlertTriangle className="w-3 h-3 text-slate-400" />;
     }
   };
 
   if (!accountData) {
-    return <div className="p-4">Loading...</div>;
-  }
-
-  return (
-    <div className="p-4 space-y-4 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-600">Portfolio Value</p>
-              <p className="text-lg font-bold text-gray-900">{formatCurrency(accountData.portfolio_value)}</p>
-            </div>
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="h-4 w-4 text-blue-600" />
-            </div>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 mx-auto animate-pulse">
+            <BarChart3 className="w-8 h-8 text-white" />
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-600">Day P&L</p>
-              <p className={`text-lg font-bold ${totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}> 
-                {totalPnL >= 0 ? '+' : ''}{formatCurrency(totalPnL)}
-              </p>
-            </div>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${totalPnL >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-              {totalPnL >= 0 ? 
-                <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              }
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-600">Buying Power</p>
-              <p className="text-lg font-bold text-gray-900">{formatCurrency(accountData.buying_power)}</p>
-            </div>
-            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Activity className="h-4 w-4 text-purple-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-600">Win Rate</p>
-              <p className="text-lg font-bold text-blue-600">{winRate.toFixed(1)}%</p>
-            </div>
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Target className="h-4 w-4 text-blue-600" />
-            </div>
-          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Loading Dashboard</h2>
+          <p className="text-slate-600">Preparing your trading insights...</p>
         </div>
       </div>
+    );
+  }
 
-        <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-12 lg:col-span-5 bg-white rounded-lg shadow-sm border border-gray-100">
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Active Trades</h3>
-              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                {trades.length}
-              </span>
-            </div>
+  const dayPnLChange = totalPnL >= 0 ? 'positive' : 'negative';
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Trading Dashboard</h1>
+            <p className="text-slate-600 mt-1">Real-time portfolio insights and performance metrics</p>
           </div>
-          <div className="p-2">
-            <div className="space-y-1 max-h-80 overflow-y-auto">
-              {trades.map((trade) => (
-                <div key={trade.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-2 h-2 rounded-full ${trade.pnl >= 0 ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <div>
-                      <p className="font-medium text-sm text-gray-900">{trade.symbol}</p>
-                      <p className="text-xs text-gray-500">{trade.quantity} @ {trade.entry_price}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-medium text-sm ${trade.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(0)}
-                    </p>
-                    <p className={`text-xs ${trade.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {trade.pnl_percent >= 0 ? '+' : ''}{trade.pnl_percent}%
-                    </p>
-                  </div>
-                </div>
-              ))}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowValues(!showValues)}
+              className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-white transition-all duration-200 shadow-sm"
+            >
+              {showValues ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <span className="text-sm font-medium">{showValues ? 'Hide' : 'Show'} Values</span>
+            </button>
+            <div className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-slate-700">Live</span>
             </div>
           </div>
         </div>
 
-        <div className="col-span-12 lg:col-span-4 bg-white rounded-lg shadow-sm border border-gray-100">
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Recent Signals</h3>
-              <Zap className="h-4 w-4 text-gray-400" />
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Portfolio Value */}
+          <div className="group relative bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-500 mb-1">Portfolio Value</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">
+                  {formatCurrency(accountData.portfolio_value)}
+                </p>
+                <div className="flex items-center text-sm text-emerald-600">
+                  <ArrowUpRight className="w-4 h-4 mr-1" />
+                  <span>+2.4% today</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <DollarSign className="w-6 h-6 text-white" />
+              </div>
             </div>
           </div>
-          <div className="p-2">
-            <div className="space-y-1 max-h-80 overflow-y-auto">
-              {signals.map((signal) => (
-                <div key={signal.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                  <div className="flex items-center space-x-3">
-                    {getSignalStatusIcon(signal.status)}
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <p className="font-medium text-sm text-gray-900">{signal.symbol}</p>
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          signal.action === 'BUY' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {signal.action}
+
+          {/* Day P&L */}
+          <div className={`group relative bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg ${dayPnLChange === 'positive' ? 'ring-1 ring-emerald-100' : 'ring-1 ring-rose-100'}`}>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-500 mb-1">Day P&L</p>
+                <p className={`text-2xl font-bold mb-1 ${totalPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {totalPnL >= 0 ? '+' : '-'}{formatCurrency(totalPnL)}
+                </p>
+                <div className={`flex items-center text-sm ${totalPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {totalPnL >= 0 ? <ArrowUpRight className="w-4 h-4 mr-1" /> : <ArrowDownRight className="w-4 h-4 mr-1" />}
+                  <span>{totalPnL >= 0 ? '+' : ''}{((totalPnL / accountData.portfolio_value) * 100).toFixed(2)}%</span>
+                </div>
+              </div>
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ${totalPnL >= 0 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-rose-500 to-rose-600'}`}>
+                {totalPnL >= 0 ? <TrendingUp className="w-6 h-6 text-white" /> : <TrendingDown className="w-6 h-6 text-white" />}
+              </div>
+            </div>
+          </div>
+
+          {/* Buying Power */}
+          <div className="group relative bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-500 mb-1">Buying Power</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">
+                  {formatCurrency(accountData.buying_power)}
+                </p>
+                <div className="flex items-center text-sm text-slate-600">
+                  <Activity className="w-4 h-4 mr-1" />
+                  <span>Available</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Activity className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+
+          {/* Win Rate */}
+          <div className="group relative bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-500 mb-1">Win Rate</p>
+                <p className="text-2xl font-bold text-slate-900 mb-1">{winRate.toFixed(1)}%</p>
+                <div className="flex items-center text-sm text-slate-600">
+                  <span>{winningTrades}/{trades.length} trades</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-12 gap-6">
+          {/* Active Trades */}
+          <div className="col-span-12 lg:col-span-5">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Active Positions</h3>
+                    <p className="text-sm text-slate-500">Real-time P&L tracking</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1.5 rounded-full">
+                      {trades.length} positions
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {trades.length === 0 ? (
+                    <div className="text-center py-12">
+                      <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500 font-medium">No active positions</p>
+                      <p className="text-sm text-slate-400">Your trades will appear here when executed</p>
+                    </div>
+                  ) : (
+                    trades.map((trade) => (
+                      <div key={trade.id} className="group flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-transparent hover:border-slate-200">
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-3 h-3 rounded-full ${trade.pnl >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <p className="font-bold text-slate-900">{trade.symbol}</p>
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                trade.action === 'BUY' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                              }`}>
+                                {trade.action}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-500">{trade.quantity} shares @ ${trade.entry_price}</p>
+                            <p className="text-xs text-slate-400">{formatDate(trade.opened_at)}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-bold text-lg ${trade.pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {trade.pnl >= 0 ? '+' : ''}${showValues ? trade.pnl.toFixed(0) : '••••'}
+                          </p>
+                          <p className={`text-sm font-medium ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {trade.pnl_percent >= 0 ? '+' : ''}{showValues ? trade.pnl_percent.toFixed(2) : '••.••'}%
+                          </p>
+                          <p className="text-xs text-slate-400">${showValues ? trade.current_price : '••••'}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Signals */}
+          <div className="col-span-12 lg:col-span-4">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Trading Signals</h3>
+                    <p className="text-sm text-slate-500">Recent algorithmic signals</p>
+                  </div>
+                  <Zap className="w-5 h-5 text-amber-500" />
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {signals.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500 font-medium">No recent signals</p>
+                      <p className="text-sm text-slate-400">Algorithmic signals will appear here</p>
+                    </div>
+                  ) : (
+                    signals.map((signal) => (
+                      <div key={signal.id} className="group flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all duration-200">
+                        <div className="flex items-center space-x-4">
+                          {getSignalStatusIcon(signal.status)}
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <p className="font-bold text-slate-900">{signal.symbol}</p>
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                signal.action === 'BUY' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                              }`}>
+                                {signal.action}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-sm text-slate-500">
+                              <span>${signal.price}</span>
+                              <span>•</span>
+                              <span className="font-medium">{signal.confidence}% confidence</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-400">{formatTime(signal.created_at)}</p>
+                          <div className={`text-xs px-2 py-1 rounded-full font-medium mt-1 ${
+                            signal.status === 'executed' ? 'bg-emerald-100 text-emerald-800' :
+                            signal.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                            'bg-rose-100 text-rose-800'
+                          }`}>
+                            {signal.status}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Strategy Metrics */}
+          <div className="col-span-12 lg:col-span-3">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300">
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Strategy Analytics</h3>
+                    <p className="text-sm text-slate-500">Performance metrics</p>
+                  </div>
+                  <Brain className="w-5 h-5 text-indigo-500" />
+                </div>
+                <select 
+                  value={selectedStrategy} 
+                  onChange={(e) => setSelectedStrategy(e.target.value)}
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  {strategies.map((strategy) => (
+                    <option key={strategy.id} value={strategy.id}>
+                      {strategy.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="p-6">
+                {strategyMetrics ? (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-slate-50 rounded-xl">
+                        <p className="text-xs font-medium text-slate-500 mb-1">Total Trades</p>
+                        <p className="text-xl font-bold text-slate-900">{strategyMetrics.total_trades}</p>
+                      </div>
+                      <div className="text-center p-4 bg-blue-50 rounded-xl">
+                        <p className="text-xs font-medium text-slate-500 mb-1">Win Rate</p>
+                        <p className="text-xl font-bold text-blue-600">{strategyMetrics.win_rate}%</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                        <span className="text-sm font-medium text-slate-600">Total P&L</span>
+                        <span className={`font-bold ${strategyMetrics.total_pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {formatCurrency(strategyMetrics.total_pnl)}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">${signal.price} • {signal.confidence}%</p>
+                      
+                      <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
+                        <span className="text-sm font-medium text-slate-600">Avg Win</span>
+                        <span className="font-bold text-emerald-600">{formatCurrency(strategyMetrics.avg_win)}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center p-3 bg-rose-50 rounded-lg">
+                        <span className="text-sm font-medium text-slate-600">Avg Loss</span>
+                        <span className="font-bold text-rose-600">{formatCurrency(Math.abs(strategyMetrics.avg_loss))}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                        <span className="text-sm font-medium text-slate-600">Max Drawdown</span>
+                        <span className="font-bold text-rose-600">{formatCurrency(Math.abs(strategyMetrics.max_drawdown))}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                        <span className="text-sm font-medium text-slate-600">Sharpe Ratio</span>
+                        <span className="font-bold text-blue-600">{strategyMetrics.sharpe_ratio}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">{formatTime(signal.created_at)}</p>
+                ) : (
+                  <div className="text-center py-12">
+                    <Brain className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">Loading metrics...</p>
+                    <div className="mt-3 flex justify-center">
+                      <div className="animate-pulse flex space-x-1">
+                        <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+                        <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+                        <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {signals.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Zap className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No recent signals</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="col-span-12 lg:col-span-3 bg-white rounded-lg shadow-sm border border-gray-100">
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Strategy Metrics</h3>
-              <Brain className="h-4 w-4 text-gray-400" />
-            </div>
-            <select 
-              value={selectedStrategy} 
-              onChange={(e) => setSelectedStrategy(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {strategies.map((strategy) => (
-                <option key={strategy.id} value={strategy.id}>
-                  {strategy.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="p-4">
-            {strategyMetrics ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">Total Trades</p>
-                    <p className="text-lg font-bold text-gray-900">{strategyMetrics.total_trades}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">Win Rate</p>
-                    <p className="text-lg font-bold text-blue-600">{strategyMetrics.win_rate}%</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-xs text-gray-500">Total P&L</span>
-                    <span className={`text-sm font-medium ${strategyMetrics.total_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(strategyMetrics.total_pnl)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-gray-500">Avg Win</span>
-                    <span className="text-sm font-medium text-green-600">{formatCurrency(strategyMetrics.avg_win)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-gray-500">Avg Loss</span>
-                    <span className="text-sm font-medium text-red-600">{formatCurrency(strategyMetrics.avg_loss)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-gray-500">Max Drawdown</span>
-                    <span className="text-sm font-medium text-red-600">{formatCurrency(strategyMetrics.max_drawdown)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-gray-500">Sharpe Ratio</span>
-                    <span className="text-sm font-medium text-blue-600">{strategyMetrics.sharpe_ratio}</span>
-                  </div>
-                </div>
+                )}
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Brain className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Loading metrics...</p>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
   );
 };
 
 export default Dashboard;
-
