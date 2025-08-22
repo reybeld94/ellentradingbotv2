@@ -179,12 +179,13 @@ const Dashboard: React.FC = () => {
     }
   }, [selectedStrategy]);
 
-  const totalPnL = trades.reduce((sum, trade) => sum + trade.pnl, 0);
-  const winningTrades = trades.filter(trade => trade.pnl > 0).length;
+  const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+  const winningTrades = trades.filter(trade => (trade.pnl || 0) > 0).length;
   const winRate = trades.length > 0 ? (winningTrades / trades.length) * 100 : 0;
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | null | undefined) => {
     if (!showValues) return '••••••';
+    if (value == null || value === undefined || isNaN(value)) return '$0';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -380,10 +381,10 @@ const Dashboard: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <p className={`font-bold text-lg ${trade.pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {trade.pnl >= 0 ? '+' : ''}${showValues ? trade.pnl.toFixed(0) : '••••'}
+                            {trade.pnl >= 0 ? '+' : ''}${showValues ? (trade.pnl || 0).toFixed(0) : '••••'}
                           </p>
                           <p className={`text-sm font-medium ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {trade.pnl_percent >= 0 ? '+' : ''}{showValues ? trade.pnl_percent.toFixed(2) : '••.••'}%
+                            {trade.pnl_percent >= 0 ? '+' : ''}{showValues ? (trade.pnl_percent || 0).toFixed(2) : '••.••'}%
                           </p>
                           <p className="text-xs text-slate-400">${showValues ? trade.current_price : '••••'}</p>
                         </div>
@@ -487,7 +488,7 @@ const Dashboard: React.FC = () => {
                       </div>
                       <div className="text-center p-4 bg-blue-50 rounded-xl">
                         <p className="text-xs font-medium text-slate-500 mb-1">Win Rate</p>
-                        <p className="text-xl font-bold text-blue-600">{strategyMetrics.win_rate}%</p>
+                        <p className="text-xl font-bold text-blue-600">{(strategyMetrics.win_rate || 0).toFixed(1)}%</p>
                       </div>
                     </div>
                     
