@@ -392,8 +392,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </div> {/* Cerrar max-w-7xl */}
-  </div> {/* Cerrar div principal */}
+    </div>
+  </div>
   );
 };
 
