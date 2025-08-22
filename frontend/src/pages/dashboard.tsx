@@ -14,9 +14,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   BarChart3,
-  PieChart,
-  Calendar,
-  Users,
   Eye,
   EyeOff
 } from 'lucide-react';
