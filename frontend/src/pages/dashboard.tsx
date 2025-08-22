@@ -196,7 +196,8 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 bg-gray-50 min-h-screen">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
@@ -251,7 +252,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-4">
         <div className="col-span-12 lg:col-span-5 bg-white rounded-lg shadow-sm border border-gray-100">
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
@@ -391,7 +392,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div> {/* Cerrar max-w-7xl */}
+  </div> {/* Cerrar div principal */}
   );
 };
 
