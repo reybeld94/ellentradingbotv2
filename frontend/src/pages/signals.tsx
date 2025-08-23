@@ -202,7 +202,7 @@ const SignalsPage: React.FC = () => {
         case 'pending':
           return <Clock className="h-5 w-5 text-yellow-600" />;
         default:
-          return <AlertCircle className="h-5 w-5 text-gray-600" />;
+          return null;
       }
     };
 
@@ -220,11 +220,9 @@ const SignalsPage: React.FC = () => {
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center">
             {getStatusIcon()}
-            {signal.status !== 'error' && (
-              <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(signal.status)}`}>
-                {signal.status}
-              </span>
-            )}
+            <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(signal.status)}`}>
+              {signal.status}
+            </span>
           </div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
@@ -235,12 +233,12 @@ const SignalsPage: React.FC = () => {
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center">
-            {signal.action === 'buy' ?
+            {signal.action.toLowerCase() === 'buy' ?
               <TrendingUp className="h-4 w-4 text-emerald-600 mr-2" /> :
               <TrendingDown className="h-4 w-4 text-red-600 mr-2" />
             }
             <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-              signal.action === 'buy' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+              signal.action.toLowerCase() === 'buy' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
             }`}>
               {signal.action.toUpperCase()}
             </span>
