@@ -357,7 +357,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
               <div className="p-4">
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="space-y-1 max-h-96 overflow-y-auto">
                   {positions.length === 0 ? (
                     <div className="text-center py-12">
                       <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -410,7 +410,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
               <div className="p-4">
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="space-y-1 max-h-96 overflow-y-auto">
                   {signals.length === 0 ? (
                     <div className="text-center py-12">
                       <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -422,6 +422,7 @@ const Dashboard: React.FC = () => {
                       <div key={signal.id} className="group flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all duration-200">
                         <div className="flex items-center space-x-4">
                           {getSignalStatusIcon(signal.status)}
+                          <SymbolLogo symbol={signal.symbol} size={32} />
                           <div>
                             <div className="flex items-center space-x-2">
                               <p className="font-bold text-slate-900">{signal.symbol}</p>
