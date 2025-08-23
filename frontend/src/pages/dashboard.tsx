@@ -341,9 +341,9 @@ const Dashboard: React.FC = () => {
         {/* Main Content Grid */}
         <div className="grid grid-cols-12 gap-6">
           {/* Active Trades */}
-          <div className="col-span-12 lg:col-span-5">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="p-6 border-b border-slate-100">
+          <div className="col-span-12 lg:col-span-4">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[32rem] flex flex-col">
+              <div className="p-6 border-b border-slate-100 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">Active Positions</h3>
@@ -356,8 +356,8 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="p-4">
-                <div className="space-y-1 max-h-96 overflow-y-auto">
+              <div className="p-4 flex-1 overflow-y-auto">
+                <div className="space-y-1">
                   {positions.length === 0 ? (
                     <div className="text-center py-12">
                       <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -399,8 +399,8 @@ const Dashboard: React.FC = () => {
 
           {/* Recent Signals */}
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="p-6 border-b border-slate-100">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[32rem] flex flex-col">
+              <div className="p-6 border-b border-slate-100 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">Trading Signals</h3>
@@ -409,8 +409,8 @@ const Dashboard: React.FC = () => {
                   <Zap className="w-5 h-5 text-amber-500" />
                 </div>
               </div>
-              <div className="p-4">
-                <div className="space-y-1 max-h-96 overflow-y-auto">
+              <div className="p-4 flex-1 overflow-y-auto">
+                <div className="space-y-1">
                   {signals.length === 0 ? (
                     <div className="text-center py-12">
                       <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -458,9 +458,9 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Strategy Metrics */}
-          <div className="col-span-12 lg:col-span-3">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300">
-              <div className="p-6 border-b border-slate-100">
+          <div className="col-span-12 lg:col-span-4">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[32rem] flex flex-col">
+              <div className="p-6 border-b border-slate-100 flex-shrink-0">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">Strategy Analytics</h3>
@@ -480,7 +480,7 @@ const Dashboard: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div className="p-6">
+              <div className="p-6 flex-1 overflow-y-auto">
                 {strategyMetrics ? (
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
