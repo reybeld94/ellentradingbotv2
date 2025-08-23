@@ -375,18 +375,18 @@ const Dashboard: React.FC = () => {
                                 LONG
                               </span>
                             </div>
-                            <p className="text-sm text-slate-500">{position.quantity.toFixed(2)} shares @ ${position.avg_entry_price.toFixed(2)}</p>
-                            <p className="text-xs text-slate-400">Value: ${position.market_value.toFixed(0)}</p>
+                            <p className="text-sm text-slate-500">{position.quantity.toFixed(4)} shares @ ${position.avg_entry_price.toFixed(4)}</p>
+                            <p className="text-xs text-slate-400">Value: ${position.market_value.toFixed(2)}</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className={`font-bold text-lg ${position.unrealized_pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {position.unrealized_pl >= 0 ? '+' : ''}${showValues ? position.unrealized_pl.toFixed(0) : '••••'}
+                            {position.unrealized_pl >= 0 ? '+' : ''}${showValues ? position.unrealized_pl.toFixed(2) : '••••'}
                           </p>
                           <p className={`text-sm font-medium ${position.unrealized_pl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {position.unrealized_plpc >= 0 ? '+' : ''}{showValues ? position.unrealized_plpc.toFixed(2) : '••.••'}%
+                            {position.unrealized_plpc >= 0 ? '+' : ''}{showValues ? position.unrealized_plpc.toFixed(4) : '••.••'}%
                           </p>
-                          <p className="text-xs text-slate-400">${showValues ? position.current_price.toFixed(2) : '••••'}</p>
+                          <p className="text-xs text-slate-400">${showValues ? position.current_price.toFixed(4) : '••••'}</p>
                         </div>
                       </div>
                     ))
