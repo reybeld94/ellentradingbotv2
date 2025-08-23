@@ -3,13 +3,12 @@ import {
   TrendingUp,
   TrendingDown,
   DollarSign,
-  Target, 
-  Activity, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
-  Zap, 
+  Target,
+  Activity,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Zap,
   Brain,
   ArrowUpRight,
   ArrowDownRight,
@@ -55,7 +54,7 @@ interface Signal {
   confidence: number;
   strategy_id: string;
   created_at: string;
-  status: 'pending' | 'executed' | 'rejected';
+  status: 'pending' | 'processed' | 'error';
 }
 
 interface StrategyMetrics {
@@ -215,10 +214,14 @@ const Dashboard: React.FC = () => {
 
   const getSignalStatusIcon = (status: string) => {
     switch (status) {
-      case 'executed': return <CheckCircle className="w-3 h-3 text-emerald-500" />;
-      case 'pending': return <Clock className="w-3 h-3 text-amber-500" />;
-      case 'rejected': return <XCircle className="w-3 h-3 text-rose-500" />;
-      default: return <AlertTriangle className="w-3 h-3 text-slate-400" />;
+      case 'processed':
+        return <CheckCircle className="w-3 h-3 text-emerald-500" />;
+      case 'pending':
+        return <Clock className="w-3 h-3 text-amber-500" />;
+      case 'error':
+        return <XCircle className="w-3 h-3 text-rose-500" />;
+      default:
+        return null;
     }
   };
 
@@ -442,7 +445,7 @@ const Dashboard: React.FC = () => {
                         <div className="text-right">
                           <p className="text-xs text-slate-400">{formatTime(signal.created_at)}</p>
                           <div className={`text-xs px-2 py-1 rounded-full font-medium mt-1 ${
-                            signal.status === 'executed' ? 'bg-emerald-100 text-emerald-800' :
+                            signal.status === 'processed' ? 'bg-emerald-100 text-emerald-800' :
                             signal.status === 'pending' ? 'bg-amber-100 text-amber-800' :
                             'bg-rose-100 text-rose-800'
                           }`}>
