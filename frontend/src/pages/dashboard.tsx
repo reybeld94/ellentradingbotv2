@@ -25,17 +25,25 @@ interface AccountData {
   day_trade_buying_power: number;
 }
 
-interface Trade {
-  id: number;
+interface Position {
   symbol: string;
-  action: 'BUY' | 'SELL';
   quantity: number;
-  entry_price: number;
+  market_value: number;
+  unrealized_pl: number;
+  unrealized_plpc: number;
+  cost_basis: number;
+  avg_entry_price: number;
   current_price: number;
-  pnl: number;
-  pnl_percent: number;
-  opened_at: string;
-  strategy_id: string;
+  percentage: number;
+}
+
+interface RiskData {
+  current_positions: Position[];
+  account_info: {
+    buying_power: number;
+    portfolio_value: number;
+    total_unrealized_pl: number;
+  };
 }
 
 interface Signal {
@@ -68,7 +76,8 @@ interface Strategy {
 
 const Dashboard: React.FC = () => {
   const [accountData, setAccountData] = useState<AccountData | null>(null);
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [riskData, setRiskData] = useState<RiskData | null>(null);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
@@ -155,20 +164,22 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const fetchTrades = async () => {
+  const fetchRiskData = async () => {
     try {
-      const response = await authenticatedFetch('/api/v1/trades');
+      const response = await authenticatedFetch('/api/v1/risk/status');
       const data = await response.json();
-      setTrades(Array.isArray(data) ? data : []);
+      setRiskData(data);
+      setPositions(data.current_positions || []);
     } catch (error) {
-      console.error('Error fetching trades:', error);
-      setTrades([]);
+      console.error('Error fetching risk data:', error);
+      setPositions([]);
+      setRiskData(null);
     }
   };
 
   useEffect(() => {
     fetchAccountData();
-    fetchTrades();
+    fetchRiskData();
     fetchSignals();
     fetchStrategies();
   }, []);
@@ -179,9 +190,9 @@ const Dashboard: React.FC = () => {
     }
   }, [selectedStrategy]);
 
-  const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
-  const winningTrades = trades.filter(trade => (trade.pnl || 0) > 0).length;
-  const winRate = trades.length > 0 ? (winningTrades / trades.length) * 100 : 0;
+  const totalPnL = riskData?.account_info?.total_unrealized_pl || 0;
+  const winningTrades = positions.filter(pos => (pos.unrealized_pl || 0) > 0).length;
+  const winRate = positions.length > 0 ? (winningTrades / positions.length) * 100 : 0;
 
   const formatCurrency = (value: number | null | undefined) => {
     if (!showValues) return '••••••';
@@ -196,15 +207,6 @@ const Dashboard: React.FC = () => {
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -325,7 +327,7 @@ const Dashboard: React.FC = () => {
                 <p className="text-sm font-medium text-slate-500 mb-1">Win Rate</p>
                 <p className="text-2xl font-bold text-slate-900 mb-1">{winRate.toFixed(1)}%</p>
                 <div className="flex items-center text-sm text-slate-600">
-                  <span>{winningTrades}/{trades.length} trades</span>
+                  <span>{winningTrades}/{positions.length} positions</span>
                 </div>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -348,45 +350,43 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1.5 rounded-full">
-                      {trades.length} positions
+                      {positions.length} positions
                     </div>
                   </div>
                 </div>
               </div>
               <div className="p-4">
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {trades.length === 0 ? (
+                  {positions.length === 0 ? (
                     <div className="text-center py-12">
                       <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                       <p className="text-slate-500 font-medium">No active positions</p>
-                      <p className="text-sm text-slate-400">Your trades will appear here when executed</p>
+                      <p className="text-sm text-slate-400">Your positions will appear here when opened</p>
                     </div>
                   ) : (
-                    trades.map((trade) => (
-                      <div key={trade.id} className="group flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-transparent hover:border-slate-200">
+                    positions.map((position) => (
+                      <div key={position.symbol} className="group flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-transparent hover:border-slate-200">
                         <div className="flex items-center space-x-4">
-                          <div className={`w-3 h-3 rounded-full ${trade.pnl >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          <div className={`w-3 h-3 rounded-full ${position.unrealized_pl >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                           <div>
                             <div className="flex items-center space-x-2">
-                              <p className="font-bold text-slate-900">{trade.symbol}</p>
-                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                trade.action === 'BUY' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                              }`}>
-                                {trade.action}
+                              <p className="font-bold text-slate-900">{position.symbol}</p>
+                              <span className="text-xs px-2 py-1 rounded-full font-medium bg-blue-100 text-blue-800">
+                                LONG
                               </span>
                             </div>
-                            <p className="text-sm text-slate-500">{trade.quantity} shares @ ${trade.entry_price}</p>
-                            <p className="text-xs text-slate-400">{formatDate(trade.opened_at)}</p>
+                            <p className="text-sm text-slate-500">{position.quantity.toFixed(2)} shares @ ${position.avg_entry_price.toFixed(2)}</p>
+                            <p className="text-xs text-slate-400">Value: ${position.market_value.toFixed(0)}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`font-bold text-lg ${trade.pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {trade.pnl >= 0 ? '+' : ''}${showValues ? (trade.pnl || 0).toFixed(0) : '••••'}
+                          <p className={`font-bold text-lg ${position.unrealized_pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {position.unrealized_pl >= 0 ? '+' : ''}${showValues ? position.unrealized_pl.toFixed(0) : '••••'}
                           </p>
-                          <p className={`text-sm font-medium ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {trade.pnl_percent >= 0 ? '+' : ''}{showValues ? (trade.pnl_percent || 0).toFixed(2) : '••.••'}%
+                          <p className={`text-sm font-medium ${position.unrealized_pl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {position.unrealized_plpc >= 0 ? '+' : ''}{showValues ? position.unrealized_plpc.toFixed(2) : '••.••'}%
                           </p>
-                          <p className="text-xs text-slate-400">${showValues ? trade.current_price : '••••'}</p>
+                          <p className="text-xs text-slate-400">${showValues ? position.current_price.toFixed(2) : '••••'}</p>
                         </div>
                       </div>
                     ))
