@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
   Target, 
   Activity, 
   Clock, 
@@ -17,6 +17,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import SymbolLogo from '../components/SymbolLogo';
 
 interface AccountData {
   cash: number;
@@ -367,7 +368,7 @@ const Dashboard: React.FC = () => {
                     positions.map((position) => (
                       <div key={position.symbol} className="group flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-transparent hover:border-slate-200">
                         <div className="flex items-center space-x-4">
-                          <div className={`w-3 h-3 rounded-full ${position.unrealized_pl >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          <SymbolLogo symbol={position.symbol} size={32} />
                           <div>
                             <div className="flex items-center space-x-2">
                               <p className="font-bold text-slate-900">{position.symbol}</p>
