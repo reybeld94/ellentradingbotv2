@@ -342,7 +342,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-12 gap-6">
           {/* Active Trades */}
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[32rem] flex flex-col">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[40rem] flex flex-col">
               <div className="p-6 border-b border-slate-100 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div>
@@ -399,7 +399,7 @@ const Dashboard: React.FC = () => {
 
           {/* Recent Signals */}
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[32rem] flex flex-col">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[40rem] flex flex-col">
               <div className="p-6 border-b border-slate-100 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div>
@@ -459,7 +459,7 @@ const Dashboard: React.FC = () => {
 
           {/* Strategy Metrics */}
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[32rem] flex flex-col">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[40rem] flex flex-col">
               <div className="p-6 border-b border-slate-100 flex-shrink-0">
                 <div className="flex items-center justify-between mb-4">
                   <div>
