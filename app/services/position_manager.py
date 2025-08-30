@@ -109,15 +109,23 @@ class PositionManager:
         try:
             if self.is_crypto(signal.symbol):
                 quote = self.broker.get_latest_crypto_quote(signal.symbol)
+                price = float(getattr(quote, "ask_price", getattr(quote, "ap", 0)) or 0)
             else:
                 quote = self.broker.get_latest_quote(signal.symbol)
+                price = float(getattr(quote, "ask_price", 0) or 0)
 
-            estimated_cost = float(quote.price) * calculated_quantity
+            if not price:
+                trade = self.broker.get_latest_trade(signal.symbol)
+                price = float(getattr(trade, "price", getattr(trade, "p", 0)) or 0)
+
+            estimated_cost = price * calculated_quantity
 
             if estimated_cost > available_cash:
                 raise ValueError(f"Insufficient cash. Need: ${estimated_cost:.2f}, Available: ${available_cash:.2f}")
 
         except Exception as e:
+            if isinstance(e, ValueError):
+                raise
             logger.warning(f"Could not validate cash for {signal.symbol}: {e}")
 
         return True
