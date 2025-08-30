@@ -13,6 +13,9 @@ from app.services import portfolio_service
 from app.utils.time import to_eastern
 import logging
 
+from app.signals.processor import WebhookProcessor
+from app.signals.normalizer import SignalNormalizer
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -24,8 +27,6 @@ async def receive_tradingview_webhook(
         current_user: User = Depends(get_current_verified_user)  # PROTEGIDO
 ):
     """Recibir webhook de TradingView (requiere autenticación) - NUEVA ARQUITECTURA"""
-    from app.signals.processor import WebhookProcessor
-    
     try:
         logger.info(
             f"Received webhook from user {current_user.username}: {webhook_data.dict()}"
@@ -122,8 +123,6 @@ async def receive_public_webhook(
         x_api_key: Optional[str] = Header(None, alias="X-API-Key")
 ):
     """Webhook público con API key para TradingView - usa usuario 'reybel' - NUEVA ARQUITECTURA"""
-    from app.signals.processor import WebhookProcessor
-
     # Verificar API key desde query param o header
     provided_api_key = api_key or x_api_key
 
