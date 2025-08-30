@@ -224,7 +224,7 @@ class RiskManager:
         risk_limits: RiskLimit
     ) -> Dict[str, Any]:
         """Verificar exposición por símbolo"""
-        
+
         # Calcular exposición actual en este símbolo
         current_position = self.db.query(func.sum(Trade.quantity)).filter(
             and_(
@@ -234,11 +234,31 @@ class RiskManager:
                 Trade.status == "open"
             )
         ).scalar() or 0.0
-        
-        # TODO: Calcular valor en USD y comparar con capital
-        # Por ahora, verificamos solo que no exceda límite de posiciones
-        
-        return {"approved": True}  # Implementación básica
+
+        if current_position == 0:
+            return {"approved": True}
+
+        try:
+            trade = broker_client.get_latest_trade(symbol)
+            current_price = float(getattr(trade, "price", 0.0))
+            account = broker_client.get_account()
+            total_capital = float(getattr(account, "portfolio_value", 0.0))
+        except Exception as e:
+            logger.error(f"Error getting data for exposure check: {e}")
+            return {"approved": True}
+
+        if current_price <= 0 or total_capital <= 0:
+            return {"approved": True}
+
+        position_value = current_position * current_price
+        max_allowed = total_capital * risk_limits.max_symbol_exposure
+
+        if position_value > max_allowed:
+            return self._reject(
+                f"Symbol exposure limit exceeded: ${position_value:.2f} > ${max_allowed:.2f}"
+            )
+
+        return {"approved": True}
     
     def _calculate_position_size(
         self, 
