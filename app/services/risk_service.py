@@ -4,7 +4,7 @@ from sqlalchemy import func, and_
 from app.models.risk_limit import RiskLimit
 from app.models.user import User
 from app.models.portfolio import Portfolio
-from app.models.trade import Trade
+from app.models.trades import Trade
 from app.models.signal import Signal
 from datetime import datetime
 from app.utils.time import now_eastern

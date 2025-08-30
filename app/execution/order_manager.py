@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any
 import uuid
 from datetime import datetime
 import logging
+from app.services.order_executor import OrderExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -147,11 +148,38 @@ class OrderManager:
             # Si la señal ya especifica cantidad, usar esa
             return float(signal.quantity)
 
-        # Calcular basado en % del capital
+        if available_capital <= 0:
+            raise ValueError("available_capital must be positive")
+        if not (0 < max_position_pct <= 1):
+            raise ValueError("max_position_pct must be between 0 and 1")
+
+        # Obtener precio actual usando OrderExecutor
+        oe = OrderExecutor()
+        mapped_symbol = oe.map_symbol(signal.symbol)
+        current_price = oe._get_market_price(mapped_symbol)
+        if current_price <= 0:
+            raise ValueError(f"Invalid price for {signal.symbol}")
+
         max_position_value = available_capital * max_position_pct
+        if max_position_value <= 0:
+            raise ValueError("No capital available for position")
 
-        # Para market orders, necesitaríamos el precio actual
-        # Por ahora, usar quantity = 1 como default seguro
-        # TODO: Integrar con precio actual del símbolo
+        raw_qty = max_position_value / current_price
 
-        return 1.0  # Cantidad conservadora por defecto
+        # Determinar si el activo es fraccionable
+        is_fractionable = False
+        try:
+            is_fractionable = oe.is_crypto(signal.symbol) or oe.broker.is_asset_fractionable(mapped_symbol)
+        except Exception:
+            # Si hay error al verificar, asumir fraccionable para evitar oversizing
+            is_fractionable = True
+
+        if is_fractionable:
+            if raw_qty <= 0:
+                raise ValueError("Calculated quantity must be positive")
+            return round(raw_qty, 6)
+        else:
+            qty = int(raw_qty)
+            if qty < 1:
+                raise ValueError("Calculated quantity below 1 for non-fractionable asset")
+            return qty
