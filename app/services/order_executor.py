@@ -12,6 +12,9 @@ from app.utils.time import now_eastern
 from app.websockets import ws_manager
 import asyncio
 import json
+from alpaca.common.exceptions import APIError
+from sqlalchemy.exc import SQLAlchemyError
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,8 +64,11 @@ class OrderExecutor:
             if not price:
                 raise ValueError(f"No price data for {symbol}")
             return price
-        except Exception as e:
-            print(f"❌ Quote failed for {symbol}: {e}")
+        except APIError as e:
+            logger.exception("API error fetching market price for %s", symbol)
+            raise
+        except Exception:
+            logger.exception("Unexpected error fetching market price for %s", symbol)
             raise
 
     def calculate_position_size(self, symbol, action):
@@ -79,8 +85,11 @@ class OrderExecutor:
         try:
             current_price = self._get_market_price(mapped_symbol)
             print(f"📊 Quote for {mapped_symbol}: ${current_price}")
-        except Exception as e:
-            print(f"❌ Quote failed for {mapped_symbol}: {e}")
+        except APIError as e:
+            logger.exception("API error fetching quote for %s", mapped_symbol)
+            raise
+        except Exception:
+            logger.exception("Unexpected error fetching quote for %s", mapped_symbol)
             raise
 
         is_fractionable = self.broker.is_asset_fractionable(final_symbol)
@@ -182,12 +191,15 @@ class OrderExecutor:
             finally:
                 db.close()
 
+        except (APIError, SQLAlchemyError) as e:
+            signal.status = "error"
+            signal.error_message = str(e)
+            logger.exception("Broker or database error executing signal for %s", signal.symbol)
+            raise
         except Exception as e:
             signal.status = "error"
             signal.error_message = str(e)
-
-            print(f"❌ Error executing signal: {e}")
-            logger.error(f"Error executing signal for {signal.symbol}: {e}")
+            logger.exception("Unexpected error executing signal for %s", signal.symbol)
             raise
 
     def _execute_buy_signal(self, signal: Signal, strategy_manager: StrategyPositionManager, correct_symbol: str, limit: int, db: Session):
@@ -214,8 +226,11 @@ class OrderExecutor:
 
         try:
             current_price = self._get_market_price(correct_symbol)
-        except Exception as e:
-            print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
+        except APIError as e:
+            logger.exception("API error getting final quote for %s", correct_symbol)
+            raise
+        except Exception:
+            logger.exception("Unexpected error getting final quote for %s", correct_symbol)
             raise
 
         estimated_cost = current_price * signal.quantity
@@ -296,8 +311,11 @@ class OrderExecutor:
 
         try:
             current_price = self._get_market_price(correct_symbol)
-        except Exception as e:
-            print(f"❌ Failed to get final quote for {correct_symbol}: {e}")
+        except APIError as e:
+            logger.exception("API error getting final quote for %s", correct_symbol)
+            raise
+        except Exception:
+            logger.exception("Unexpected error getting final quote for %s", correct_symbol)
             raise
 
         print(f"📤 Submitting sell order to broker for {correct_symbol}...")

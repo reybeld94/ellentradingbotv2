@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from alpaca.common.exceptions import APIError
 from sqlalchemy.orm import Session
+import logging
 from app.integrations import broker_client
 from app.services.position_manager import position_manager
 from app.database import get_db
@@ -12,6 +13,7 @@ from app.core.auth import get_current_verified_user, get_admin_user
 from app.services import portfolio_service
 from app.utils.time import to_eastern
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -61,8 +63,8 @@ async def get_orders(
                     "rejected_reason": _get_value(order, "rejected_reason"),
                 }
                 order_list.append(order_data)
-            except Exception:
-                # Si hay error procesando una orden específica, continuar con las demás
+            except (AttributeError, TypeError, ValueError) as order_exc:
+                logger.warning("Failed to process order %s: %s", getattr(order, "id", "unknown"), order_exc)
                 continue
 
         return {
@@ -71,13 +73,15 @@ async def get_orders(
             "user": current_user.username
         }
 
-    except Exception as e:
-        return {
-            "error": str(e),
-            "orders": [],
-            "user": current_user.username,
-            "total_count": 0
-        }
+    except APIError as e:
+        logger.exception("Alpaca API error fetching orders")
+        raise HTTPException(
+            status_code=e.status_code or 502,
+            detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
+        )
+    except Exception:
+        logger.exception("Unexpected error fetching orders")
+        raise
 
 
 @router.get("/account")
@@ -100,12 +104,14 @@ async def get_account(
             "user": current_user.username,
         }
     except APIError as e:
+        logger.exception("Alpaca API error fetching account info")
         raise HTTPException(
             status_code=e.status_code or 502,
             detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Unexpected error fetching account info")
+        raise
 
 
 @router.get("/positions")
@@ -120,12 +126,14 @@ async def get_positions(
         portfolio_summary["user"] = current_user.username
         return portfolio_summary
     except APIError as e:
+        logger.exception("Alpaca API error fetching positions")
         raise HTTPException(
             status_code=e.status_code or 502,
             detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Unexpected error fetching positions")
+        raise
 
 
 @router.get("/signals")

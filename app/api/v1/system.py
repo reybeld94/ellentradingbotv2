@@ -4,6 +4,8 @@ from app.core.auth import get_admin_user
 from datetime import datetime
 import logging
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from alpaca.common.exceptions import APIError
 from app.database import get_db
 from app.integrations import broker_client
 
@@ -21,12 +23,9 @@ async def system_health_check():
             "service": "trading_bot_api",
             "version": "1.0.0"
         }
-    except Exception as e:
-        return {
-            "status": "error",
-            "timestamp": datetime.utcnow().isoformat(),
-            "error": str(e)
-        }
+    except Exception:
+        logger.exception("Health check failed")
+        raise
 
 
 @router.get("/status")
@@ -43,21 +42,23 @@ async def system_status(
             db = next(get_db())
             db.execute(text("SELECT 1"))
             database_status = "connected"
-        except Exception as db_exc:
+        except SQLAlchemyError as db_exc:
+            logger.warning("Database connectivity issue: %s", db_exc)
             database_status = str(db_exc)
         finally:
             if db is not None:
                 try:
                     db.close()
-                except Exception:
-                    pass
+                except SQLAlchemyError as close_exc:
+                    logger.warning("Error closing database connection: %s", close_exc)
 
         # Broker connectivity check
         try:
             broker_client.get_account()
             broker_status = "connected"
-        except Exception as broker_exc:
-            broker_status = str(broker_exc)
+        except APIError as broker_exc:
+            logger.warning("Broker connectivity issue: %s", broker_exc)
+            broker_status = f"API error: {broker_exc}"
 
         return {
             "system_status": {
@@ -71,13 +72,7 @@ async def system_status(
             "checked_by": current_user.username
         }
 
-    except Exception as e:
-        logger.error(f"Error getting system status: {e}")
-        return {
-            "system_status": {
-                "api": "error",
-                "error": str(e)
-            },
-            "timestamp": datetime.utcnow().isoformat()
-        }
+    except Exception:
+        logger.exception("Error getting system status")
+        raise
 
