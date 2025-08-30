@@ -2,13 +2,11 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from typing import Optional
 from app.database import get_db
 from app.schemas.webhook import TradingViewWebhook, WebhookResponse
 from app.models.signal import Signal
 from app.models.user import User
-from app.services.order_executor import order_executor
 from app.core.auth import get_current_verified_user
 from app.config import settings
 from app.services import portfolio_service
@@ -123,7 +121,8 @@ async def receive_public_webhook(
         # Opción 2: API key como header (alternativa)
         x_api_key: Optional[str] = Header(None, alias="X-API-Key")
 ):
-    """Webhook público con API key para TradingView - usa usuario 'reybel'"""
+    """Webhook público con API key para TradingView - usa usuario 'reybel' - NUEVA ARQUITECTURA"""
+    from app.signals.processor import WebhookProcessor
 
     # Verificar API key desde query param o header
     provided_api_key = api_key or x_api_key
@@ -145,7 +144,7 @@ async def receive_public_webhook(
         logger.warning(f"Invalid API key provided: {provided_api_key}")
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    # CAMBIADO: Buscar usuario 'reybel' en lugar de 'tradingview_bot'
+    # Buscar usuario 'reybel'
     target_user = db.query(User).filter(User.username == "reybel").first()
 
     if not target_user:
@@ -155,90 +154,42 @@ async def receive_public_webhook(
             detail="Target user 'reybel' not found. Please check that the user exists and is active."
         )
 
-    if not target_user.is_active:
-        logger.error("User 'reybel' is not active")
-        raise HTTPException(
-            status_code=500,
-            detail="Target user 'reybel' is not active"
-        )
-
     try:
-        logger.info(f"Processing public webhook for user 'reybel': {webhook_data.dict()}")
+        logger.info(f"Public webhook received for user 'reybel': {webhook_data.dict()}")
 
-        # Verify that the strategy exists before creating the signal
-        strategy_exists = db.execute(
-            text("SELECT 1 FROM strategies WHERE id = :sid"),
-            {"sid": webhook_data.strategy_id},
-        ).first()
-        if not strategy_exists:
-            logger.warning(
-                f"Unknown strategy received: {webhook_data.strategy_id}"
-            )
-            return WebhookResponse(
-                status="error",
-                message="Unknown strategy_id",
-                signal_id=None,
-            )
-
-        active_portfolio = portfolio_service.get_active(db, target_user)
-        if not active_portfolio:
-            return WebhookResponse(
-                status="error",
-                message="No active portfolio configured",
-                signal_id=None,
-            )
-
-        signal = Signal(
-            symbol=webhook_data.symbol,
-            action=webhook_data.action,
-            strategy_id=webhook_data.strategy_id,
-            quantity=webhook_data.quantity,
-            price=webhook_data.price,
-            source="tradingview_public",
-            status="pending",
-            reason=webhook_data.reason,
-            confidence=webhook_data.confidence,
-            tv_timestamp=webhook_data.timestamp,
-            user_id=target_user.id,  # Usar ID del usuario 'reybel'
-            portfolio_id=active_portfolio.id
-        )
-
-        db.add(signal)
-        db.commit()
-        db.refresh(signal)
-
-        logger.info(f"Public signal created for reybel: ID {signal.id}")
-
-        # Ejecutar orden
-        try:
-            order = order_executor.execute_signal(signal, target_user)
-            db.commit()
-
-            logger.info(f"Order executed successfully for reybel: {signal.strategy_id} {signal.action} {signal.symbol}")
-
+        # Usar el nuevo procesador modular
+        processor = WebhookProcessor(db)
+        result = processor.process_tradingview_webhook(webhook_data, target_user)
+        
+        # Mapear respuesta según el resultado
+        if result["status"] == "accepted":
             return WebhookResponse(
                 status="success",
-                message=f"Public webhook processed for reybel: {signal.strategy_id} {signal.action} {signal.symbol}",
-                signal_id=signal.id
+                message=f"Signal accepted: {webhook_data.strategy_id} {webhook_data.action} {webhook_data.symbol} (user: reybel)",
+                signal_id=result["signal_id"]
             )
-        except Exception as e:
-            db.commit()
-            logger.error(f"Error executing public webhook order for reybel: {e}")
+        elif result["status"] == "duplicate":
+            return WebhookResponse(
+                status="duplicate",
+                message="Signal already processed (duplicate detected)",
+                signal_id=None
+            )
+        else:
+            # rejected o error
+            error_msg = f"Signal rejected: {result.get('reason', 'unknown')}"
+            if result.get('errors'):
+                error_msg += f" - Errors: {', '.join(result['errors'])}"
+            
             return WebhookResponse(
                 status="error",
-                message=f"Signal received but order failed: {str(e)}",
-                signal_id=signal.id
+                message=error_msg,
+                signal_id=result.get("signal_id")
             )
 
     except Exception as e:
         db.rollback()
-        logger.error(f"Error processing public webhook for reybel: {e}")
-        return WebhookResponse(
-            status="error",
-            message=f"Failed to process webhook: {str(e)}",
-            signal_id=None
-        )
-
+        logger.error(f"Error processing public webhook: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Test endpoint for debugging
 @router.post("/test-webhook")
