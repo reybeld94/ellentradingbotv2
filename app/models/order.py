@@ -1,7 +1,16 @@
 # backend/app/models/order.py
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import DECIMAL
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    DateTime,
+    Boolean,
+    Text,
+    ForeignKey,
+    DECIMAL,
+)
 from sqlalchemy.orm import relationship
 from app.database import Base
 from app.core.types import OrderStatus, OrderType
