@@ -11,11 +11,8 @@ from app.models.user import User
 from app.services.order_executor import order_executor
 from app.core.auth import get_current_verified_user
 from app.config import settings
-from app.websockets import ws_manager
 from app.services import portfolio_service
 from app.utils.time import to_eastern
-import asyncio
-import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,101 +25,47 @@ async def receive_tradingview_webhook(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_verified_user)  # PROTEGIDO
 ):
-    """Recibir webhook de TradingView (requiere autenticación)"""
+    """Recibir webhook de TradingView (requiere autenticación) - NUEVA ARQUITECTURA"""
+    from app.signals.processor import WebhookProcessor
+    
     try:
         logger.info(
             f"Received webhook from user {current_user.username}: {webhook_data.dict()}"
         )
 
-        # Verify that the strategy exists before creating the signal
-        strategy_exists = db.execute(
-            text("SELECT 1 FROM strategies WHERE id = :sid"),
-            {"sid": webhook_data.strategy_id},
-        ).first()
-        if not strategy_exists:
-            logger.warning(
-                f"Unknown strategy received: {webhook_data.strategy_id}"
-            )
-            raise HTTPException(status_code=400, detail="Unknown strategy_id")
-
-        active_portfolio = portfolio_service.get_active(db, current_user)
-        if not active_portfolio:
-            raise HTTPException(status_code=400, detail="No active portfolio configured")
-
-        # Crear nueva señal en la base de datos con información del usuario
-        signal = Signal(
-            symbol=webhook_data.symbol,
-            action=webhook_data.action,
-            strategy_id=webhook_data.strategy_id,
-            quantity=webhook_data.quantity,
-            price=webhook_data.price,
-            source="tradingview",
-            status="pending",
-            reason=webhook_data.reason,
-            confidence=webhook_data.confidence,
-            tv_timestamp=webhook_data.timestamp,
-            user_id=current_user.id,  # NUEVO: Asociar señal con usuario
-            portfolio_id=active_portfolio.id
-        )
-
-        db.add(signal)
-        db.commit()
-        db.refresh(signal)
-
-        signal_data = {
-            "id": signal.id,
-            "symbol": signal.symbol,
-            "action": signal.action,
-            "quantity": signal.quantity,
-            "status": signal.status,
-            "strategy_id": signal.strategy_id,
-            "timestamp": to_eastern(signal.timestamp).isoformat(),
-        }
-        asyncio.create_task(
-            ws_manager.broadcast(json.dumps({"event": "new_signal", "payload": signal_data}))
-        )
-
-        signal_data = {
-            "id": signal.id,
-            "symbol": signal.symbol,
-            "action": signal.action,
-            "quantity": signal.quantity,
-            "status": signal.status,
-            "strategy_id": signal.strategy_id,
-            "timestamp": to_eastern(signal.timestamp).isoformat(),
-        }
-        asyncio.create_task(
-            ws_manager.broadcast(json.dumps({"event": "new_signal", "payload": signal_data}))
-        )
-
-        logger.info(
-            f"Signal created: ID {signal.id}, User: {current_user.username}, {signal.strategy_id}:{signal.symbol} {signal.action}")
-
-        # Ejecutar orden en el broker con gestión por estrategia
-        try:
-            order = order_executor.execute_signal(signal, current_user)
-            db.commit()
-
+        # Usar el nuevo procesador modular
+        processor = WebhookProcessor(db)
+        result = processor.process_tradingview_webhook(webhook_data, current_user)
+        
+        # Mapear respuesta según el resultado
+        if result["status"] == "accepted":
             return WebhookResponse(
                 status="success",
-                message=f"Order executed: {signal.strategy_id} {signal.action} {signal.quantity} {signal.symbol} (user: {current_user.username})",
-                signal_id=signal.id
+                message=f"Signal accepted: {webhook_data.strategy_id} {webhook_data.action} {webhook_data.symbol} (user: {current_user.username})",
+                signal_id=result["signal_id"]
             )
-
-        except Exception as e:
-            db.commit()
-            logger.error(f"Error executing order: {e}")
+        elif result["status"] == "duplicate":
+            return WebhookResponse(
+                status="duplicate",
+                message="Signal already processed (duplicate detected)",
+                signal_id=None
+            )
+        else:
+            # rejected o error
+            error_msg = f"Signal rejected: {result.get('reason', 'unknown')}"
+            if result.get('errors'):
+                error_msg += f" - Errors: {', '.join(result['errors'])}"
+            
             return WebhookResponse(
                 status="error",
-                message=f"Failed to execute order: {str(e)}",
-                signal_id=signal.id
+                message=error_msg,
+                signal_id=result.get("signal_id")
             )
 
     except Exception as e:
         db.rollback()
         logger.error(f"Error processing webhook: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/signals")
 async def get_signals(
