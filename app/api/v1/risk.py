@@ -6,6 +6,8 @@ from app.models.user import User
 from app.core.auth import get_current_verified_user
 from app.services.risk_service import RiskService
 from app.services import portfolio_service
+from app.services.position_manager import position_manager
+from app.services.risk_manager import risk_manager
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -107,6 +109,27 @@ async def update_risk_limits(
             "max_orders_per_day": updated_limits.max_orders_per_day,
             "max_open_positions": updated_limits.max_open_positions,
         }
+    }
+
+@router.get("/risk/status")
+async def get_risk_status(current_user: User | None = Depends(get_current_verified_user)):
+    """Obtener estado general de riesgo y posiciones actuales"""
+    from app.integrations import broker_client
+
+    account = broker_client.get_account()
+    buying_power = float(getattr(account, "buying_power", 0))
+    portfolio_value = float(getattr(account, "portfolio_value", 0))
+
+    positions = position_manager.get_detailed_positions()
+    allocation = risk_manager.get_allocation_info(buying_power)
+
+    return {
+        "account": {
+            "buying_power": buying_power,
+            "portfolio_value": portfolio_value,
+        },
+        "current_positions": positions,
+        "allocation_info": allocation,
     }
 
 @router.post("/risk/test-signal")
