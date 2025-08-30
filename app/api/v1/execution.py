@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
+from datetime import datetime
 from app.database import get_db
 from app.models.user import User
 from app.models.order import Order
@@ -315,3 +316,234 @@ async def execution_health_check(
             "message": f"Health check failed: {str(e)}",
             "timestamp": None
         }
+
+
+@router.get("/scheduler/status")
+async def get_scheduler_status(
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Obtener estado del scheduler de órdenes"""
+    try:
+        from app.execution.scheduler import execution_scheduler
+
+        status = execution_scheduler.get_status()
+
+        return {
+            "scheduler_status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "checked_by": current_user.username
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting scheduler status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scheduler/start")
+async def start_scheduler(
+    current_user: User = Depends(get_admin_user)  # Solo admins
+):
+    """Iniciar el scheduler manualmente (solo si está detenido)"""
+    try:
+        from app.execution.scheduler import execution_scheduler
+
+        if execution_scheduler.is_running:
+            return {
+                "status": "already_running",
+                "message": "Scheduler is already running",
+                "started_by": current_user.username
+            }
+
+        # Nota: En producción, el scheduler se inicia automáticamente
+        # Este endpoint es principalmente para debugging
+        return {
+            "status": "info",
+            "message": "Scheduler is managed automatically by the application lifecycle",
+            "current_status": "running" if execution_scheduler.is_running else "stopped",
+            "requested_by": current_user.username
+        }
+
+    except Exception as e:
+        logger.error(f"Error starting scheduler: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scheduler/stop")
+async def stop_scheduler(
+    current_user: User = Depends(get_admin_user)  # Solo admins
+):
+    """Detener el scheduler temporalmente"""
+    try:
+        from app.execution.scheduler import execution_scheduler
+
+        if not execution_scheduler.is_running:
+            return {
+                "status": "already_stopped",
+                "message": "Scheduler is already stopped",
+                "stopped_by": current_user.username
+            }
+
+        execution_scheduler.stop()
+
+        return {
+            "status": "stopped",
+            "message": "Scheduler stopped successfully",
+            "warning": "This will prevent automatic order processing",
+            "stopped_by": current_user.username
+        }
+
+    except Exception as e:
+        logger.error(f"Error stopping scheduler: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/queue/status")
+async def get_queue_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Obtener estado de la cola de órdenes"""
+    try:
+        from sqlalchemy import func
+        from datetime import datetime, timedelta
+
+        # Contar órdenes por estado
+        status_counts = (
+            db.query(Order.status, func.count(Order.id))
+            .group_by(Order.status)
+            .all()
+        )
+
+        # Órdenes pendientes por usuario (si no es admin, solo las suyas)
+        if current_user.is_admin:
+            pending_by_user = (
+                db.query(Order.user_id, func.count(Order.id))
+                .filter(Order.status == OrderStatus.NEW)
+                .group_by(Order.user_id)
+                .all()
+            )
+        else:
+            pending_by_user = [
+                (current_user.id,
+                 db.query(func.count(Order.id))
+                 .filter(Order.status == OrderStatus.NEW, Order.user_id == current_user.id)
+                 .scalar())
+            ]
+
+        # Órdenes recientes (última hora)
+        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        recent_orders = (
+            db.query(func.count(Order.id))
+            .filter(Order.created_at >= one_hour_ago)
+            .scalar()
+        )
+
+        # Órdenes con retry
+        retry_orders = (
+            db.query(func.count(Order.id))
+            .filter(Order.retry_count > 0)
+            .scalar()
+        )
+
+        return {
+            "queue_status": {
+                "status_breakdown": {status: count for status, count in status_counts},
+                "pending_by_user": {user_id: count for user_id, count in pending_by_user},
+                "recent_orders_1h": recent_orders,
+                "orders_with_retries": retry_orders
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+            "checked_by": current_user.username,
+            "is_admin": current_user.is_admin
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting queue status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/performance/metrics")
+async def get_performance_metrics(
+    hours: int = 24,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)  # Solo admins
+):
+    """Obtener métricas de performance del execution engine"""
+    try:
+        from sqlalchemy import func, and_
+        from datetime import datetime, timedelta
+
+        # Calcular período
+        start_time = datetime.utcnow() - timedelta(hours=hours)
+
+        # Métricas básicas
+        total_orders = (
+            db.query(func.count(Order.id))
+            .filter(Order.created_at >= start_time)
+            .scalar()
+        )
+
+        successful_orders = (
+            db.query(func.count(Order.id))
+            .filter(
+                Order.created_at >= start_time,
+                Order.status == OrderStatus.FILLED
+            )
+            .scalar()
+        )
+
+        failed_orders = (
+            db.query(func.count(Order.id))
+            .filter(
+                Order.created_at >= start_time,
+                Order.status.in_([OrderStatus.ERROR, OrderStatus.REJECTED])
+            )
+            .scalar()
+        )
+
+        # Tiempo promedio de ejecución (órdenes completadas)
+        avg_execution_time = (
+            db.query(func.avg(
+                func.extract('epoch', Order.filled_at) - func.extract('epoch', Order.created_at)
+            ))
+            .filter(
+                Order.created_at >= start_time,
+                Order.filled_at.isnot(None)
+            )
+            .scalar()
+        )
+
+        # Órdenes que requirieron retry
+        retry_orders = (
+            db.query(func.count(Order.id))
+            .filter(
+                Order.created_at >= start_time,
+                Order.retry_count > 0
+            )
+            .scalar()
+        )
+
+        # Calcular tasas
+        success_rate = (successful_orders / total_orders * 100) if total_orders > 0 else 0
+        failure_rate = (failed_orders / total_orders * 100) if total_orders > 0 else 0
+        retry_rate = (retry_orders / total_orders * 100) if total_orders > 0 else 0
+
+        return {
+            "performance_metrics": {
+                "period_hours": hours,
+                "total_orders": total_orders,
+                "successful_orders": successful_orders,
+                "failed_orders": failed_orders,
+                "retry_orders": retry_orders,
+                "success_rate_percent": round(success_rate, 2),
+                "failure_rate_percent": round(failure_rate, 2),
+                "retry_rate_percent": round(retry_rate, 2),
+                "avg_execution_time_seconds": round(avg_execution_time or 0, 2)
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+            "generated_by": current_user.username
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting performance metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
