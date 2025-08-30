@@ -6,6 +6,7 @@ from app.models.trades import Trade
 from app.models.portfolio import Portfolio
 from app.models.risk_limit import RiskLimit
 
+
 __all__ = [
     "User",
     "Signal",
