@@ -9,6 +9,7 @@ from app.models.signal import Signal
 from app.models.user import User
 from app.models.portfolio import Portfolio
 from app.utils.time import now_eastern
+from app.integrations import broker_client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,10 @@ class RiskManager:
                 return exposure_check
             
             # 6. Calcular cantidad sugerida (position sizing básico)
-            suggested_quantity = self._calculate_position_size(signal, user.id, portfolio.id, risk_limits)
+            try:
+                suggested_quantity = self._calculate_position_size(signal, user.id, portfolio.id, risk_limits)
+            except RiskViolation as e:
+                return self._reject(str(e))
             
             logger.info(f"Signal {signal.symbol} {signal.action} APPROVED by risk manager")
             
@@ -197,10 +201,15 @@ class RiskManager:
             )
         ).scalar() or 0.0
         
-        # TODO: Obtener capital total del portfolio para calcular %
-        # Por ahora usamos un valor estimado de $10,000
-        estimated_capital = 10000.0
-        daily_dd_percent = abs(daily_pnl) / estimated_capital if daily_pnl < 0 else 0.0
+        # Obtener capital real del broker/portfolio
+        try:
+            account = broker_client.get_account()
+            capital = float(getattr(account, "portfolio_value", 0.0))
+        except Exception as e:
+            logger.error(f"Error getting account info for drawdown: {e}")
+            capital = 0.0
+
+        daily_dd_percent = abs(daily_pnl) / capital if daily_pnl < 0 and capital > 0 else 0.0
         
         if daily_dd_percent > risk_limits.max_daily_drawdown:
             return self._reject(f"Daily drawdown limit exceeded: {daily_dd_percent:.2%} > {risk_limits.max_daily_drawdown:.2%}")
@@ -240,21 +249,37 @@ class RiskManager:
     ) -> float:
         """Calcular tamaño de posición sugerido"""
         
-        # Position sizing básico: % fijo del capital
-        # TODO: Implementar ATR-based sizing en siguiente fase
-        
-        estimated_capital = 10000.0  # TODO: Obtener del broker
-        max_risk_per_trade = estimated_capital * risk_limits.max_position_size
-        
-        # Si tenemos cantidad en la señal, usarla (pero limitada)
+        # Obtener capital disponible y precio actual del símbolo
+        try:
+            account = broker_client.get_account()
+            available_capital = float(getattr(account, "buying_power", 0.0))
+            total_capital = float(getattr(account, "portfolio_value", 0.0))
+        except Exception as e:
+            logger.error(f"Error getting account info: {e}")
+            return 0.0
+
+        try:
+            trade = broker_client.get_latest_trade(signal.symbol)
+            current_price = float(getattr(trade, "price", 0.0))
+        except Exception as e:
+            logger.error(f"Error getting price for {signal.symbol}: {e}")
+            return 0.0
+
+        if current_price <= 0 or total_capital <= 0:
+            return 0.0
+
+        max_position_value = total_capital * risk_limits.max_position_size
+        allowed_capital = min(max_position_value, available_capital)
+
         if signal.quantity:
-            # TODO: Convertir quantity a USD y verificar límites
-            return min(signal.quantity, 100)  # Límite temporal de 100 acciones
-        
-        # Default: $500 por trade dividido por precio estimado
-        estimated_price = 100.0  # TODO: Obtener precio real del mercado
-        suggested_shares = max_risk_per_trade / estimated_price
-        
+            requested_value = signal.quantity * current_price
+            if requested_value > allowed_capital:
+                raise RiskViolation(
+                    f"Requested position value ${requested_value:.2f} exceeds max allowed ${allowed_capital:.2f}"
+                )
+            return signal.quantity
+
+        suggested_shares = allowed_capital / current_price
         return round(suggested_shares, 2)
     
     def _reject(self, reason: str) -> Dict[str, Any]:
