@@ -3,6 +3,9 @@ from app.models.user import User
 from app.core.auth import get_admin_user
 from datetime import datetime
 import logging
+from sqlalchemy import text
+from app.database import get_db
+from app.integrations import broker_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -34,12 +37,34 @@ async def system_status(
     try:
         from app.execution.scheduler import execution_scheduler
 
+        # Database connectivity check
+        db = None
+        try:
+            db = next(get_db())
+            db.execute(text("SELECT 1"))
+            database_status = "connected"
+        except Exception as db_exc:
+            database_status = str(db_exc)
+        finally:
+            if db is not None:
+                try:
+                    db.close()
+                except Exception:
+                    pass
+
+        # Broker connectivity check
+        try:
+            broker_client.get_account()
+            broker_status = "connected"
+        except Exception as broker_exc:
+            broker_status = str(broker_exc)
+
         return {
             "system_status": {
                 "api": "running",
                 "execution_scheduler": "running" if execution_scheduler.is_running else "stopped",
-                "database": "connected",  # TODO: verificar conexión real
-                "broker": "connected"     # TODO: verificar conexión real
+                "database": database_status,
+                "broker": broker_status
             },
             "scheduler_details": execution_scheduler.get_status(),
             "timestamp": datetime.utcnow().isoformat(),
