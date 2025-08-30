@@ -19,3 +19,4 @@ class Portfolio(Base):
     user = relationship("User", back_populates="portfolios")
     signals = relationship("Signal", back_populates="portfolio")
     trades = relationship("Trade", back_populates="portfolio")
+    risk_limits = relationship("RiskLimit", back_populates="portfolio")
