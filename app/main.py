@@ -10,10 +10,12 @@ from app.api.v1 import auth, trades, strategies, portfolio, risk, execution
 from app.database import SessionLocal
 from app.services import portfolio_service
 from app.integrations import refresh_broker_client
+from app.execution.background_tasks import execution_lifespan
 
 app = FastAPI(
     title=settings.app_name,
-    debug=settings.debug
+    debug=settings.debug,
+    lifespan=execution_lifespan,
 )
 
 # CORS para el frontend React
