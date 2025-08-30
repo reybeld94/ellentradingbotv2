@@ -67,19 +67,52 @@ class SignalRouter:
 
             logger.info(f"Signal approved by risk manager: {db_signal.id}")
 
-            # 5. TODO: Enviar a Execution Engine
-            # Por ahora, solo guardamos como "validated"
+            # 5. NUEVO: Crear orden automáticamente
+            try:
+                from app.execution.order_manager import OrderManager
 
-            return {
-                "status": "accepted",
-                "reason": "signal_approved_by_risk_manager",
-                "signal_id": db_signal.id,
-                "warnings": validation.get("warnings", []),
-                "risk_info": {
-                    "suggested_quantity": risk_result["suggested_quantity"],
-                    "checks_passed": risk_result.get("checks_passed", [])
+                order_manager = OrderManager(self.db)
+                order = order_manager.create_order_from_signal(
+                    signal=db_signal,
+                    user_id=user.id,
+                    portfolio_id=active_portfolio.id
+                )
+
+                # Actualizar señal para indicar que tiene orden asociada
+                db_signal.status = "processing"
+                self.db.commit()
+
+                logger.info(
+                    f"Order {order.client_order_id} created for signal {db_signal.id}"
+                )
+
+                return {
+                    "status": "accepted",
+                    "reason": "signal_approved_and_order_created",
+                    "signal_id": db_signal.id,
+                    "order_id": order.id,
+                    "client_order_id": order.client_order_id,
+                    "warnings": validation.get("warnings", []),
+                    "risk_info": {
+                        "suggested_quantity": risk_result["suggested_quantity"],
+                        "checks_passed": risk_result.get("checks_passed", [])
+                    }
                 }
-            }
+
+            except Exception as e:
+                logger.error(
+                    f"Error creating order from signal {db_signal.id}: {e}"
+                )
+                db_signal.status = "error"
+                db_signal.error_message = f"Order creation failed: {str(e)}"
+                self.db.commit()
+
+                return {
+                    "status": "error",
+                    "reason": "order_creation_failed",
+                    "error": str(e),
+                    "signal_id": db_signal.id
+                }
 
         except Exception as e:
             logger.error(f"Failed to save validated signal: {e}")
