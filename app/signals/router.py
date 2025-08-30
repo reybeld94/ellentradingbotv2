@@ -1,9 +1,10 @@
 from typing import Dict, Any
 from sqlalchemy.orm import Session
 from app.core.types import NormalizedSignal
-from app.signals.validator import SignalValidator, SignalValidationError
+from app.signals.validator import SignalValidator
 from app.models.signal import Signal
 from app.models.user import User
+from app.models.portfolio import Portfolio
 from app.services import portfolio_service
 import logging
 
@@ -17,8 +18,8 @@ class SignalRouter:
         self.validator = SignalValidator(db_session)
     
     def process_signal(self, signal: NormalizedSignal, user: User) -> Dict[str, Any]:
-        """Procesar una señal normalizada"""
-        
+        """Procesar una señal normalizada con risk management"""
+
         # 1. Validar la señal
         validation = self.validator.validate(signal)
         if not validation["is_valid"]:
@@ -29,43 +30,69 @@ class SignalRouter:
                 "errors": validation["errors"],
                 "signal_id": None
             }
-        
+
         # Log warnings if any
         if validation["warnings"]:
             logger.warning(f"Signal warnings: {validation['warnings']}")
-        
-        # 2. Guardar señal en base de datos
+
+        # 2. Obtener portfolio activo
+        active_portfolio = portfolio_service.get_active(self.db, user)
+        if not active_portfolio:
+            return {
+                "status": "rejected",
+                "reason": "no_active_portfolio",
+                "errors": ["User has no active portfolio"],
+                "signal_id": None
+            }
+
+        # 3. NUEVO: Risk Management
+        from app.risk.manager import RiskManager
+        risk_manager = RiskManager(self.db)
+
+        risk_result = risk_manager.evaluate_signal(signal, user, active_portfolio)
+        if not risk_result["approved"]:
+            logger.warning(f"Signal rejected by risk manager: {risk_result['reason']}")
+            return {
+                "status": "rejected",
+                "reason": "risk_violation",
+                "errors": [risk_result["reason"]],
+                "signal_id": None
+            }
+
+        # 4. Guardar señal con status "validated" 
         try:
-            db_signal = self._save_signal_to_db(signal, user)
-            logger.info(f"Signal saved to DB: {db_signal.id}")
-            
-            # 3. TODO: Aquí irá el risk management y execution
-            # Por ahora, marcamos como "pending" para procesamiento posterior
-            
+            db_signal = self._save_signal_to_db(signal, user, active_portfolio)
+            db_signal.status = "validated"  # Pasó validación Y risk management
+            self.db.commit()
+
+            logger.info(f"Signal approved by risk manager: {db_signal.id}")
+
+            # 5. TODO: Enviar a Execution Engine
+            # Por ahora, solo guardamos como "validated"
+
             return {
                 "status": "accepted",
-                "reason": "signal_queued_for_processing",
+                "reason": "signal_approved_by_risk_manager",
                 "signal_id": db_signal.id,
-                "warnings": validation.get("warnings", [])
+                "warnings": validation.get("warnings", []),
+                "risk_info": {
+                    "suggested_quantity": risk_result["suggested_quantity"],
+                    "checks_passed": risk_result.get("checks_passed", [])
+                }
             }
-            
+
         except Exception as e:
-            logger.error(f"Failed to save signal: {e}")
+            logger.error(f"Failed to save validated signal: {e}")
             return {
                 "status": "error",
                 "reason": "database_error",
                 "error": str(e),
                 "signal_id": None
             }
-    
-    def _save_signal_to_db(self, signal: NormalizedSignal, user: User) -> Signal:
+
+    def _save_signal_to_db(self, signal: NormalizedSignal, user: User, portfolio: Portfolio) -> Signal:
         """Guardar señal normalizada en la base de datos"""
-        
-        # Obtener portfolio activo del usuario
-        active_portfolio = portfolio_service.get_active(self.db, user)
-        if not active_portfolio:
-            raise SignalValidationError("User has no active portfolio")
-        
+
         # Crear registro en la base de datos
         db_signal = Signal(
             symbol=signal.symbol,
@@ -76,13 +103,13 @@ class SignalRouter:
             reason=signal.reason,
             confidence=signal.confidence,
             idempotency_key=signal.idempotency_key,
-            status="pending",  # Será procesado por el risk manager
+            status="pending",
             user_id=user.id,
-            portfolio_id=active_portfolio.id
+            portfolio_id=portfolio.id
         )
-        
+
         self.db.add(db_signal)
         self.db.commit()
         self.db.refresh(db_signal)
-        
+
         return db_signal
