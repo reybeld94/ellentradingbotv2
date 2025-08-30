@@ -19,6 +19,7 @@ class User(Base):
     signals = relationship("Signal", back_populates="user")
     trades = relationship("Trade", back_populates="user")
     portfolios = relationship("Portfolio", back_populates="user")
+    risk_limits = relationship("RiskLimit", back_populates="user")
 
     # Per-user limit for simultaneous positions
     position_limit = Column(Integer, default=7)
