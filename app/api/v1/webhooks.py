@@ -212,6 +212,45 @@ async def test_webhook_endpoint(
     return await receive_public_webhook(test_data, db, api_key)
 
 
+@router.post("/webhook/test")
+async def test_webhook_processing(
+        webhook_data: TradingViewWebhook,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_verified_user)
+):
+    """Endpoint para probar el procesamiento sin ejecutar órdenes"""
+    from app.signals.processor import WebhookProcessor
+
+    processor = WebhookProcessor(db)
+
+    # Solo normalizar y validar, no guardar
+    try:
+        normalized_signal = processor.normalizer.from_tradingview(webhook_data)
+        validation = processor.router.validator.validate(normalized_signal)
+
+        return {
+            "webhook_received": webhook_data.dict(),
+            "normalized_signal": {
+                "symbol": normalized_signal.symbol,
+                "action": normalized_signal.action,
+                "strategy_id": normalized_signal.strategy_id,
+                "idempotency_key": normalized_signal.idempotency_key,
+                "quantity": normalized_signal.quantity,
+                "confidence": normalized_signal.confidence
+            },
+            "validation": validation,
+            "user": current_user.username,
+            "note": "This is a test - no orders executed, no signal saved"
+        }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "webhook_received": webhook_data.dict(),
+            "user": current_user.username
+        }
+
+
 # Health check endpoint
 @router.get("/webhook-health")
 async def webhook_health(db: Session = Depends(get_db)):
