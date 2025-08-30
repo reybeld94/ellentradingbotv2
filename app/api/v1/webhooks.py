@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
 from app.database import get_db
 from app.schemas.webhook import TradingViewWebhook, WebhookResponse
@@ -61,10 +62,14 @@ async def receive_tradingview_webhook(
                 signal_id=result.get("signal_id")
             )
 
-    except Exception as e:
+    except SQLAlchemyError as e:
         db.rollback()
-        logger.error(f"Error processing webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Database error processing webhook")
+        raise HTTPException(status_code=500, detail="Database error")
+    except Exception:
+        db.rollback()
+        logger.exception("Unexpected error processing webhook")
+        raise
 
 @router.get("/signals")
 async def get_signals(
@@ -185,10 +190,14 @@ async def receive_public_webhook(
                 signal_id=result.get("signal_id")
             )
 
-    except Exception as e:
+    except SQLAlchemyError as e:
         db.rollback()
-        logger.error(f"Error processing public webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Database error processing public webhook")
+        raise HTTPException(status_code=500, detail="Database error")
+    except Exception:
+        db.rollback()
+        logger.exception("Unexpected error processing public webhook")
+        raise
 
 # Test endpoint for debugging
 @router.post("/test-webhook")
@@ -243,12 +252,9 @@ async def test_webhook_processing(
             "note": "This is a test - no orders executed, no signal saved"
         }
 
-    except Exception as e:
-        return {
-            "error": str(e),
-            "webhook_received": webhook_data.dict(),
-            "user": current_user.username
-        }
+    except Exception:
+        logger.exception("Error in test webhook processing")
+        raise
 
 
 # Health check endpoint
