@@ -5,6 +5,7 @@ from app.models.strategy import Strategy
 from app.models.trades import Trade
 from app.models.portfolio import Portfolio
 from app.models.risk_limit import RiskLimit
+from .order import Order
 
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "Trade",
     "Portfolio",
     "RiskLimit",
+    "Order",
 ]
