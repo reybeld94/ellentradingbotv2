@@ -25,6 +25,7 @@ class Signal(Base):
     reason = Column(String(50), nullable=True)  # fibonacci_entry, fibonacci_exit, trailing_stop
     confidence = Column(Integer, nullable=True)  # Score 0-100
     tv_timestamp = Column(String(50), nullable=True)  # Timestamp original de TradingView
+    idempotency_key = Column(String(32), nullable=True, unique=True, index=True)  # Para deduplicación
 
     # NUEVO: Relación con usuario
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
