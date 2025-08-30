@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from app.core.types import NormalizedSignal, OrderIntent
 from app.models.risk_limit import RiskLimit
 from app.models.trades import Trade
@@ -135,7 +135,7 @@ class RiskManager:
         now = now_eastern()
         
         # Contar órdenes en la última hora
-        one_hour_ago = now.replace(minute=now.minute-60) if now.minute >= 60 else now.replace(hour=now.hour-1)
+        one_hour_ago = now - timedelta(hours=1)
         orders_last_hour = self.db.query(Signal).filter(
             and_(
                 Signal.user_id == user_id,
