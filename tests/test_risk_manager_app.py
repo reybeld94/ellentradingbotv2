@@ -86,3 +86,29 @@ def test_symbol_exposure_within_limit(monkeypatch):
     result = rm._check_symbol_exposure("AAPL", 1, 1, risk_limits)
     assert result["approved"]
 
+
+class FailingBroker:
+    def get_account(self):
+        raise Exception("broker down")
+
+    def get_latest_trade(self, symbol):
+        raise Exception("broker down")
+
+
+def test_broker_failure_rejects(monkeypatch):
+    rm = RiskManager(db_session=None)
+    monkeypatch.setattr(manager_module, "broker_client", FailingBroker())
+
+    # bypass other risk checks
+    monkeypatch.setattr(RiskManager, "_get_risk_limits", lambda self, uid, pid: SimpleNamespace(max_position_size=0.05, max_symbol_exposure=0.1))
+    monkeypatch.setattr(RiskManager, "_check_trading_hours", lambda self, rl: True)
+    monkeypatch.setattr(RiskManager, "_check_operational_limits", lambda self, *args, **kwargs: {"approved": True})
+    monkeypatch.setattr(RiskManager, "_check_drawdown_limits", lambda self, *args, **kwargs: {"approved": True})
+    monkeypatch.setattr(RiskManager, "_check_symbol_exposure", lambda self, *args, **kwargs: {"approved": True})
+
+    signal = _make_signal(1)
+    user = SimpleNamespace(id=1)
+    portfolio = SimpleNamespace(id=1)
+    result = rm.evaluate_signal(signal, user, portfolio)
+    assert not result["approved"]
+

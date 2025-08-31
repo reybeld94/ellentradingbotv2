@@ -57,13 +57,10 @@ class RiskManager:
             exposure_check = self._check_symbol_exposure(signal.symbol, user.id, portfolio.id, risk_limits)
             if not exposure_check["approved"]:
                 return exposure_check
-            
+
             # 6. Calcular cantidad sugerida (position sizing básico)
-            try:
-                suggested_quantity = self._calculate_position_size(signal, user.id, portfolio.id, risk_limits)
-            except RiskViolation as e:
-                return self._reject(str(e))
-            
+            suggested_quantity = self._calculate_position_size(signal, user.id, portfolio.id, risk_limits)
+
             logger.info(f"Signal {signal.symbol} {signal.action} APPROVED by risk manager")
             
             return {
@@ -76,6 +73,8 @@ class RiskManager:
                 ]
             }
             
+        except RiskViolation as e:
+            return self._reject(str(e))
         except Exception as e:
             logger.error(f"Error in risk evaluation: {e}")
             return self._reject(f"Risk evaluation error: {str(e)}")
@@ -276,17 +275,17 @@ class RiskManager:
             total_capital = float(getattr(account, "portfolio_value", 0.0))
         except Exception as e:
             logger.error(f"Error getting account info: {e}")
-            return 0.0
+            raise RiskViolation("Unable to retrieve account information")
 
         try:
             trade = broker_client.get_latest_trade(signal.symbol)
             current_price = float(getattr(trade, "price", 0.0))
         except Exception as e:
             logger.error(f"Error getting price for {signal.symbol}: {e}")
-            return 0.0
+            raise RiskViolation(f"Unable to retrieve price for {signal.symbol}")
 
         if current_price <= 0 or total_capital <= 0:
-            return 0.0
+            raise RiskViolation("Invalid account or price data")
 
         max_position_value = total_capital * risk_limits.max_position_size
         allowed_capital = min(max_position_value, available_capital)
