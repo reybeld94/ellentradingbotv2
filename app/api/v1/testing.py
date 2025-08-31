@@ -126,6 +126,79 @@ async def cleanup_test_data(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/test-full-bracket-flow")
+async def test_full_bracket_flow(
+    test_request: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Test completo del flujo bracket orders sin ejecutar en broker real"""
+    try:
+        # 1. Crear reglas de salida temporales si no existen
+        from app.services.exit_rules_service import ExitRulesService
+        exit_service = ExitRulesService(db)
+        strategy_id = test_request.get("strategy_id", "test_strategy")
+        rules = exit_service.get_rules(strategy_id)
+
+        # 2. Calcular precios de salida
+        entry_price = test_request.get("entry_price", 100.0)
+        exit_calculation = exit_service.calculate_exit_prices(strategy_id, entry_price, "buy")
+
+        # 3. Simular creación de señal
+        from app.models.signal import Signal
+        test_signal = Signal(
+            symbol=test_request.get("symbol", "AAPL"),
+            action="buy",
+            strategy_id=strategy_id,
+            quantity=10,
+            status="validated",
+            user_id=current_user.id,
+            portfolio_id=1
+        )
+
+        # 4. Simular bracket order creation (sin guardar en DB)
+        bracket_preview = {
+            "entry_order": {
+                "symbol": test_signal.symbol,
+                "side": "buy",
+                "quantity": test_signal.quantity,
+                "order_type": "market"
+            },
+            "stop_loss_order": {
+                "symbol": test_signal.symbol,
+                "side": "sell",
+                "quantity": test_signal.quantity,
+                "order_type": "stop",
+                "stop_price": exit_calculation["stop_loss_price"]
+            },
+            "take_profit_order": {
+                "symbol": test_signal.symbol,
+                "side": "sell",
+                "quantity": test_signal.quantity,
+                "order_type": "limit",
+                "limit_price": exit_calculation["take_profit_price"]
+            }
+        }
+
+        return {
+            "status": "success",
+            "test_scenario": test_request,
+            "exit_rules": {
+                "stop_loss_pct": rules.stop_loss_pct,
+                "take_profit_pct": rules.take_profit_pct,
+                "trailing_enabled": rules.use_trailing
+            },
+            "calculated_prices": exit_calculation,
+            "bracket_orders_preview": bracket_preview,
+            "orders_that_would_be_created": 3,
+            "message": "Bracket order flow tested successfully (simulation only)"
+        }
+
+    except Exception as e:
+        logger.error(f"Error in bracket flow test: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Test failed: {str(e)}")
+
+
 @router.get("/execution-flow")
 async def get_execution_flow_info(
     current_user: User = Depends(get_current_verified_user),
