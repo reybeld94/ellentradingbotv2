@@ -7,6 +7,7 @@ from app.models.portfolio import Portfolio
 from app.models.risk_limit import RiskLimit
 from .order import Order
 from .symbol_mapping import SymbolMapping
+from .strategy_exit_rules import StrategyExitRules
 
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "RiskLimit",
     "Order",
     "SymbolMapping",
+    "StrategyExitRules",
 ]
