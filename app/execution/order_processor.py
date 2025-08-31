@@ -36,31 +36,38 @@ class OrderProcessor:
 
         for order in pending_orders:
             try:
-                result = self.broker_executor.execute_order(order)
+                with self.db.begin():
+                    locked_order = (
+                        self.db.query(Order)
+                        .filter(Order.id == order.id)
+                        .with_for_update()
+                        .one()
+                    )
+                    result = self.broker_executor.execute_order(locked_order)
 
                 order_result = {
-                    "order_id": order.id,
-                    "client_order_id": order.client_order_id,
-                    "symbol": order.symbol,
-                    "side": order.side,
+                    "order_id": locked_order.id,
+                    "client_order_id": locked_order.client_order_id,
+                    "symbol": locked_order.symbol,
+                    "side": locked_order.side,
                     "success": result["success"]
                 }
 
                 if result["success"]:
                     results["successful"] += 1
                     order_result["broker_order_id"] = result.get("broker_order_id")
-                    logger.info(f"Order {order.client_order_id} executed successfully")
+                    logger.info(f"Order {locked_order.client_order_id} executed successfully")
 
                 elif result.get("retry_scheduled"):
                     results["retries_scheduled"] += 1
                     order_result["retry_scheduled"] = True
                     order_result["retry_in_seconds"] = result.get("retry_in_seconds")
-                    logger.info(f"Order {order.client_order_id} scheduled for retry")
+                    logger.info(f"Order {locked_order.client_order_id} scheduled for retry")
 
                 else:
                     results["failed"] += 1
                     order_result["error"] = result.get("error")
-                    logger.error(f"Order {order.client_order_id} failed permanently")
+                    logger.error(f"Order {locked_order.client_order_id} failed permanently")
 
                 results["orders_processed"].append(order_result)
                 results["processed"] += 1
@@ -82,18 +89,25 @@ class OrderProcessor:
     def process_single_order(self, order_id: int) -> Dict[str, Any]:
         """Procesar una orden específica"""
 
-        order = self.db.query(Order).filter(Order.id == order_id).first()
-        if not order:
-            return {"success": False, "error": "Order not found"}
-
-        if order.status != OrderStatus.NEW:
-            return {
-                "success": False,
-                "error": f"Order status is {order.status}, expected NEW",
-            }
-
         try:
-            result = self.broker_executor.execute_order(order)
+            with self.db.begin():
+                order = (
+                    self.db.query(Order)
+                    .filter(Order.id == order_id)
+                    .with_for_update()
+                    .first()
+                )
+                if not order:
+                    return {"success": False, "error": "Order not found"}
+
+                if order.status != OrderStatus.NEW:
+                    return {
+                        "success": False,
+                        "error": f"Order status is {order.status}, expected NEW",
+                    }
+
+                result = self.broker_executor.execute_order(order)
+
             return {
                 "success": result["success"],
                 "order_id": order.id,
