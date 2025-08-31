@@ -83,6 +83,14 @@ def test_calculate_exit_prices(client_and_db):
     assert "take_profit_price" in data
 
 
+def test_get_exit_rules_not_found(client_and_db):
+    client = client_and_db
+    app.dependency_overrides[get_current_verified_user] = lambda: user_factory(1)
+
+    response = client.get("/api/v1/exit-rules/missing", headers=get_headers())
+    assert response.status_code == 404
+
+
 def test_authorization_get_and_update(client_and_db):
     client = client_and_db
 
@@ -108,11 +116,11 @@ def test_authorization_get_and_update(client_and_db):
     # Another user cannot retrieve or update
     app.dependency_overrides[get_current_verified_user] = lambda: user_factory(2)
     response = client.get("/api/v1/exit-rules/test_strategy", headers=get_headers())
-    assert response.status_code == 403 or response.status_code == 404
+    assert response.status_code == 403
 
     response = client.put(
         "/api/v1/exit-rules/test_strategy",
         json={"stop_loss_pct": 0.05},
         headers=get_headers(),
     )
-    assert response.status_code == 403 or response.status_code == 404
+    assert response.status_code == 403
