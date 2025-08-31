@@ -71,7 +71,7 @@ async def test_full_bracket_order_flow(db_session, test_user, test_portfolio, mo
     strategy = Strategy(id=1, name="momentum_test")
     db_session.add(strategy)
     db_session.commit()
-    exit_service.create_default_rules("1")
+    exit_service.create_default_rules("1", user_id=test_user.id)
 
     # Asegurar que estamos dentro del horario de trading
     monkeypatch.setattr(

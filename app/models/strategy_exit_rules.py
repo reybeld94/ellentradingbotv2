@@ -1,8 +1,6 @@
-from sqlalchemy import Column, String, Float, Boolean, DateTime, UniqueConstraint
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, String, Float, Boolean, DateTime, ForeignKey, Integer
 from app.database import Base
 from app.utils.time import now_eastern
-from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
 
@@ -10,6 +8,7 @@ class StrategyExitRules(Base):
     __tablename__ = "strategy_exit_rules"
 
     id = Column(String(50), primary_key=True, index=True)  # strategy_id
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Porcentajes para Stop Loss y Take Profit
     stop_loss_pct = Column(Float, nullable=False, default=0.02)  # 2%

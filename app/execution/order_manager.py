@@ -203,8 +203,9 @@ class OrderManager:
             exit_rules_service = ExitRulesService(self.db)
             exit_calculation = exit_rules_service.calculate_exit_prices(
                 signal.strategy_id,
+                user_id,
                 Decimal(str(current_price)),
-                signal.action
+                signal.action,
             )
 
             # 3. Crear orden principal (Entry)

@@ -139,11 +139,13 @@ async def test_full_bracket_flow(
         from app.services.exit_rules_service import ExitRulesService
         exit_service = ExitRulesService(db)
         strategy_id = test_request.get("strategy_id", "test_strategy")
-        rules = exit_service.get_rules(strategy_id)
+        rules = exit_service.get_rules(strategy_id, current_user.id)
 
         # 2. Calcular precios de salida
         entry_price = Decimal(str(test_request.get("entry_price", 100.0)))
-        exit_calculation = exit_service.calculate_exit_prices(strategy_id, entry_price, "buy")
+        exit_calculation = exit_service.calculate_exit_prices(
+            strategy_id, current_user.id, entry_price, "buy"
+        )
 
         # 3. Simular creación de señal
         from app.models.signal import Signal
