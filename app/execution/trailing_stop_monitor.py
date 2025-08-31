@@ -80,7 +80,9 @@ class TrailingStopMonitor:
             
             # 2. Obtener reglas de trailing para la estrategia
             signal = stop_order.signal
-            strategy_rules = self.exit_rules_service.get_rules(signal.strategy_id)
+            strategy_rules = self.exit_rules_service.get_rules(
+                signal.strategy_id, stop_order.user_id
+            )
             
             if not strategy_rules.use_trailing:
                 return {

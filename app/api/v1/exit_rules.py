@@ -66,7 +66,7 @@ async def get_exit_rules(
     """Obtener reglas de salida para una estrategia específica"""
     try:
         service = ExitRulesService(db)
-        rules = service.get_rules(strategy_id)
+        rules = service.get_rules(strategy_id, current_user.id)
         
         return ExitRulesResponse(
             strategy_id=rules.id,
@@ -79,6 +79,8 @@ async def get_exit_rules(
             updated_at=rules.updated_at.isoformat()
         )
         
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not authorized to access exit rules")
     except Exception as e:
         logger.error(f"Error getting exit rules for {strategy_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get exit rules: {str(e)}")
@@ -94,14 +96,14 @@ async def update_exit_rules(
     """Actualizar reglas de salida para una estrategia"""
     try:
         service = ExitRulesService(db)
-        
+
         # Filtrar solo campos no None
         update_data = {k: v for k, v in rules_update.dict().items() if v is not None}
-        
+
         if not update_data:
             raise HTTPException(status_code=400, detail="No fields provided for update")
-        
-        updated_rules = service.update_rules(strategy_id, **update_data)
+
+        updated_rules = service.update_rules(strategy_id, current_user.id, **update_data)
         
         logger.info(f"Updated exit rules for {strategy_id}: {update_data}")
         
@@ -116,6 +118,8 @@ async def update_exit_rules(
             updated_at=updated_rules.updated_at.isoformat()
         )
         
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not authorized to access exit rules")
     except Exception as e:
         logger.error(f"Error updating exit rules for {strategy_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update exit rules: {str(e)}")
@@ -131,28 +135,31 @@ async def create_exit_rules(
     """Crear reglas de salida para una estrategia (forzar creación con valores específicos)"""
     try:
         service = ExitRulesService(db)
-        
+
         # Verificar si ya existen reglas
         existing = db.query(StrategyExitRules).filter(StrategyExitRules.id == strategy_id).first()
         if existing:
+            if existing.user_id != current_user.id:
+                raise HTTPException(status_code=403, detail="Not authorized to create exit rules")
             raise HTTPException(status_code=409, detail=f"Exit rules already exist for strategy {strategy_id}")
-        
+
         # Crear nuevas reglas
         new_rules = StrategyExitRules(
             id=strategy_id,
+            user_id=current_user.id,
             stop_loss_pct=rules_create.stop_loss_pct,
             take_profit_pct=rules_create.take_profit_pct,
             trailing_stop_pct=rules_create.trailing_stop_pct,
             use_trailing=rules_create.use_trailing,
             risk_reward_ratio=rules_create.risk_reward_ratio
         )
-        
+
         db.add(new_rules)
         db.commit()
         db.refresh(new_rules)
-        
+
         logger.info(f"Created exit rules for {strategy_id}")
-        
+
         return ExitRulesResponse(
             strategy_id=new_rules.id,
             stop_loss_pct=new_rules.stop_loss_pct,
@@ -163,7 +170,7 @@ async def create_exit_rules(
             created_at=new_rules.created_at.isoformat(),
             updated_at=new_rules.updated_at.isoformat()
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -179,7 +186,7 @@ async def list_all_exit_rules(
     """Listar todas las reglas de salida configuradas"""
     try:
         service = ExitRulesService(db)
-        all_rules = service.get_all_rules()
+        all_rules = service.get_all_rules(current_user.id)
         
         return [
             ExitRulesResponse(
@@ -212,12 +219,15 @@ async def calculate_exit_prices(
         service = ExitRulesService(db)
         result = service.calculate_exit_prices(
             strategy_id,
+            current_user.id,
             Decimal(str(calculation_request.entry_price)),
             calculation_request.side
         )
         
         return PriceCalculationResponse(**result)
         
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not authorized to access exit rules")
     except Exception as e:
         logger.error(f"Error calculating exit prices for {strategy_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to calculate exit prices: {str(e)}")
@@ -232,7 +242,7 @@ async def delete_exit_rules(
     """Eliminar reglas de salida para una estrategia"""
     try:
         service = ExitRulesService(db)
-        deleted = service.delete_rules(strategy_id)
+        deleted = service.delete_rules(strategy_id, current_user.id)
         
         if not deleted:
             raise HTTPException(status_code=404, detail=f"Exit rules not found for strategy {strategy_id}")
@@ -243,6 +253,8 @@ async def delete_exit_rules(
         
     except HTTPException:
         raise
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not authorized to access exit rules")
     except Exception as e:
         logger.error(f"Error deleting exit rules for {strategy_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete exit rules: {str(e)}")
@@ -259,7 +271,9 @@ async def test_exit_rules(
     """Endpoint de testing para probar cálculos de salida"""
     try:
         service = ExitRulesService(db)
-        result = service.calculate_exit_prices(strategy_id, Decimal(str(entry_price)), side)
+        result = service.calculate_exit_prices(
+            strategy_id, current_user.id, Decimal(str(entry_price)), side
+        )
         
         return {
             "test_scenario": {
@@ -274,6 +288,8 @@ async def test_exit_rules(
             }
         }
         
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not authorized to access exit rules")
     except Exception as e:
         logger.error(f"Error testing exit rules for {strategy_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to test exit rules: {str(e)}")

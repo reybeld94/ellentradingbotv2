@@ -1,4 +1,6 @@
 import pytest
+import pytest
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database import Base
@@ -21,9 +23,9 @@ def db_session():
 
 def test_create_default_rules(db_session):
     service = ExitRulesService(db_session)
-    
-    rules = service.create_default_rules("test_strategy")
-    
+
+    rules = service.create_default_rules("test_strategy", user_id=1)
+
     assert rules.id == "test_strategy"
     assert rules.stop_loss_pct == 0.02
     assert rules.take_profit_pct == 0.04
@@ -32,12 +34,12 @@ def test_create_default_rules(db_session):
 
 def test_calculate_exit_prices(db_session):
     service = ExitRulesService(db_session)
-    
+
     # Crear reglas de prueba
-    service.create_default_rules("test_strategy")
-    
+    service.create_default_rules("test_strategy", user_id=1)
+
     # Calcular precios para entrada en $100
-    result = service.calculate_exit_prices("test_strategy", Decimal("100"), "buy")
+    result = service.calculate_exit_prices("test_strategy", 1, Decimal("100"), "buy")
 
     assert result["entry_price"] == Decimal("100.00")
     assert result["stop_loss_price"] == Decimal("98.00")   # 100 * (1 - 0.02)

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.strategy_exit_rules import StrategyExitRules
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 import logging
 from decimal import Decimal
 
@@ -10,40 +10,46 @@ logger = logging.getLogger(__name__)
 class ExitRulesService:
     def __init__(self, db: Session):
         self.db = db
-    
-    def get_rules(self, strategy_id: str) -> StrategyExitRules:
+
+    def get_rules(self, strategy_id: str, user_id: int) -> StrategyExitRules:
         """Obtener reglas de salida para una estrategia, crear defaults si no existen"""
         rules = self.db.query(StrategyExitRules).filter(
             StrategyExitRules.id == strategy_id
         ).first()
-        
+
+        if rules and rules.user_id != user_id:
+            raise PermissionError("Not authorized to access these exit rules")
+
         if not rules:
-            logger.info(f"Creating default exit rules for strategy: {strategy_id}")
-            rules = self.create_default_rules(strategy_id)
-            
+            logger.info(
+                f"Creating default exit rules for strategy: {strategy_id} and user: {user_id}"
+            )
+            rules = self.create_default_rules(strategy_id, user_id)
+
         return rules
-    
-    def create_default_rules(self, strategy_id: str) -> StrategyExitRules:
+
+    def create_default_rules(self, strategy_id: str, user_id: int) -> StrategyExitRules:
         """Crear reglas por defecto para una estrategia"""
         rules = StrategyExitRules(
             id=strategy_id,
+            user_id=user_id,
             stop_loss_pct=0.02,      # 2%
-            take_profit_pct=0.04,    # 4% 
+            take_profit_pct=0.04,    # 4%
             trailing_stop_pct=0.015, # 1.5%
             use_trailing=True,
             risk_reward_ratio=2.0
         )
-        
+
         self.db.add(rules)
         self.db.commit()
         self.db.refresh(rules)
-        
+
         logger.info(f"Created default exit rules for {strategy_id}")
         return rules
-    
-    def update_rules(self, strategy_id: str, **kwargs) -> StrategyExitRules:
+
+    def update_rules(self, strategy_id: str, user_id: int, **kwargs) -> StrategyExitRules:
         """Actualizar reglas existentes"""
-        rules = self.get_rules(strategy_id)
+        rules = self.get_rules(strategy_id, user_id)
         
         # Campos permitidos para actualización
         allowed_fields = [
@@ -60,9 +66,11 @@ class ExitRulesService:
         self.db.refresh(rules)
         return rules
     
-    def calculate_exit_prices(self, strategy_id: str, entry_price: Decimal, side: str = "buy") -> Dict[str, Any]:
+    def calculate_exit_prices(
+        self, strategy_id: str, user_id: int, entry_price: Decimal, side: str = "buy"
+    ) -> Dict[str, Any]:
         """Calcular precios de salida para una estrategia específica"""
-        rules = self.get_rules(strategy_id)
+        rules = self.get_rules(strategy_id, user_id)
         entry_price = Decimal(str(entry_price))
         exit_prices = rules.calculate_exit_prices(entry_price, side)
         
@@ -78,20 +86,29 @@ class ExitRulesService:
             }
         }
     
-    def get_all_rules(self) -> list[StrategyExitRules]:
+    def get_all_rules(self, user_id: int) -> list[StrategyExitRules]:
         """Obtener todas las reglas configuradas"""
-        return self.db.query(StrategyExitRules).all()
-    
-    def delete_rules(self, strategy_id: str) -> bool:
+        return (
+            self.db.query(StrategyExitRules)
+            .filter(StrategyExitRules.user_id == user_id)
+            .all()
+        )
+
+    def delete_rules(self, strategy_id: str, user_id: int) -> bool:
         """Eliminar reglas de una estrategia"""
-        rules = self.db.query(StrategyExitRules).filter(
-            StrategyExitRules.id == strategy_id
-        ).first()
-        
+        rules = (
+            self.db.query(StrategyExitRules)
+            .filter(
+                StrategyExitRules.id == strategy_id,
+                StrategyExitRules.user_id == user_id,
+            )
+            .first()
+        )
+
         if rules:
             self.db.delete(rules)
             self.db.commit()
             logger.info(f"Deleted exit rules for strategy {strategy_id}")
             return True
-        
+
         return False
