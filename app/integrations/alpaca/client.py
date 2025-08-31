@@ -16,6 +16,7 @@ from alpaca.data import (
     StockLatestTradeRequest,
     CryptoLatestTradeRequest,
 )
+from alpaca.common.exceptions import APIError
 
 from app.config import settings
 
@@ -214,7 +215,31 @@ class AlpacaClient:
             return True
 
     def check_crypto_status(self):
-        return True
+        """Check if the account has crypto trading permissions.
+
+        Attempts to retrieve the list of active crypto assets from Alpaca. If the
+        request fails or returns an empty list, crypto trading is assumed to be
+        unavailable.
+        """
+        if not self._trading:
+            print("⚠️ Alpaca client not initialized; cannot check crypto status")
+            return False
+        try:
+            assets = self._trading.get_all_assets(
+                status="active", asset_class="crypto"
+            )
+            if not assets:
+                print(
+                    "⚠️ Crypto trading not enabled for this account or no assets returned"
+                )
+                return False
+            return True
+        except APIError as e:
+            print(f"⚠️ Failed to fetch crypto assets: {e}")
+            return False
+        except Exception as e:
+            print(f"⚠️ Unexpected error checking crypto status: {e}")
+            return False
 
     def get_crypto_assets(self):
         if not self._trading:
