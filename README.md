@@ -20,6 +20,13 @@ Create a portfolio using your Alpaca API credentials. The libraries
 `alpaca-trade-api` and `alpaca-py` are required and are included in
 `requirements.txt` and `app/requirements.txt`.
 
+## Alpaca Integration
+
+When credentials are configured, the Alpaca client verifies whether a symbol
+is a crypto asset by querying the Alpaca asset endpoint. Without credentials,
+the client falls back to a simple heuristic that looks for a slash or common
+stablecoin suffixes (``USD``, ``USDT``, ``USDC``).
+
 Each user has a **position_limit** value determining how many open positions they
 may hold at once. The default limit is 7 and can be modified from the profile
 page or via the API.
