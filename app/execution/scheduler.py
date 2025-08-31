@@ -30,11 +30,14 @@ class ExecutionScheduler:
         self.is_running = True
         logger.info("Starting execution scheduler...")
 
+        logger.info("Trailing stops task scheduled (60s interval)")
+
         # Iniciar tareas en paralelo
         await asyncio.gather(
             self._order_processing_loop(),
             self._fill_update_loop(),
             self._cleanup_loop(),
+            self._trailing_stops_loop(),
         )
 
     def stop(self):
@@ -153,6 +156,31 @@ class ExecutionScheduler:
 
             # Cleanup cada 30 minutos
             await asyncio.sleep(30 * 60)
+
+    async def _trailing_stops_loop(self):
+        """Loop para revisar trailing stops periódicamente"""
+        while self.is_running:
+            try:
+                await self.run_trailing_stops_check()
+            except Exception as e:  # pragma: no cover - safeguard
+                logger.error(f"Error in trailing stops loop: {e}")
+            await asyncio.sleep(60)
+
+    async def run_trailing_stops_check(self):
+        """Ejecutar check de trailing stops"""
+        if not self.is_running:
+            return
+
+        try:
+            from app.execution.trailing_stop_monitor import TrailingStopMonitor
+
+            monitor = TrailingStopMonitor(next(get_db()))
+            result = monitor.check_and_update_trailing_stops()
+
+            logger.info(f"Trailing stops check completed: {result}")
+
+        except Exception as e:
+            logger.error(f"Error in trailing stops check: {e}")
 
     def get_status(self) -> Dict[str, Any]:
         """Obtener estado del scheduler"""
