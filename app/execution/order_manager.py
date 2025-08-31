@@ -15,6 +15,12 @@ from app.models.strategy_exit_rules import StrategyExitRules
 logger = logging.getLogger(__name__)
 
 
+class PriceUnavailableError(Exception):
+    """Raised when the current market price cannot be retrieved."""
+
+
+
+
 class OrderManager:
     """Gestiona la creación y estado de órdenes"""
 
@@ -238,6 +244,12 @@ class OrderManager:
                     "message": "Failed to create main order"
                 }
 
+        except PriceUnavailableError as e:
+            logger.error(f"Error getting price for {signal.symbol}: {e}")
+            return {
+                "status": "error",
+                "message": f"Bracket order aborted: {e}",
+            }
         except Exception as e:
             logger.error(f"Error creating bracket order: {str(e)}")
             return {
@@ -309,8 +321,7 @@ class OrderManager:
             return float(getattr(trade, "price", 0.0))
         except Exception as e:
             logger.error(f"Error getting current price for {symbol}: {e}")
-            # Fallback: usar precio de última señal si existe
-            return 100.0  # Precio temporal para testing
+            raise PriceUnavailableError(f"Current price unavailable for {symbol}") from e
 
     def _schedule_exit_creation(self, order_id: int, strategy_id: str):
         """Programar creación de órdenes de salida para cuando se ejecute la orden principal"""

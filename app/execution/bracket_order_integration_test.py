@@ -79,6 +79,12 @@ async def test_full_bracket_order_flow(db_session, test_user, test_portfolio, mo
         lambda: datetime(2024, 1, 2, 10, 0, tzinfo=ZoneInfo("America/New_York")),
     )
 
+    # Stub current price retrieval to avoid external API calls
+    monkeypatch.setattr(
+        "app.execution.order_manager.OrderManager._get_current_price",
+        lambda self, symbol: 100.0,
+    )
+
     # 2. Crear webhook de TradingView
     webhook_data = TradingViewWebhook(
         symbol="AAPL",
