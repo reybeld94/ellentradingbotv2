@@ -172,10 +172,12 @@ class ExecutionScheduler:
             return
 
         try:
+            from contextlib import closing
             from app.execution.trailing_stop_monitor import TrailingStopMonitor
 
-            monitor = TrailingStopMonitor(next(get_db()))
-            result = monitor.check_and_update_trailing_stops()
+            with closing(next(get_db())) as db:
+                monitor = TrailingStopMonitor(db)
+                result = monitor.check_and_update_trailing_stops()
 
             logger.info(f"Trailing stops check completed: {result}")
 
