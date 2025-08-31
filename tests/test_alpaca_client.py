@@ -71,3 +71,22 @@ def test_check_crypto_status_handles_exception(monkeypatch):
     monkeypatch.setattr(client, "_trading", DummyTrading())
     assert client.check_crypto_status() is False
 
+
+def test_is_crypto_symbol_uses_api(monkeypatch):
+    client = AlpacaClient()
+
+    class DummyTrading:
+        def get_asset(self, symbol):
+            assert symbol == "BTCUSD"
+            return type("A", (), {"asset_class": "crypto"})()
+
+    monkeypatch.setattr(client, "_trading", DummyTrading())
+    assert client.is_crypto_symbol("BTCUSD") is True
+
+
+def test_is_crypto_symbol_fallback():
+    client = AlpacaClient()
+    client._trading = None
+    assert client.is_crypto_symbol("BTC/USD") is True
+    assert client.is_crypto_symbol("AAPL") is False
+

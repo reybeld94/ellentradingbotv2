@@ -147,14 +147,23 @@ class AlpacaClient:
         return self.submit_order(symbol, qty, side, order_type)
 
     def is_crypto_symbol(self, symbol: str) -> bool:
-        """Return True if ``symbol`` represents a crypto asset.
+        """Return ``True`` if ``symbol`` represents a crypto asset.
 
-        Alpaca identifies crypto either with a slash (``BTC/USD``) or by
-        concatenating the base and quote (``BTCUSD``). We use a simple heuristic
-        to detect these formats so the service can choose the appropriate quote
-        endpoint.
+        When API credentials are available, the Alpaca asset endpoint is
+        queried to determine the asset class. If the client is not initialized
+        or the lookup fails, a simple heuristic is used: symbols containing a
+        slash (``BTC/USD``) or ending in ``USD``, ``USDT`` or ``USDC`` are
+        treated as crypto.
         """
         symbol = (symbol or "").upper()
+        if self._trading:
+            try:
+                asset = self._trading.get_asset(symbol)
+                cls = getattr(asset, "asset_class", "").lower()
+                if cls:
+                    return cls == "crypto"
+            except Exception:
+                pass
         if "/" in symbol:
             return True
         return symbol.endswith(("USD", "USDT", "USDC"))
