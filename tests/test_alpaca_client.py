@@ -1,6 +1,7 @@
 import os
 import time
 import pytest
+from decimal import Decimal
 
 os.environ.setdefault('SECRET_KEY', 'secret')
 
@@ -19,6 +20,14 @@ def test_submit_order_uses_extended_hours_outside_regular(monkeypatch):
     monkeypatch.setattr(client, "_trading", dummy)
     monkeypatch.setattr(
         "app.integrations.alpaca.client._in_regular_trading_hours", lambda: False
+    )
+
+    class DummyMarketOrder:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    monkeypatch.setattr(
+        "alpaca.trading.requests.MarketOrderRequest", DummyMarketOrder
     )
 
     client.submit_order("AAPL", 1, "buy")
@@ -42,7 +51,7 @@ def test_get_position(monkeypatch):
 
     pos = client.get_position("AAPL")
     assert pos is not None
-    assert pos.qty == 3.5
+    assert pos.qty == Decimal("3.5")
 
 
 def test_check_crypto_status_without_client():
@@ -102,6 +111,10 @@ def test_submit_order_timeout(monkeypatch):
             time.sleep(0.2)
 
     monkeypatch.setattr(client, "_trading", DummyTrading())
+    monkeypatch.setattr(
+        "alpaca.trading.requests.MarketOrderRequest",
+        lambda **kw: type("O", (), kw),
+    )
     with pytest.raises(TimeoutError):
         client.submit_order("AAPL", 1, "buy", timeout=0.1)
 
@@ -119,4 +132,29 @@ def test_get_latest_trade_timeout(monkeypatch):
 
     with pytest.raises(TimeoutError):
         client.get_latest_trade("AAPL", timeout=0.1)
+
+
+def test_submit_order_decimal_precision(monkeypatch):
+    client = AlpacaClient()
+
+    class DummyTrading:
+        def submit_order(self, order):
+            self.order = order
+            return type("O", (), {"id": "1", "status": "accepted"})()
+
+    class DummyLimitOrder:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    monkeypatch.setattr(client, "_trading", DummyTrading())
+    monkeypatch.setattr(
+        "alpaca.trading.requests.LimitOrderRequest", DummyLimitOrder
+    )
+
+    qty = Decimal("0.0001")
+    price = Decimal("123.456789")
+    client.submit_order("AAPL", qty, "buy", order_type="limit", price=price)
+
+    assert client._trading.order.qty == str(qty)
+    assert client._trading.order.limit_price == str(price)
 

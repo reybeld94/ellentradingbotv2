@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from datetime import datetime, time
 import concurrent.futures
 import logging
+from decimal import Decimal
 from app.utils.time import EASTERN_TZ, now_eastern
 
 from alpaca.trading.client import TradingClient
@@ -73,9 +74,9 @@ class AlpacaClient:
             raise RuntimeError("Alpaca API credentials not configured")
         acc = self._trading.get_account()
         return SimpleNamespace(
-            cash=float(acc.cash),
-            buying_power=float(acc.buying_power),
-            portfolio_value=float(acc.portfolio_value),
+            cash=Decimal(str(acc.cash)),
+            buying_power=Decimal(str(acc.buying_power)),
+            portfolio_value=Decimal(str(acc.portfolio_value)),
         )
 
     def get_positions(self):
@@ -86,13 +87,19 @@ class AlpacaClient:
         return [
             SimpleNamespace(
                 symbol=p.symbol,
-                qty=float(p.qty),
-                market_value=float(getattr(p, "market_value", 0) or 0),
-                unrealized_pl=float(getattr(p, "unrealized_pl", 0) or 0),  # SOLO PnL TOTAL
-                unrealized_plpc=float(getattr(p, "unrealized_plpc", 0) or 0),
-                cost_basis=float(getattr(p, "cost_basis", 0) or 0),
-                avg_entry_price=float(getattr(p, "avg_entry_price", 0) or 0),
-                current_price=float(getattr(p, "current_price", 0) or 0),
+                qty=Decimal(str(p.qty)),
+                market_value=Decimal(str(getattr(p, "market_value", 0) or 0)),
+                unrealized_pl=Decimal(
+                    str(getattr(p, "unrealized_pl", 0) or 0)
+                ),  # SOLO PnL TOTAL
+                unrealized_plpc=Decimal(
+                    str(getattr(p, "unrealized_plpc", 0) or 0)
+                ),
+                cost_basis=Decimal(str(getattr(p, "cost_basis", 0) or 0)),
+                avg_entry_price=Decimal(
+                    str(getattr(p, "avg_entry_price", 0) or 0)
+                ),
+                current_price=Decimal(str(getattr(p, "current_price", 0) or 0)),
             )
             for p in positions
         ]
@@ -105,13 +112,19 @@ class AlpacaClient:
             p = self._trading.get_open_position(symbol)
             return SimpleNamespace(
                 symbol=p.symbol,
-                qty=float(p.qty),
-                market_value=float(getattr(p, "market_value", 0) or 0),
-                unrealized_pl=float(getattr(p, "unrealized_pl", 0) or 0),  # SOLO PnL TOTAL
-                unrealized_plpc=float(getattr(p, "unrealized_plpc", 0) or 0),
-                cost_basis=float(getattr(p, "cost_basis", 0) or 0),
-                avg_entry_price=float(getattr(p, "avg_entry_price", 0) or 0),
-                current_price=float(getattr(p, "current_price", 0) or 0),
+                qty=Decimal(str(p.qty)),
+                market_value=Decimal(str(getattr(p, "market_value", 0) or 0)),
+                unrealized_pl=Decimal(
+                    str(getattr(p, "unrealized_pl", 0) or 0)
+                ),  # SOLO PnL TOTAL
+                unrealized_plpc=Decimal(
+                    str(getattr(p, "unrealized_plpc", 0) or 0)
+                ),
+                cost_basis=Decimal(str(getattr(p, "cost_basis", 0) or 0)),
+                avg_entry_price=Decimal(
+                    str(getattr(p, "avg_entry_price", 0) or 0)
+                ),
+                current_price=Decimal(str(getattr(p, "current_price", 0) or 0)),
             )
         except Exception:
             return None
@@ -127,10 +140,12 @@ class AlpacaClient:
         order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
         extended_hours = not _in_regular_trading_hours()
 
+        qty_str = str(qty) if isinstance(qty, Decimal) else str(qty)
+        price_str = str(price) if isinstance(price, Decimal) else (str(price) if price is not None else None)
         if order_type == "market":
             order_data = MarketOrderRequest(
                 symbol=symbol,
-                qty=qty,
+                qty=qty_str,
                 side=order_side,
                 time_in_force=TimeInForce.DAY,
                 extended_hours=extended_hours,
@@ -138,10 +153,10 @@ class AlpacaClient:
         else:
             order_data = LimitOrderRequest(
                 symbol=symbol,
-                qty=qty,
+                qty=qty_str,
                 side=order_side,
                 time_in_force=TimeInForce.DAY,
-                limit_price=price,
+                limit_price=price_str,
                 extended_hours=extended_hours,
             )
 
@@ -151,7 +166,7 @@ class AlpacaClient:
                 fut = executor.submit(self._trading.submit_order, order_data)
                 order = fut.result(timeout=timeout)
             return SimpleNamespace(
-                id=order.id, symbol=symbol, qty=qty, side=side, status=order.status
+                id=order.id, symbol=symbol, qty=Decimal(str(qty)), side=side, status=order.status
             )
         except concurrent.futures.TimeoutError:
             logger.error("submit_order timeout for %s after %s seconds", symbol, timeout)
@@ -191,14 +206,20 @@ class AlpacaClient:
             raise RuntimeError("Alpaca API credentials not configured")
         req = StockLatestQuoteRequest(symbol_or_symbols=symbol)
         q = self._stock_data.get_stock_latest_quote(req)[symbol]
-        return SimpleNamespace(ask_price=float(q.ask_price), bid_price=float(q.bid_price))
+        return SimpleNamespace(
+            ask_price=Decimal(str(q.ask_price)),
+            bid_price=Decimal(str(q.bid_price)),
+        )
 
     def get_latest_crypto_quote(self, symbol: str):
         if not self._crypto_data:
             raise RuntimeError("Alpaca API credentials not configured")
         req = CryptoLatestQuoteRequest(symbol_or_symbols=symbol)
         q = self._crypto_data.get_crypto_latest_quote(req)[symbol]
-        return SimpleNamespace(ask_price=float(q.ask_price), bid_price=float(q.bid_price))
+        return SimpleNamespace(
+            ask_price=Decimal(str(q.ask_price)),
+            bid_price=Decimal(str(q.bid_price)),
+        )
 
     def get_latest_trade(self, symbol: str, timeout=None):
         timeout = timeout or self.timeout
@@ -212,7 +233,7 @@ class AlpacaClient:
                         self._crypto_data.get_crypto_latest_trade, req
                     )
                     t = fut.result(timeout=timeout)[symbol]
-                return SimpleNamespace(price=float(t.price))
+                return SimpleNamespace(price=Decimal(str(t.price)))
             else:
                 if not self._stock_data:
                     raise RuntimeError("Alpaca API credentials not configured")
@@ -222,7 +243,7 @@ class AlpacaClient:
                         self._stock_data.get_stock_latest_trade, req
                     )
                     t = fut.result(timeout=timeout)[symbol]
-                return SimpleNamespace(price=float(t.price))
+                return SimpleNamespace(price=Decimal(str(t.price)))
         except concurrent.futures.TimeoutError:
             logger.error(
                 "get_latest_trade timeout for %s after %s seconds", symbol, timeout
@@ -242,7 +263,7 @@ class AlpacaClient:
             SimpleNamespace(
                 id=o.id,
                 symbol=o.symbol,
-                qty=float(o.qty),
+                qty=Decimal(str(o.qty)),
                 side=o.side,
                 status=o.status,
             )

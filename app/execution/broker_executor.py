@@ -3,6 +3,7 @@ from app.models.order import Order
 from app.core.types import OrderStatus
 from app.integrations.alpaca.client import AlpacaClient
 from typing import Optional, Dict, Any
+from decimal import Decimal
 import logging
 
 logger = logging.getLogger(__name__)
@@ -107,17 +108,17 @@ class BrokerExecutor:
         """Ejecutar orden de acciones"""
         return self.broker.submit_order(
             symbol=order.symbol,
-            qty=float(order.quantity),
+            qty=Decimal(str(order.quantity)),
             side=order.side,
             order_type=order.order_type or "market",
-            price=float(order.limit_price) if order.limit_price else None,
+            price=Decimal(str(order.limit_price)) if order.limit_price else None,
         )
 
     def _execute_crypto_order(self, order: Order) -> Any:
         """Ejecutar orden de crypto"""
         return self.broker.submit_crypto_order(
             symbol=order.symbol,
-            qty=float(order.quantity),
+            qty=Decimal(str(order.quantity)),
             side=order.side,
             order_type=order.order_type or "market",
         )
@@ -139,9 +140,11 @@ class BrokerExecutor:
                 return {
                     "broker_order_id": order.broker_order_id,
                     "status": str(getattr(broker_order, "status", "unknown")),
-                    "filled_qty": float(getattr(broker_order, "filled_qty", 0) or 0),
-                    "filled_avg_price": float(
-                        getattr(broker_order, "filled_avg_price", 0) or 0
+                    "filled_qty": Decimal(
+                        str(getattr(broker_order, "filled_qty", 0) or 0)
+                    ),
+                    "filled_avg_price": Decimal(
+                        str(getattr(broker_order, "filled_avg_price", 0) or 0)
                     ),
                 }
 
