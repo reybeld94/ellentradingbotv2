@@ -11,7 +11,7 @@ from sqlalchemy import (
     ForeignKey,
     DECIMAL,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 from app.core.types import OrderStatus, OrderType
 from datetime import datetime
@@ -56,10 +56,11 @@ class Order(Base):
     
     # Time in force
     time_in_force = Column(String(10), default="day", nullable=False)
-    
+
     # Bracket order fields
     stop_loss_price = Column(DECIMAL(12, 4), nullable=True)
     take_profit_price = Column(DECIMAL(12, 4), nullable=True)
+    is_bracket_parent = Column(Boolean, default=False, index=True)
     
     # Relaciones
     signal_id = Column(Integer, ForeignKey("signals.id"), nullable=False, index=True)
@@ -70,7 +71,12 @@ class Order(Base):
     signal = relationship("Signal", back_populates="orders")
     user = relationship("User")
     portfolio = relationship("Portfolio")
-    child_orders = relationship("Order", backref="parent_order", remote_side=[id])
+    child_orders = relationship(
+        "Order",
+        foreign_keys="Order.parent_order_id",
+        backref=backref("parent_order", remote_side="Order.id"),
+        cascade="all, delete-orphan",
+    )
     
     def __repr__(self):
         return f"<Order(id={self.id}, client_order_id='{self.client_order_id}', symbol='{self.symbol}', side='{self.side}', status='{self.status}')>"
@@ -105,3 +111,16 @@ class Order(Base):
     @property
     def remaining_quantity(self) -> float:
         return float(self.quantity - (self.filled_quantity or 0))
+
+    @property
+    def is_bracket_order(self) -> bool:
+        """Check if this order is part of a bracket (parent or child)"""
+        return self.is_bracket_parent or self.parent_order_id is not None
+
+    def get_bracket_siblings(self):
+        """Get all sibling orders in the same bracket"""
+        if self.parent_order_id:
+            return self.parent_order.child_orders
+        elif self.is_bracket_parent:
+            return self.child_orders
+        return []
