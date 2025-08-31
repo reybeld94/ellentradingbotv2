@@ -14,6 +14,7 @@ import asyncio
 import json
 from alpaca.common.exceptions import APIError
 from sqlalchemy.exc import SQLAlchemyError
+from app.services.symbol_mapper import get_mapped_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +30,8 @@ class OrderExecutor:
         return '/' in symbol or symbol.endswith('USD')
 
     def map_symbol(self, symbol: str) -> str:
-        """Convert TradingView symbols to Kraken format."""
-        symbol_map = {
-            'BTCUSD': 'BTC/USD',
-            'ETHUSD': 'ETH/USD',
-            'SOLUSD': 'SOL/USD',
-            'BCHUSD': 'BCH/USD',
-        }
-        mapped = symbol_map.get(symbol, symbol)
+        """Convert external symbols to broker format using DB mapping."""
+        mapped = get_mapped_symbol(symbol)
         print(f"🔄 Symbol mapping: {symbol} -> {mapped}")
         return mapped
 

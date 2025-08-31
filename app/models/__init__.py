@@ -6,6 +6,7 @@ from app.models.trades import Trade
 from app.models.portfolio import Portfolio
 from app.models.risk_limit import RiskLimit
 from .order import Order
+from .symbol_mapping import SymbolMapping
 
 
 __all__ = [
@@ -17,4 +18,5 @@ __all__ = [
     "Portfolio",
     "RiskLimit",
     "Order",
+    "SymbolMapping",
 ]
