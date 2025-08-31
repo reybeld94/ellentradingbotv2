@@ -92,13 +92,16 @@ async def update_risk_limits(
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid updates provided")
-    
+
     risk_service = RiskService(db)
-    updated_limits = risk_service.update_risk_limits(
-        current_user.id, 
-        active_portfolio.id, 
-        update_data
-    )
+    try:
+        updated_limits = risk_service.update_risk_limits(
+            current_user.id,
+            active_portfolio.id,
+            update_data
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
     return {
         "message": "Risk limits updated successfully",

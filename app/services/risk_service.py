@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from app.models.risk_limit import RiskLimit
@@ -9,6 +9,25 @@ from app.models.signal import Signal
 from datetime import datetime, timedelta
 from app.utils.time import now_eastern
 from app.integrations import broker_client
+
+# Diccionario de validadores de rango: campo -> (mínimo, máximo)
+# Un valor None indica que no hay límite en ese extremo
+RANGE_VALIDATORS: Dict[str, Tuple[Optional[float], Optional[float]]] = {
+    "max_daily_drawdown": (0.0, 1.0),
+    "max_weekly_drawdown": (0.0, 1.0),
+    "max_account_drawdown": (0.0, 1.0),
+    "max_position_size": (0.0, 1.0),
+    "max_symbol_exposure": (0.0, 1.0),
+    "max_sector_exposure": (0.0, 1.0),
+    "max_total_exposure": (0.0, 1.0),
+    "max_orders_per_hour": (1, None),
+    "max_orders_per_day": (1, None),
+    "max_open_positions": (1, None),
+    "min_price": (0.0, None),
+    "max_price": (0.0, None),
+    "min_volume": (0, None),
+    "max_spread_percent": (0.0, 1.0),
+}
 
 class RiskService:
     """Servicio para gestión y consulta de límites de riesgo"""
@@ -58,6 +77,15 @@ class RiskService:
         
         for field, value in updates.items():
             if field in valid_fields and hasattr(risk_limit, field):
+                bounds = RANGE_VALIDATORS.get(field)
+                if bounds and value is not None:
+                    min_val, max_val = bounds
+                    if (min_val is not None and value < min_val) or (
+                        max_val is not None and value > max_val
+                    ):
+                        raise ValueError(
+                            f"{field} must be between {min_val} and {max_val}"
+                        )
                 setattr(risk_limit, field, value)
         
         risk_limit.updated_at = now_eastern()
