@@ -45,11 +45,15 @@ def test_exit_order_failure_rolls_back_main_order(db_session, monkeypatch):
 
     monkeypatch.setattr(ExitRulesService, "calculate_exit_prices", fake_calc)
 
-    # Force _create_exit_orders to fail
-    def fail_exit_orders(main_order, exit_calculation, strategy_id, commit=False):
-        raise Exception("failure creating exits")
+    # Force failure when creating the take profit order
+    original_add = db_session.add
 
-    monkeypatch.setattr(om, "_create_exit_orders", fail_exit_orders)
+    def failing_add(obj):
+        if isinstance(obj, Order) and getattr(obj, "client_order_id", "").startswith("TP_"):
+            raise Exception("failure creating exits")
+        return original_add(obj)
+
+    monkeypatch.setattr(db_session, "add", failing_add)
 
     result = om.create_bracket_order_from_signal(signal, user_id=user.id, portfolio_id=None)
 
