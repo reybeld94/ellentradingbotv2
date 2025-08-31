@@ -35,7 +35,7 @@ async def receive_tradingview_webhook(
 
         # Usar el nuevo procesador modular
         processor = WebhookProcessor(db)
-        result = processor.process_tradingview_webhook(webhook_data, current_user)
+        result = await processor.process_tradingview_webhook(webhook_data, current_user)
         
         # Mapear respuesta según el resultado
         if result["status"] == "accepted":
@@ -163,7 +163,7 @@ async def receive_public_webhook(
 
         # Usar el nuevo procesador modular
         processor = WebhookProcessor(db)
-        result = processor.process_tradingview_webhook(webhook_data, target_user)
+        result = await processor.process_tradingview_webhook(webhook_data, target_user)
         
         # Mapear respuesta según el resultado
         if result["status"] == "accepted":

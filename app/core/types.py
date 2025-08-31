@@ -17,6 +17,8 @@ class SignalStatus(str, Enum):
     REJECTED = "rejected"
     PROCESSING = "processing"
     EXECUTED = "executed"
+    BRACKET_CREATED = "bracket_created"  # Bracket orders creadas exitosamente
+    BRACKET_FAILED = "bracket_failed"    # Falló la creación de bracket orders
     ERROR = "error"
 
 class OrderStatus(str, Enum):
