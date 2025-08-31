@@ -18,7 +18,7 @@ class DummyPM:
 
 class DummyBroker:
     def get_account(self):
-        return types.SimpleNamespace(cash="1000")
+        return types.SimpleNamespace(buying_power="1000")
 
 
 def test_order_blocked_when_limit_exceeded(monkeypatch):

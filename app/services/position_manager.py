@@ -101,9 +101,9 @@ class PositionManager:
         if current_qty == 0 and current_positions >= limit:
             raise ValueError(f"Maximum positions limit reached ({limit}). Current: {current_positions}")
 
-        # 2. Verificar efectivo disponible
+        # 2. Verificar poder de compra disponible
         account = self.broker.get_account()
-        available_cash = float(account.cash)
+        buying_power = float(account.buying_power)
 
         # Estimar costo de la orden (precio aproximado)
         try:
@@ -120,13 +120,15 @@ class PositionManager:
 
             estimated_cost = price * calculated_quantity
 
-            if estimated_cost > available_cash:
-                raise ValueError(f"Insufficient cash. Need: ${estimated_cost:.2f}, Available: ${available_cash:.2f}")
+            if estimated_cost > buying_power:
+                raise ValueError(
+                    f"Insufficient buying power. Need: ${estimated_cost:.2f}, Available: ${buying_power:.2f}"
+                )
 
         except Exception as e:
             if isinstance(e, ValueError):
                 raise
-            logger.warning(f"Could not validate cash for {signal.symbol}: {e}")
+            logger.warning(f"Could not validate buying power for {signal.symbol}: {e}")
 
         return True
 

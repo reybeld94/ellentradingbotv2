@@ -213,8 +213,8 @@ class OrderExecutor:
             raise ValueError(f"Maximum positions limit reached ({limit})")
 
         account = self.broker.get_account()
-        available_cash = float(account.cash)
-        print(f"💵 Available cash: ${available_cash:,.2f}")
+        buying_power = float(account.buying_power)
+        print(f"💵 Available buying power: ${buying_power:,.2f}")
 
         is_fractionable = self.broker.is_asset_fractionable(correct_symbol)
         print(f"🔍 Asset {correct_symbol} is fractionable: {is_fractionable}")
@@ -243,8 +243,10 @@ class OrderExecutor:
         print(f"   - Estimated cost: ${estimated_cost:,.2f}")
         print(f"   - Is fractionable: {is_fractionable}")
 
-        if estimated_cost > available_cash:
-            raise ValueError(f"Insufficient cash. Need: ${estimated_cost:.2f}, Available: ${available_cash:.2f}")
+        if estimated_cost > buying_power:
+            raise ValueError(
+                f"Insufficient buying power. Need: ${estimated_cost:.2f}, Available: ${buying_power:.2f}"
+            )
 
         print("📤 Submitting order to broker...")
         if self.is_crypto(signal.symbol):
