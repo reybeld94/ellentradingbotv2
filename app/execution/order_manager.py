@@ -218,7 +218,7 @@ class OrderManager:
                 signal.action,
             )
 
-            with self.db.begin():
+            with self.db.begin_nested():
                 # 3. Crear orden principal (Entry)
                 main_order = self.create_order_from_signal(
                     signal,

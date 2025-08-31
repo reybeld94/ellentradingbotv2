@@ -24,7 +24,7 @@ class BrokerExecutor:
             # Actualizar estado a "enviando"
             order.status = OrderStatus.SENT
             order.retry_count += 1
-            self.db.commit()
+            self.db.flush()
 
             logger.info(
                 f"Executing order {order.client_order_id}: {order.side} {order.quantity} {order.symbol}"
@@ -41,7 +41,7 @@ class BrokerExecutor:
                 order.broker_order_id = str(broker_order.id)
                 order.status = OrderStatus.ACCEPTED
                 order.last_error = None
-                self.db.commit()
+                self.db.flush()
 
                 logger.info(
                     f"Order {order.client_order_id} accepted by broker: {broker_order.id}"
@@ -64,7 +64,7 @@ class BrokerExecutor:
                 # Programar retry
                 order.status = OrderStatus.NEW  # Volver a NEW para retry
                 order.last_error = f"Retry {order.retry_count}: {error_msg}"
-                self.db.commit()
+                self.db.flush()
 
                 # Delay antes del retry
                 delay = self.retry_delays[
@@ -84,7 +84,7 @@ class BrokerExecutor:
                 # Max retries alcanzado
                 order.status = OrderStatus.ERROR
                 order.last_error = f"Max retries exceeded: {error_msg}"
-                self.db.commit()
+                self.db.flush()
 
                 return {
                     "success": False,
