@@ -4,6 +4,7 @@ import {
   Home, Briefcase, Bell, ChevronRight,
   RefreshCw, Target, Shield
 } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -14,6 +15,7 @@ import Profile from './pages/Profile';
 import TradesPage from './pages/trades';
 import StrategiesPage from './pages/strategies';
 import RiskDashboard from './pages/RiskDashboard';
+import ExitRulesManager from './components/ExitRulesManager';
 
 // Tipos para las páginas
 type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'risk' | 'settings';
@@ -201,6 +203,20 @@ const Sidebar: React.FC<{
                   </li>
                 );
               })}
+              <li>
+                <Link
+                  to="/exit-rules"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"
+                  onClick={() => {
+                    if (window.innerWidth < 1024) {
+                      onToggle();
+                    }
+                  }}
+                >
+                  <Settings className="w-4 h-4" />
+                  Exit Rules
+                </Link>
+              </li>
             </ul>
           </nav>
 
@@ -370,7 +386,10 @@ const AuthenticatedApp: React.FC = () => {
 
         {/* Page content */}
         <main className="flex-1">
-          {renderCurrentPage()}
+          <Routes>
+            <Route path="/exit-rules" element={<ExitRulesManager />} />
+            <Route path="*" element={renderCurrentPage()} />
+          </Routes>
         </main>
       </div>
     </div>
@@ -397,7 +416,9 @@ const LoadingScreen: React.FC = () => (
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppContent />
+      <Router>
+        <AppContent />
+      </Router>
     </AuthProvider>
   );
 };
