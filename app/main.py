@@ -5,6 +5,7 @@ from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.orders import router as orders_router
 from app.api.v1.portfolios import router as portfolios_router
 from app.api.v1.streaming import router as streaming_router
+from app.api.v1.exit_rules import router as exit_rules_router
 from app.api.ws import router as ws_router
 from app.api.v1 import auth, trades, strategies, portfolio, risk, execution, system, testing
 from app.database import SessionLocal
@@ -40,6 +41,7 @@ app.include_router(portfolio.router, prefix="/api/v1", tags=["portfolio"])
 app.include_router(execution.router, prefix="/api/v1/execution", tags=["execution"])
 app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
 app.include_router(testing.router, prefix="/api/v1/testing", tags=["testing"])
+app.include_router(exit_rules_router, prefix="/api/v1/exit-rules", tags=["Exit Rules"])
 app.include_router(ws_router)
 
 
