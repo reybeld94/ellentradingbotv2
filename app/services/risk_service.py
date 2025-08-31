@@ -8,6 +8,7 @@ from app.models.trades import Trade
 from app.models.signal import Signal
 from datetime import datetime
 from app.utils.time import now_eastern
+from app.integrations import broker_client
 
 class RiskService:
     """Servicio para gestión y consulta de límites de riesgo"""
@@ -163,8 +164,16 @@ class RiskService:
             warnings.append(f"High position count: {open_positions}/{limits.max_open_positions} open positions")
         
         if daily_pnl < 0:
-            daily_dd_percent = abs(daily_pnl) / 10000.0  # Estimado
+            try:
+                account = broker_client.get_account()
+                reference_capital = float(getattr(account, "portfolio_value", 10000.0))
+            except Exception:
+                reference_capital = 10000.0
+
+            daily_dd_percent = abs(daily_pnl) / reference_capital
             if daily_dd_percent >= limits.max_daily_drawdown * 0.8:
-                warnings.append(f"High daily drawdown: {daily_dd_percent:.2%} (limit: {limits.max_daily_drawdown:.2%})")
+                warnings.append(
+                    f"High daily drawdown: {daily_dd_percent:.2%} (limit: {limits.max_daily_drawdown:.2%})"
+                )
         
         return warnings
