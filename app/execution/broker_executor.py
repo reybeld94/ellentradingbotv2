@@ -21,23 +21,25 @@ class BrokerExecutor:
         """Ejecutar una orden en el broker con retry automático"""
 
         try:
-            # Actualizar estado a "enviando"
-            order.status = OrderStatus.SENT
-            order.retry_count += 1
-            self.db.flush()
+            with self.db.begin():
+                # Actualizar estado a "enviando"
+                order.status = OrderStatus.SENT
+                self.db.flush()
 
-            logger.info(
-                f"Executing order {order.client_order_id}: {order.side} {order.quantity} {order.symbol}"
-            )
+                logger.info(
+                    f"Executing order {order.client_order_id}: {order.side} {order.quantity} {order.symbol}"
+                )
 
-            # Determinar si es crypto o stock
-            if self._is_crypto_symbol(order.symbol):
-                broker_order = self._execute_crypto_order(order)
-            else:
-                broker_order = self._execute_stock_order(order)
+                # Determinar si es crypto o stock
+                if self._is_crypto_symbol(order.symbol):
+                    broker_order = self._execute_crypto_order(order)
+                else:
+                    broker_order = self._execute_stock_order(order)
 
-            # Actualizar orden con respuesta del broker
-            if broker_order:
+                if not broker_order:
+                    raise Exception("Broker returned None for order")
+
+                # Actualizar orden con respuesta del broker
                 order.broker_order_id = str(broker_order.id)
                 order.status = OrderStatus.ACCEPTED
                 order.last_error = None
@@ -47,33 +49,47 @@ class BrokerExecutor:
                     f"Order {order.client_order_id} accepted by broker: {broker_order.id}"
                 )
 
-                return {
-                    "success": True,
-                    "broker_order_id": broker_order.id,
-                    "status": "accepted",
-                }
-            else:
-                raise Exception("Broker returned None for order")
+            return {
+                "success": True,
+                "broker_order_id": broker_order.id,
+                "status": "accepted",
+            }
 
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Order {order.client_order_id} failed: {error_msg}")
 
-            # Decidir si reintentar o marcar como error
-            if order.retry_count < self.max_retries:
-                # Programar retry
-                order.status = OrderStatus.NEW  # Volver a NEW para retry
-                order.last_error = f"Retry {order.retry_count}: {error_msg}"
-                self.db.flush()
+            try:
+                self.db.rollback()
+            except Exception as rollback_error:
+                logger.error(
+                    f"Rollback failed for order {order.client_order_id}: {rollback_error}"
+                )
+                return {
+                    "success": False,
+                    "retry_scheduled": False,
+                    "error": f"Rollback failed: {rollback_error}",
+                }
 
-                # Delay antes del retry
+            with self.db.begin():
+                order.retry_count += 1
+
+                if order.retry_count < self.max_retries:
+                    # Programar retry
+                    order.status = OrderStatus.NEW  # Volver a NEW para retry
+                    order.last_error = f"Retry {order.retry_count}: {error_msg}"
+                else:
+                    # Max retries alcanzado
+                    order.status = OrderStatus.ERROR
+                    order.last_error = f"Max retries exceeded: {error_msg}"
+
+            if order.retry_count < self.max_retries:
                 delay = self.retry_delays[
                     min(order.retry_count - 1, len(self.retry_delays) - 1)
                 ]
                 logger.info(
                     f"Will retry order {order.client_order_id} in {delay} seconds"
                 )
-
                 return {
                     "success": False,
                     "retry_scheduled": True,
@@ -81,11 +97,6 @@ class BrokerExecutor:
                     "error": error_msg,
                 }
             else:
-                # Max retries alcanzado
-                order.status = OrderStatus.ERROR
-                order.last_error = f"Max retries exceeded: {error_msg}"
-                self.db.flush()
-
                 return {
                     "success": False,
                     "retry_scheduled": False,
