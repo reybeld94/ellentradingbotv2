@@ -6,7 +6,7 @@ from app.models.user import User
 from app.models.portfolio import Portfolio
 from app.models.trades import Trade
 from app.models.signal import Signal
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.utils.time import now_eastern
 from app.integrations import broker_client
 
@@ -104,11 +104,7 @@ class RiskService:
         ).count()
         
         # Órdenes en la última hora
-        one_hour_ago = now.replace(minute=0, second=0, microsecond=0)
-        if now.hour > 0:
-            one_hour_ago = one_hour_ago.replace(hour=now.hour-1)
-        else:
-            one_hour_ago = one_hour_ago.replace(day=now.day-1, hour=23)
+        one_hour_ago = now - timedelta(hours=1)
             
         orders_last_hour = self.db.query(Signal).filter(
             and_(

@@ -1,5 +1,7 @@
 import pytest
 from types import SimpleNamespace
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from app.services.risk_service import RiskService
 import app.services.risk_service as risk_service_module
@@ -11,6 +13,36 @@ class DummyBroker:
 
     def get_account(self):
         return SimpleNamespace(portfolio_value=self._portfolio_value)
+
+
+class FakeQuery:
+    def __init__(self, entities, db):
+        self.entities = entities
+        self.db = db
+
+    def filter(self, condition):
+        from app.models.signal import Signal
+
+        if any(ent is Signal for ent in self.entities):
+            for clause in condition.clauses:
+                left = getattr(clause, "left", None)
+                if getattr(left, "key", None) == "timestamp":
+                    self.db.captured_one_hour_ago = clause.right.value
+        return self
+
+    def count(self):
+        return 0
+
+    def scalar(self):
+        return 0
+
+
+class FakeDB:
+    def __init__(self):
+        self.captured_one_hour_ago = None
+
+    def query(self, *entities):
+        return FakeQuery(entities, self)
 
 
 def test_daily_drawdown_uses_dynamic_portfolio_value(monkeypatch):
@@ -40,3 +72,38 @@ def test_daily_drawdown_uses_dynamic_portfolio_value(monkeypatch):
         limits, daily_pnl, orders_today, orders_last_hour, open_positions
     )
     assert all("High daily drawdown" not in w for w in warnings)
+
+
+@pytest.mark.parametrize(
+    "now, expected",
+    [
+        (
+            datetime(2024, 1, 2, 0, 30, tzinfo=ZoneInfo("America/New_York")),
+            datetime(2024, 1, 1, 23, 30, tzinfo=ZoneInfo("America/New_York")),
+        ),
+        (
+            datetime(2024, 3, 10, 3, 30, tzinfo=ZoneInfo("America/New_York")),
+            datetime(2024, 3, 10, 2, 30, tzinfo=ZoneInfo("America/New_York")),
+        ),
+    ],
+)
+def test_get_risk_summary_last_hour_handles_day_change_and_dst(monkeypatch, now, expected):
+    db = FakeDB()
+    service = RiskService(db_session=db)
+
+    risk_limit = SimpleNamespace(
+        max_daily_drawdown=0,
+        max_orders_per_hour=1000,
+        max_orders_per_day=1000,
+        max_open_positions=1000,
+        trading_start_time=None,
+        trading_end_time=None,
+        allow_extended_hours=False,
+    )
+
+    monkeypatch.setattr(risk_service_module, "now_eastern", lambda: now)
+    monkeypatch.setattr(service, "get_or_create_risk_limits", lambda u, p: risk_limit)
+
+    service.get_risk_summary(user_id=1, portfolio_id=1)
+
+    assert db.captured_one_hour_ago == expected
