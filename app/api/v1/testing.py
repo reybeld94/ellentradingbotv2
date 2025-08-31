@@ -7,6 +7,7 @@ from app.models.user import User
 from app.core.auth import get_current_verified_user, get_admin_user
 from app.execution.testing import ExecutionTester
 from typing import Optional
+from decimal import Decimal
 import logging
 
 logger = logging.getLogger(__name__)
@@ -141,7 +142,7 @@ async def test_full_bracket_flow(
         rules = exit_service.get_rules(strategy_id)
 
         # 2. Calcular precios de salida
-        entry_price = test_request.get("entry_price", 100.0)
+        entry_price = Decimal(str(test_request.get("entry_price", 100.0)))
         exit_calculation = exit_service.calculate_exit_prices(strategy_id, entry_price, "buy")
 
         # 3. Simular creación de señal

@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from app.database import Base
 from app.utils.time import now_eastern
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 
 
 class StrategyExitRules(Base):
@@ -28,17 +29,22 @@ class StrategyExitRules(Base):
     def __repr__(self):
         return f"<StrategyExitRules({self.id}: SL={self.stop_loss_pct*100}%, TP={self.take_profit_pct*100}%)>"
 
-    def calculate_exit_prices(self, entry_price: float, side: str = "buy") -> dict:
+    def calculate_exit_prices(self, entry_price: Decimal, side: str = "buy") -> dict:
         """Calcular precios de salida basados en precio de entrada"""
+        entry_price = Decimal(str(entry_price))
+        stop_loss_pct = Decimal(str(self.stop_loss_pct))
+        take_profit_pct = Decimal(str(self.take_profit_pct))
+
         if side.lower() == "buy":
-            stop_loss_price = entry_price * (1 - self.stop_loss_pct)
-            take_profit_price = entry_price * (1 + self.take_profit_pct)
+            stop_loss_price = entry_price * (Decimal("1") - stop_loss_pct)
+            take_profit_price = entry_price * (Decimal("1") + take_profit_pct)
         else:  # sell/short
-            stop_loss_price = entry_price * (1 + self.stop_loss_pct)
-            take_profit_price = entry_price * (1 - self.take_profit_pct)
-            
+            stop_loss_price = entry_price * (Decimal("1") + stop_loss_pct)
+            take_profit_price = entry_price * (Decimal("1") - take_profit_pct)
+
+        quantize_value = Decimal("0.01")
         return {
-            "stop_loss_price": round(stop_loss_price, 2),
-            "take_profit_price": round(take_profit_price, 2),
-            "entry_price": entry_price
+            "stop_loss_price": stop_loss_price.quantize(quantize_value, rounding=ROUND_HALF_UP),
+            "take_profit_price": take_profit_price.quantize(quantize_value, rounding=ROUND_HALF_UP),
+            "entry_price": entry_price.quantize(quantize_value, rounding=ROUND_HALF_UP),
         }

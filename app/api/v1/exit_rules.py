@@ -7,6 +7,7 @@ from app.services.exit_rules_service import ExitRulesService
 from app.models.strategy_exit_rules import StrategyExitRules
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
+from decimal import Decimal
 import logging
 
 logger = logging.getLogger(__name__)
@@ -211,7 +212,7 @@ async def calculate_exit_prices(
         service = ExitRulesService(db)
         result = service.calculate_exit_prices(
             strategy_id,
-            calculation_request.entry_price,
+            Decimal(str(calculation_request.entry_price)),
             calculation_request.side
         )
         
@@ -258,7 +259,7 @@ async def test_exit_rules(
     """Endpoint de testing para probar cálculos de salida"""
     try:
         service = ExitRulesService(db)
-        result = service.calculate_exit_prices(strategy_id, entry_price, side)
+        result = service.calculate_exit_prices(strategy_id, Decimal(str(entry_price)), side)
         
         return {
             "test_scenario": {

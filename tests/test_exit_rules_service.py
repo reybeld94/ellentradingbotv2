@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.services.exit_rules_service import ExitRulesService
 from app.models.strategy_exit_rules import StrategyExitRules
+from decimal import Decimal
 
 
 @pytest.fixture
@@ -36,9 +37,9 @@ def test_calculate_exit_prices(db_session):
     service.create_default_rules("test_strategy")
     
     # Calcular precios para entrada en $100
-    result = service.calculate_exit_prices("test_strategy", 100.0, "buy")
-    
-    assert result["entry_price"] == 100.0
-    assert result["stop_loss_price"] == 98.0   # 100 * (1 - 0.02)
-    assert result["take_profit_price"] == 104.0 # 100 * (1 + 0.04)
+    result = service.calculate_exit_prices("test_strategy", Decimal("100"), "buy")
+
+    assert result["entry_price"] == Decimal("100.00")
+    assert result["stop_loss_price"] == Decimal("98.00")   # 100 * (1 - 0.02)
+    assert result["take_profit_price"] == Decimal("104.00") # 100 * (1 + 0.04)
     assert result["strategy_id"] == "test_strategy"
