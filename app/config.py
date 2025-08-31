@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     alpaca_secret_key: Optional[str] = None
     alpaca_base_url: str = "https://paper-api.alpaca.markets"
     alpaca_paper: bool = True
+    alpaca_timeout: float = 5.0
 
     # Active broker identifier
     active_broker: Optional[str] = "alpaca"

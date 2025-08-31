@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from datetime import datetime, time
+import concurrent.futures
+import logging
 from app.utils.time import EASTERN_TZ, now_eastern
 
 from alpaca.trading.client import TradingClient
@@ -20,6 +22,8 @@ from alpaca.common.exceptions import APIError
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 def _in_regular_trading_hours(now: datetime | None = None) -> bool:
     current = now.astimezone(EASTERN_TZ) if now else now_eastern()
@@ -33,6 +37,7 @@ class AlpacaClient:
         self.api_key = getattr(settings, "alpaca_api_key", None) or ""
         self.api_secret = getattr(settings, "alpaca_secret_key", None) or ""
         self.base_url = getattr(settings, "alpaca_base_url", None)
+        self.timeout = getattr(settings, "alpaca_timeout", 5.0)
         self._trading: TradingClient | None = None
         self._stock_data: StockHistoricalDataClient | None = None
         self._crypto_data: CryptoHistoricalDataClient | None = None
@@ -55,12 +60,12 @@ class AlpacaClient:
             )
             self._stock_data = StockHistoricalDataClient(self.api_key, self.api_secret)
             self._crypto_data = CryptoHistoricalDataClient(self.api_key, self.api_secret)
-            print("🔌 Alpaca credentials detected, REST client ready")
+            logger.info("🔌 Alpaca credentials detected, REST client ready")
         else:
             self._trading = None
             self._stock_data = None
             self._crypto_data = None
-            print("⚠️ Alpaca API credentials not provided; REST client not initialized")
+            logger.warning("⚠️ Alpaca API credentials not provided; REST client not initialized")
 
     # --- Basic account helpers -------------------------------------------------
     def get_account(self):
@@ -112,7 +117,7 @@ class AlpacaClient:
             return None
 
     # --- Trading --------------------------------------------------------------
-    def submit_order(self, symbol, qty, side, order_type="market", price=None):
+    def submit_order(self, symbol, qty, side, order_type="market", price=None, timeout=None):
         if not self._trading:
             raise RuntimeError("Alpaca API credentials not configured")
 
@@ -140,8 +145,20 @@ class AlpacaClient:
                 extended_hours=extended_hours,
             )
 
-        order = self._trading.submit_order(order_data)
-        return SimpleNamespace(id=order.id, symbol=symbol, qty=qty, side=side, status=order.status)
+        timeout = timeout or self.timeout
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                fut = executor.submit(self._trading.submit_order, order_data)
+                order = fut.result(timeout=timeout)
+            return SimpleNamespace(
+                id=order.id, symbol=symbol, qty=qty, side=side, status=order.status
+            )
+        except concurrent.futures.TimeoutError:
+            logger.error("submit_order timeout for %s after %s seconds", symbol, timeout)
+            raise TimeoutError("submit_order timed out")
+        except Exception as e:
+            logger.exception("submit_order failed for %s: %s", symbol, e)
+            raise
 
     def submit_crypto_order(self, symbol, qty, side, order_type="market"):
         return self.submit_order(symbol, qty, side, order_type)
@@ -183,19 +200,37 @@ class AlpacaClient:
         q = self._crypto_data.get_crypto_latest_quote(req)[symbol]
         return SimpleNamespace(ask_price=float(q.ask_price), bid_price=float(q.bid_price))
 
-    def get_latest_trade(self, symbol: str):
-        if self.is_crypto_symbol(symbol):
-            if not self._crypto_data:
-                raise RuntimeError("Alpaca API credentials not configured")
-            req = CryptoLatestTradeRequest(symbol_or_symbols=symbol)
-            t = self._crypto_data.get_crypto_latest_trade(req)[symbol]
-            return SimpleNamespace(price=float(t.price))
-        else:
-            if not self._stock_data:
-                raise RuntimeError("Alpaca API credentials not configured")
-            req = StockLatestTradeRequest(symbol_or_symbols=symbol)
-            t = self._stock_data.get_stock_latest_trade(req)[symbol]
-            return SimpleNamespace(price=float(t.price))
+    def get_latest_trade(self, symbol: str, timeout=None):
+        timeout = timeout or self.timeout
+        try:
+            if self.is_crypto_symbol(symbol):
+                if not self._crypto_data:
+                    raise RuntimeError("Alpaca API credentials not configured")
+                req = CryptoLatestTradeRequest(symbol_or_symbols=symbol)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    fut = executor.submit(
+                        self._crypto_data.get_crypto_latest_trade, req
+                    )
+                    t = fut.result(timeout=timeout)[symbol]
+                return SimpleNamespace(price=float(t.price))
+            else:
+                if not self._stock_data:
+                    raise RuntimeError("Alpaca API credentials not configured")
+                req = StockLatestTradeRequest(symbol_or_symbols=symbol)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    fut = executor.submit(
+                        self._stock_data.get_stock_latest_trade, req
+                    )
+                    t = fut.result(timeout=timeout)[symbol]
+                return SimpleNamespace(price=float(t.price))
+        except concurrent.futures.TimeoutError:
+            logger.error(
+                "get_latest_trade timeout for %s after %s seconds", symbol, timeout
+            )
+            raise TimeoutError("get_latest_trade timed out")
+        except Exception as e:
+            logger.exception("get_latest_trade failed for %s: %s", symbol, e)
+            raise
 
     # --- Misc -----------------------------------------------------------------
     def list_orders(self, status="all", limit=10):
@@ -231,23 +266,23 @@ class AlpacaClient:
         unavailable.
         """
         if not self._trading:
-            print("⚠️ Alpaca client not initialized; cannot check crypto status")
+            logger.warning("⚠️ Alpaca client not initialized; cannot check crypto status")
             return False
         try:
             assets = self._trading.get_all_assets(
                 status="active", asset_class="crypto"
             )
             if not assets:
-                print(
+                logger.warning(
                     "⚠️ Crypto trading not enabled for this account or no assets returned"
                 )
                 return False
             return True
         except APIError as e:
-            print(f"⚠️ Failed to fetch crypto assets: {e}")
+            logger.warning(f"⚠️ Failed to fetch crypto assets: {e}")
             return False
         except Exception as e:
-            print(f"⚠️ Unexpected error checking crypto status: {e}")
+            logger.warning(f"⚠️ Unexpected error checking crypto status: {e}")
             return False
 
     def get_crypto_assets(self):
