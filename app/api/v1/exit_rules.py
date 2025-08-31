@@ -65,9 +65,16 @@ async def get_exit_rules(
 ):
     """Obtener reglas de salida para una estrategia específica"""
     try:
-        service = ExitRulesService(db)
-        rules = service.get_rules(strategy_id, current_user.id)
-        
+        rules = db.query(StrategyExitRules).filter(
+            StrategyExitRules.id == strategy_id
+        ).first()
+
+        if not rules:
+            raise HTTPException(status_code=404, detail="Exit rules not found")
+
+        if rules.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to access exit rules")
+
         return ExitRulesResponse(
             strategy_id=rules.id,
             stop_loss_pct=rules.stop_loss_pct,
@@ -78,9 +85,9 @@ async def get_exit_rules(
             created_at=rules.created_at.isoformat(),
             updated_at=rules.updated_at.isoformat()
         )
-        
-    except PermissionError:
-        raise HTTPException(status_code=403, detail="Not authorized to access exit rules")
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting exit rules for {strategy_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get exit rules: {str(e)}")
