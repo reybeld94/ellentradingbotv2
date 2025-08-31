@@ -1,4 +1,7 @@
 import os
+import time
+import pytest
+
 os.environ.setdefault('SECRET_KEY', 'secret')
 
 from app.integrations.alpaca.client import AlpacaClient
@@ -89,4 +92,31 @@ def test_is_crypto_symbol_fallback():
     client._trading = None
     assert client.is_crypto_symbol("BTC/USD") is True
     assert client.is_crypto_symbol("AAPL") is False
+
+
+def test_submit_order_timeout(monkeypatch):
+    client = AlpacaClient()
+
+    class DummyTrading:
+        def submit_order(self, order):
+            time.sleep(0.2)
+
+    monkeypatch.setattr(client, "_trading", DummyTrading())
+    with pytest.raises(TimeoutError):
+        client.submit_order("AAPL", 1, "buy", timeout=0.1)
+
+
+def test_get_latest_trade_timeout(monkeypatch):
+    client = AlpacaClient()
+
+    class DummyData:
+        def get_stock_latest_trade(self, req):
+            time.sleep(0.2)
+            return {"AAPL": type("T", (), {"price": 1.0})()}
+
+    monkeypatch.setattr(client, "_stock_data", DummyData())
+    monkeypatch.setattr(client, "is_crypto_symbol", lambda s: False)
+
+    with pytest.raises(TimeoutError):
+        client.get_latest_trade("AAPL", timeout=0.1)
 
