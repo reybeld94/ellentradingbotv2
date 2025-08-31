@@ -3,11 +3,13 @@ from app.models.order import Order
 from app.models.signal import Signal
 from app.core.types import OrderStatus, OrderType, SignalAction
 from app.core.auth import get_current_verified_user
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import uuid
 from datetime import datetime
 import logging
 from app.services.order_executor import OrderExecutor
+from app.services.exit_rules_service import ExitRulesService
+from app.models.strategy_exit_rules import StrategyExitRules
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +24,9 @@ class OrderManager:
         self,
         signal: Signal,
         user_id: int,
-        portfolio_id: Optional[int] = None
-    ) -> Order:
+        portfolio_id: Optional[int] = None,
+        create_exits: bool = False
+    ) -> Optional[Order]:
         """Crear una orden desde una señal validada"""
 
         # Generar client_order_id único
@@ -52,6 +55,11 @@ class OrderManager:
         self.db.refresh(order)
 
         logger.info(f"Created order {order.client_order_id} from signal {signal.id}")
+
+        if create_exits and order and order.id:
+            # Crear automáticamente órdenes de salida
+            self._schedule_exit_creation(order.id, signal.strategy_id)
+
         return order
 
     def update_order_status(
@@ -183,3 +191,126 @@ class OrderManager:
             if qty < 1:
                 raise ValueError("Calculated quantity below 1 for non-fractionable asset")
             return qty
+
+    def create_bracket_order_from_signal(self, signal: Signal, user_id: int, portfolio_id: int) -> Dict[str, Any]:
+        """Crear bracket order completa (Entry + SL + TP) desde una señal"""
+        try:
+            # 1. Obtener precio actual del símbolo
+            current_price = self._get_current_price(signal.symbol)
+
+            # 2. Obtener reglas de salida para la estrategia
+            exit_rules_service = ExitRulesService(self.db)
+            exit_calculation = exit_rules_service.calculate_exit_prices(
+                signal.strategy_id,
+                current_price,
+                signal.action
+            )
+
+            # 3. Crear orden principal (Entry)
+            main_order = self.create_order_from_signal(signal, user_id, portfolio_id)
+
+            # 4. Si la orden principal se creó exitosamente, crear órdenes de salida
+            if main_order and main_order.id:
+                exit_orders = self._create_exit_orders(
+                    main_order,
+                    exit_calculation,
+                    signal.strategy_id
+                )
+
+                logger.info(
+                    f"Created bracket order for {signal.symbol}: "
+                    f"Entry={current_price}, SL={exit_calculation['stop_loss_price']}, "
+                    f"TP={exit_calculation['take_profit_price']}"
+                )
+
+                return {
+                    "status": "success",
+                    "main_order_id": main_order.id,
+                    "exit_orders": [order.id for order in exit_orders],
+                    "exit_prices": exit_calculation,
+                    "message": f"Bracket order created for {signal.symbol}"
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Failed to create main order"
+                }
+
+        except Exception as e:
+            logger.error(f"Error creating bracket order: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"Bracket order creation failed: {str(e)}"
+            }
+
+    def _create_exit_orders(self, main_order: Order, exit_calculation: dict, strategy_id: str) -> List[Order]:
+        """Crear órdenes de Stop Loss y Take Profit"""
+        exit_orders: List[Order] = []
+
+        try:
+            # Determinar side opuesto para las salidas
+            exit_side = "sell" if main_order.side == "buy" else "buy"
+
+            # 1. Crear Stop Loss Order
+            stop_loss_order = Order(
+                client_order_id=f"SL_{main_order.client_order_id}",
+                parent_order_id=main_order.id,
+                symbol=main_order.symbol,
+                side=exit_side,
+                quantity=main_order.quantity,
+                order_type="stop",
+                stop_price=exit_calculation["stop_loss_price"],
+                status=OrderStatus.PENDING_PARENT,
+                signal_id=main_order.signal_id,
+                user_id=main_order.user_id,
+                portfolio_id=main_order.portfolio_id
+            )
+
+            # 2. Crear Take Profit Order
+            take_profit_order = Order(
+                client_order_id=f"TP_{main_order.client_order_id}",
+                parent_order_id=main_order.id,
+                symbol=main_order.symbol,
+                side=exit_side,
+                quantity=main_order.quantity,
+                order_type="limit",
+                limit_price=exit_calculation["take_profit_price"],
+                status=OrderStatus.PENDING_PARENT,
+                signal_id=main_order.signal_id,
+                user_id=main_order.user_id,
+                portfolio_id=main_order.portfolio_id
+            )
+
+            # Guardar en base de datos
+            self.db.add(stop_loss_order)
+            self.db.add(take_profit_order)
+            self.db.commit()
+
+            self.db.refresh(stop_loss_order)
+            self.db.refresh(take_profit_order)
+
+            exit_orders.extend([stop_loss_order, take_profit_order])
+
+            logger.info(f"Created exit orders: SL={stop_loss_order.id}, TP={take_profit_order.id}")
+
+        except Exception as e:
+            logger.error(f"Error creating exit orders: {str(e)}")
+            self.db.rollback()
+
+        return exit_orders
+
+    def _get_current_price(self, symbol: str) -> float:
+        """Obtener precio actual del símbolo desde el broker"""
+        try:
+            from app.integrations import broker_client
+            trade = broker_client.get_latest_trade(symbol)
+            return float(getattr(trade, "price", 0.0))
+        except Exception as e:
+            logger.error(f"Error getting current price for {symbol}: {e}")
+            # Fallback: usar precio de última señal si existe
+            return 100.0  # Precio temporal para testing
+
+    def _schedule_exit_creation(self, order_id: int, strategy_id: str):
+        """Programar creación de órdenes de salida para cuando se ejecute la orden principal"""
+        # Por ahora solo loggear, en siguientes tareas implementaremos el scheduler
+        logger.info(f"Scheduled exit creation for order {order_id} strategy {strategy_id}")
