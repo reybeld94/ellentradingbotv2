@@ -218,25 +218,69 @@ class OrderManager:
                 signal.action,
             )
 
-            with self.db.begin_nested():
-                # 3. Crear orden principal (Entry)
-                main_order = self.create_order_from_signal(
-                    signal,
-                    user_id,
-                    portfolio_id,
-                    commit=False,
-                )
+            # Validar que existan los precios de salida necesarios
+            required_keys = {"stop_loss_price", "take_profit_price"}
+            if not exit_calculation or not required_keys.issubset(exit_calculation):
+                raise ValueError("Missing exit prices for bracket order")
 
-                # 4. Si la orden principal se creó exitosamente, crear órdenes de salida
-                if main_order and main_order.id:
-                    exit_orders = self._create_exit_orders(
-                        main_order,
-                        exit_calculation,
-                        signal.strategy_id,
-                        commit=False,
-                    )
-                else:
-                    raise Exception("Failed to create main order")
+            # 3. Crear orden principal (Entry)
+            main_order = self.create_order_from_signal(
+                signal,
+                user_id,
+                portfolio_id,
+                commit=False,
+            )
+
+            if not main_order or not main_order.id:
+                raise Exception("Failed to create main order")
+
+            if not main_order.quantity or main_order.quantity <= 0:
+                raise ValueError("Invalid quantity for exit orders")
+
+            # 4. Crear órdenes de salida (Stop Loss y Take Profit)
+            exit_orders = []
+
+            # Crear Stop Loss Order
+            stop_loss_order = Order(
+                client_order_id=f"SL_{main_order.client_order_id}",
+                symbol=signal.symbol,
+                side="sell" if signal.action in ["buy", "long_entry"] else "buy",
+                quantity=main_order.quantity,
+                order_type="stop",
+                stop_price=exit_calculation["stop_loss_price"],
+                status=OrderStatus.PENDING_PARENT,
+                user_id=user_id,
+                portfolio_id=portfolio_id,
+                signal_id=signal.id,
+                parent_order_id=main_order.id,
+            )
+            self.db.add(stop_loss_order)
+            self.db.flush()
+            exit_orders.append(stop_loss_order.id)
+
+            # Crear Take Profit Order
+            take_profit_order = Order(
+                client_order_id=f"TP_{main_order.client_order_id}",
+                symbol=signal.symbol,
+                side="sell" if signal.action in ["buy", "long_entry"] else "buy",
+                quantity=main_order.quantity,
+                order_type="limit",
+                limit_price=exit_calculation["take_profit_price"],
+                status=OrderStatus.PENDING_PARENT,
+                user_id=user_id,
+                portfolio_id=portfolio_id,
+                signal_id=signal.id,
+                parent_order_id=main_order.id,
+            )
+            self.db.add(take_profit_order)
+            self.db.flush()
+            exit_orders.append(take_profit_order.id)
+
+            # Marcar orden principal como bracket parent
+            main_order.is_bracket_parent = True
+
+            # Guardar cambios
+            self.db.commit()
 
             logger.info(
                 f"Created bracket order for {signal.symbol}: "
@@ -247,9 +291,12 @@ class OrderManager:
             return {
                 "status": "success",
                 "main_order_id": main_order.id,
-                "exit_orders": [order.id for order in exit_orders],
-                "exit_prices": exit_calculation,
-                "message": f"Bracket order created for {signal.symbol}",
+                "exit_orders": exit_orders,
+                "exit_prices": {
+                    "stop_loss": exit_calculation["stop_loss_price"],
+                    "take_profit": exit_calculation["take_profit_price"],
+                },
+                "message": "Bracket order created successfully",
             }
         except PriceUnavailableError as e:
             logger.error(f"Error getting price for {signal.symbol}: {e}")
@@ -258,10 +305,13 @@ class OrderManager:
                 "message": f"Bracket order aborted: {e}",
             }
         except Exception as e:
+            self.db.rollback()
             logger.error(f"Error creating bracket order: {str(e)}")
             return {
                 "status": "error",
-                "message": f"Bracket order creation failed: {str(e)}",
+                "message": str(e),
+                "main_order_id": None,
+                "exit_orders": [],
             }
 
     def _create_exit_orders(self, main_order: Order, exit_calculation: dict, strategy_id: str, commit: bool = True) -> List[Order]:
