@@ -1,6 +1,6 @@
 # backend/app/api/v1/webhooks.py
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
@@ -16,16 +16,28 @@ import logging
 
 from app.signals.processor import WebhookProcessor
 from app.signals.normalizer import SignalNormalizer
+from app.utils.rate_limiter import RateLimiter, get_rate_limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+async def limit_rate(
+        request: Request,
+        rate_limiter: RateLimiter = Depends(get_rate_limiter)
+):
+    identifier = request.client.host
+    allowed = await rate_limiter.is_allowed(identifier)
+    if not allowed:
+        raise HTTPException(status_code=429, detail="Too many requests")
 
 
 @router.post("/webhook", response_model=WebhookResponse)
 async def receive_tradingview_webhook(
         webhook_data: TradingViewWebhook,
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_verified_user)  # PROTEGIDO
+        current_user: User = Depends(get_current_verified_user),
+        _: None = Depends(limit_rate)  # PROTEGIDO
 ):
     """Recibir webhook de TradingView (requiere autenticación) - NUEVA ARQUITECTURA"""
     try:
@@ -122,6 +134,7 @@ async def get_signals(
 async def receive_public_webhook(
         webhook_data: TradingViewWebhook,
         db: Session = Depends(get_db),
+        _: None = Depends(limit_rate),
         # Opción 1: API key como query parameter
         api_key: Optional[str] = Query(None, description="API key for authentication"),
         # Opción 2: API key como header (alternativa)
