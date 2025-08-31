@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.strategy_exit_rules import StrategyExitRules
 from typing import Optional, Dict, Any
 import logging
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +60,10 @@ class ExitRulesService:
         self.db.refresh(rules)
         return rules
     
-    def calculate_exit_prices(self, strategy_id: str, entry_price: float, side: str = "buy") -> Dict[str, Any]:
+    def calculate_exit_prices(self, strategy_id: str, entry_price: Decimal, side: str = "buy") -> Dict[str, Any]:
         """Calcular precios de salida para una estrategia específica"""
         rules = self.get_rules(strategy_id)
+        entry_price = Decimal(str(entry_price))
         exit_prices = rules.calculate_exit_prices(entry_price, side)
         
         return {

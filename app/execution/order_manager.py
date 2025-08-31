@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any, List
 import uuid
 from datetime import datetime
 import logging
+from decimal import Decimal
 from app.services.order_executor import OrderExecutor
 from app.services.exit_rules_service import ExitRulesService
 from app.models.strategy_exit_rules import StrategyExitRules
@@ -202,7 +203,7 @@ class OrderManager:
             exit_rules_service = ExitRulesService(self.db)
             exit_calculation = exit_rules_service.calculate_exit_prices(
                 signal.strategy_id,
-                current_price,
+                Decimal(str(current_price)),
                 signal.action
             )
 
