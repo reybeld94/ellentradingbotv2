@@ -41,3 +41,33 @@ def test_get_position(monkeypatch):
     assert pos is not None
     assert pos.qty == 3.5
 
+
+def test_check_crypto_status_without_client():
+    client = AlpacaClient()
+    client._trading = None
+    assert client.check_crypto_status() is False
+
+
+def test_check_crypto_status_with_assets(monkeypatch):
+    client = AlpacaClient()
+
+    class DummyTrading:
+        def get_all_assets(self, status, asset_class):
+            assert status == "active"
+            assert asset_class == "crypto"
+            return [type("A", (), {"symbol": "BTCUSD"})()]
+
+    monkeypatch.setattr(client, "_trading", DummyTrading())
+    assert client.check_crypto_status() is True
+
+
+def test_check_crypto_status_handles_exception(monkeypatch):
+    client = AlpacaClient()
+
+    class DummyTrading:
+        def get_all_assets(self, status, asset_class):
+            raise Exception("fail")
+
+    monkeypatch.setattr(client, "_trading", DummyTrading())
+    assert client.check_crypto_status() is False
+
