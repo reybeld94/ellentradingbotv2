@@ -24,6 +24,27 @@ class WebhookProcessor:
             # 1. Pipeline existente (normalizar, validar, risk management)
             normalized_signal = self.normalizer.from_tradingview(webhook_data)
 
+            # Additional symbol and quantity checks
+            errors = []
+            symbol = normalized_signal.symbol
+            if not symbol or not symbol.replace(".", "").replace("-", "").isalnum():
+                errors.append(f"Invalid symbol format: {symbol}")
+
+            quantity = normalized_signal.quantity
+            if quantity is not None:
+                try:
+                    if float(quantity) <= 0:
+                        errors.append(f"Invalid quantity: {quantity}")
+                except (TypeError, ValueError):
+                    errors.append(f"Invalid quantity: {quantity}")
+
+            if errors:
+                return {
+                    "status": "validation_failed",
+                    "errors": errors,
+                    "signal_id": None,
+                }
+
             if self.normalizer.is_duplicate(normalized_signal.idempotency_key, self.db):
                 return {
                     "status": "duplicate",

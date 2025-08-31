@@ -1,15 +1,23 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database import Base
+import os
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+import pytest
+
 from app.signals.processor import WebhookProcessor
 from app.schemas.webhook import TradingViewWebhook
 from app.services.exit_rules_service import ExitRulesService
 from app.models.user import User
 from app.models.portfolio import Portfolio
 from app.models.risk_limit import RiskLimit
-from datetime import datetime
-from zoneinfo import ZoneInfo
-import pytest
+
+pytestmark = pytest.mark.skipif(
+    not os.getenv("ALPACA_API_KEY"),
+    reason="Alpaca credentials not configured",
+)
 
 
 @pytest.fixture
