@@ -2,16 +2,10 @@ from datetime import datetime
 import statistics
 from sqlalchemy.orm import Session
 from app.models.trades import Trade
-
+from app.services.symbol_mapper import get_mapped_symbol
 
 
 class TradeService:
-    SYMBOL_MAP = {
-        'BTCUSD': 'BTC/USD',
-        'ETHUSD': 'ETH/USD',
-        'SOLUSD': 'SOL/USD',
-        'BCHUSD': 'BCH/USD',
-    }
 
     def __init__(self, db: Session):
         self.db = db
@@ -19,7 +13,7 @@ class TradeService:
         self.broker = broker_client
 
     def _map_symbol(self, symbol: str) -> str:
-        return self.SYMBOL_MAP.get(symbol, symbol)
+        return get_mapped_symbol(symbol, self.db)
 
     def _get_current_price(self, symbol: str) -> float:
         try:
