@@ -86,7 +86,7 @@ class PositionManager:
     def count_open_positions(self):
         """Contar posiciones abiertas"""
         positions = self.get_current_positions()
-        return len([qty for qty in positions.values() if qty > 0])
+        return len([qty for qty in positions.values() if abs(qty) > 0])
 
     def validate_buy_signal(self, signal: Signal, calculated_quantity, limit: int | None = None):
         """Validar señal de compra"""
