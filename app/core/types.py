@@ -28,6 +28,7 @@ class OrderStatus(str, Enum):
     CANCELED = "canceled"
     REJECTED = "rejected"
     PENDING_CANCEL = "pending_cancel"
+    PENDING_PARENT = "pending_parent"  # Esperando que se ejecute orden padre
 
 class OrderType(str, Enum):
     MARKET = "market"
