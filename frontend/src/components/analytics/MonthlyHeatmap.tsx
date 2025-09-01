@@ -19,23 +19,33 @@ const MonthlyHeatmap: React.FC<MonthlyHeatmapProps> = ({ portfolioId }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
+    const fetchMonthlyData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await api.analytics.getMonthlyPerformance(portfolioId, controller.signal);
+        if (!isMounted) return;
+        setMonthlyData(response.monthly_returns || []);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Error fetching monthly data:', err);
+        setError('Error loading monthly performance data');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
     fetchMonthlyData();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [portfolioId]);
-
-  const fetchMonthlyData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await api.analytics.getMonthlyPerformance(portfolioId);
-      setMonthlyData(response.monthly_returns || []);
-    } catch (err) {
-      console.error('Error fetching monthly data:', err);
-      setError('Error loading monthly performance data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {

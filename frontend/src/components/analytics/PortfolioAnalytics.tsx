@@ -78,29 +78,42 @@ const PortfolioAnalytics: React.FC = () => {
     { value: 'ALL', label: 'All Time' }
   ];
 
+  const fetchAnalyticsDataRef = React.useRef<() => void>(() => {});
+
   useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
+    const fetchAnalyticsData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [metricsResponse, summaryResponse] = await Promise.all([
+          api.analytics.getPerformanceMetrics(selectedTimeframe, undefined, controller.signal),
+          api.analytics.getSummary(controller.signal)
+        ]);
+
+        if (!isMounted) return;
+        setMetrics(metricsResponse);
+        setSummary(summaryResponse);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Error fetching analytics:', err);
+        setError('Error loading analytics data');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchAnalyticsDataRef.current = fetchAnalyticsData;
     fetchAnalyticsData();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [selectedTimeframe]);
-
-  const fetchAnalyticsData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [metricsResponse, summaryResponse] = await Promise.all([
-        api.analytics.getPerformanceMetrics(selectedTimeframe),
-        api.analytics.getSummary()
-      ]);
-
-      setMetrics(metricsResponse);
-      setSummary(summaryResponse);
-    } catch (err) {
-      console.error('Error fetching analytics:', err);
-      setError('Error loading analytics data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {
@@ -167,7 +180,7 @@ const PortfolioAnalytics: React.FC = () => {
           <span className="text-red-700">{error}</span>
         </div>
         <button
-          onClick={fetchAnalyticsData}
+          onClick={() => fetchAnalyticsDataRef.current()}
           className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
         >
           Retry
