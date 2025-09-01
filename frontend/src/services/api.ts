@@ -153,34 +153,58 @@ export const api = {
     getPerformanceMetrics: async (timeframe: string = '1M', portfolioId?: number) => {
       const params = new URLSearchParams({ timeframe });
       if (portfolioId) params.append('portfolio_id', portfolioId.toString());
-      return authenticatedFetch(`${API_BASE_URL}/analytics/performance?${params}`);
+      const res = await authenticatedFetch(`${API_BASE_URL}/analytics/performance?${params}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch performance metrics');
+      }
+      return await res.json();
     },
 
     getSummary: async () => {
-      return authenticatedFetch(`${API_BASE_URL}/analytics/summary`);
+      const res = await authenticatedFetch(`${API_BASE_URL}/analytics/summary`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch summary');
+      }
+      return await res.json();
     },
 
     getTradeAnalytics: async (timeframe: string = '3M', portfolioId?: number) => {
       const params = new URLSearchParams({ timeframe });
       if (portfolioId) params.append('portfolio_id', portfolioId.toString());
-      return authenticatedFetch(`${API_BASE_URL}/analytics/trade-analytics?${params}`);
+      const res = await authenticatedFetch(`${API_BASE_URL}/analytics/trade-analytics?${params}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch trade analytics');
+      }
+      return await res.json();
     },
 
     getEquityCurve: async (timeframe: string = '3M', portfolioId?: number) => {
       const params = new URLSearchParams({ timeframe });
       if (portfolioId) params.append('portfolio_id', portfolioId.toString());
-      return authenticatedFetch(`${API_BASE_URL}/analytics/equity-curve?${params}`);
+      const res = await authenticatedFetch(`${API_BASE_URL}/analytics/equity-curve?${params}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch equity curve');
+      }
+      return await res.json();
     },
 
     getMonthlyPerformance: async (portfolioId?: number) => {
       const params = portfolioId ? `?portfolio_id=${portfolioId}` : '';
-      return authenticatedFetch(`${API_BASE_URL}/analytics/monthly-performance${params}`);
+      const res = await authenticatedFetch(`${API_BASE_URL}/analytics/monthly-performance${params}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch monthly performance');
+      }
+      return await res.json();
     },
 
     getRiskDashboard: async (timeframe: string = '3M', portfolioId?: number) => {
       const params = new URLSearchParams({ timeframe });
       if (portfolioId) params.append('portfolio_id', portfolioId.toString());
-      return authenticatedFetch(`${API_BASE_URL}/analytics/risk-dashboard?${params}`);
+      const res = await authenticatedFetch(`${API_BASE_URL}/analytics/risk-dashboard?${params}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch risk dashboard');
+      }
+      return await res.json();
     },
   },
 
