@@ -135,3 +135,174 @@ class StrategyManager:
             "errors": errors,
             "warnings": warnings
         }
+
+    def get_strategy_performance(self, strategy_id: int, user_id: int) -> Dict[str, Any]:
+        """Performance individual por estrategia"""
+        from app.models.trades import Trade
+        from sqlalchemy import func
+
+        strategy = self.get_strategy_by_id(strategy_id, user_id)
+        if not strategy:
+            return {}
+
+        trades_query = self.db.query(Trade).filter(
+            Trade.strategy_id == str(strategy_id),
+            Trade.user_id == user_id,
+            Trade.status == "closed",
+        )
+
+        total_trades = trades_query.count()
+        if total_trades == 0:
+            return self._empty_performance_metrics(strategy_id)
+
+        total_pnl = trades_query.with_entities(func.sum(Trade.pnl)).scalar() or 0.0
+        winning_trades = trades_query.filter(Trade.pnl > 0).count()
+        losing_trades = trades_query.filter(Trade.pnl < 0).count()
+
+        win_rate = (winning_trades / total_trades) if total_trades > 0 else 0
+
+        avg_winner = 0
+        avg_loser = 0
+
+        if winning_trades > 0:
+            avg_winner = (
+                trades_query.filter(Trade.pnl > 0)
+                .with_entities(func.avg(Trade.pnl))
+                .scalar()
+                or 0
+            )
+
+        if losing_trades > 0:
+            avg_loser = (
+                trades_query.filter(Trade.pnl < 0)
+                .with_entities(func.avg(Trade.pnl))
+                .scalar()
+                or 0
+            )
+
+        gross_profit = (
+            trades_query.filter(Trade.pnl > 0)
+            .with_entities(func.sum(Trade.pnl))
+            .scalar()
+            or 0
+        )
+
+        gross_loss = abs(
+            trades_query.filter(Trade.pnl < 0)
+            .with_entities(func.sum(Trade.pnl))
+            .scalar()
+            or 0
+        )
+
+        profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else float("inf")
+
+        trades_list = trades_query.all()
+        if len(trades_list) > 1:
+            pnls = [t.pnl for t in trades_list if t.pnl is not None]
+            if pnls:
+                mean_pnl = sum(pnls) / len(pnls)
+                variance = sum((pnl - mean_pnl) ** 2 for pnl in pnls) / len(pnls)
+                std_dev = variance ** 0.5
+                sharpe_ratio = (mean_pnl / std_dev) if std_dev > 0 else 0
+            else:
+                sharpe_ratio = 0
+        else:
+            sharpe_ratio = 0
+
+        return {
+            "strategy_id": strategy_id,
+            "strategy_name": strategy.name,
+            "total_trades": total_trades,
+            "winning_trades": winning_trades,
+            "losing_trades": losing_trades,
+            "win_rate": round(win_rate, 4),
+            "total_pnl": round(total_pnl, 2),
+            "avg_winner": round(avg_winner, 2),
+            "avg_loser": round(avg_loser, 2),
+            "profit_factor": round(profit_factor, 3),
+            "sharpe_ratio": round(sharpe_ratio, 3),
+            "gross_profit": round(gross_profit, 2),
+            "gross_loss": round(abs(gross_loss), 2),
+            "largest_win": round(
+                trades_query.with_entities(func.max(Trade.pnl)).scalar() or 0,
+                2,
+            ),
+            "largest_loss": round(
+                trades_query.with_entities(func.min(Trade.pnl)).scalar() or 0,
+                2,
+            ),
+        }
+
+    def _empty_performance_metrics(self, strategy_id: int) -> Dict[str, Any]:
+        """Métricas vacías para estrategias sin trades"""
+        return {
+            "strategy_id": strategy_id,
+            "strategy_name": "",
+            "total_trades": 0,
+            "winning_trades": 0,
+            "losing_trades": 0,
+            "win_rate": 0.0,
+            "total_pnl": 0.0,
+            "avg_winner": 0.0,
+            "avg_loser": 0.0,
+            "profit_factor": 0.0,
+            "sharpe_ratio": 0.0,
+            "gross_profit": 0.0,
+            "gross_loss": 0.0,
+            "largest_win": 0.0,
+            "largest_loss": 0.0,
+        }
+
+    def compare_strategies(self, user_id: int, strategy_ids: List[int]) -> Dict[str, Any]:
+        """Comparar performance entre múltiples estrategias"""
+        comparisons = []
+
+        for strategy_id in strategy_ids:
+            performance = self.get_strategy_performance(strategy_id, user_id)
+            if performance.get("total_trades", 0) > 0:
+                comparisons.append(performance)
+
+        comparisons.sort(key=lambda x: x.get("profit_factor", 0), reverse=True)
+
+        return {
+            "strategies": comparisons,
+            "best_strategy": comparisons[0] if comparisons else None,
+            "total_strategies": len(comparisons),
+            "comparison_date": now_eastern().isoformat(),
+        }
+
+    def get_strategy_equity_curve(
+        self, strategy_id: int, user_id: int
+    ) -> List[Dict[str, Any]]:
+        """Curva de equity para una estrategia específica"""
+        from app.models.trades import Trade
+
+        trades = (
+            self.db.query(Trade)
+            .filter(
+                Trade.strategy_id == str(strategy_id),
+                Trade.user_id == user_id,
+                Trade.status == "closed",
+                Trade.closed_at.isnot(None),
+            )
+            .order_by(Trade.closed_at.asc())
+            .all()
+        )
+
+        equity_curve = []
+        cumulative_pnl = 0.0
+
+        for trade in trades:
+            if trade.pnl is not None:
+                cumulative_pnl += trade.pnl
+                equity_curve.append(
+                    {
+                        "date": trade.closed_at.isoformat() if trade.closed_at else "",
+                        "cumulative_pnl": round(cumulative_pnl, 2),
+                        "trade_pnl": round(trade.pnl, 2),
+                        "symbol": trade.symbol,
+                        "trade_id": trade.id,
+                    }
+                )
+
+        return equity_curve
