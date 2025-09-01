@@ -262,7 +262,7 @@ class PortfolioAnalytics:
         peak_equity = 0.0
 
         for trade in trades:
-            if trade.pnl:
+            if trade.pnl is not None:
                 running_pnl += float(trade.pnl)
 
                 if running_pnl > peak_equity:
@@ -337,7 +337,7 @@ class PortfolioAnalytics:
         if not trades:
             return {"bins": [], "win_distribution": [], "loss_distribution": []}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl]
+        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
         if not pnl_values:
             return {"bins": [], "win_distribution": [], "loss_distribution": []}
 
@@ -395,9 +395,9 @@ class PortfolioAnalytics:
 
                 holding_times.append(hours)
 
-                if trade.pnl and trade.pnl > 0:
+                if trade.pnl is not None and trade.pnl > 0:
                     winning_times.append(hours)
-                elif trade.pnl and trade.pnl < 0:
+                elif trade.pnl is not None and trade.pnl < 0:
                     losing_times.append(hours)
 
         if not holding_times:
@@ -435,7 +435,7 @@ class PortfolioAnalytics:
         monthly_data = {}
 
         for trade in trades:
-            if trade.pnl and trade.opened_at:
+            if trade.pnl is not None and trade.opened_at:
                 month_key = trade.opened_at.strftime("%Y-%m")
 
                 if month_key not in monthly_data:
@@ -509,7 +509,7 @@ class PortfolioAnalytics:
         if not trades:
             return {}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl]
+        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
         if len(pnl_values) < 2:
             return {}
 
@@ -583,7 +583,7 @@ class PortfolioAnalytics:
         if not trades:
             return {"error": "No trades available for risk analysis"}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl]
+        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
         if len(pnl_values) < 2:
             return {"error": "Insufficient data for risk analysis"}
 
@@ -596,7 +596,7 @@ class PortfolioAnalytics:
         equity_curve = []
         running_pnl = 0
         for trade in sorted(trades, key=lambda x: x.opened_at):
-            if trade.pnl:
+            if trade.pnl is not None:
                 running_pnl += float(trade.pnl)
                 equity_curve.append(running_pnl)
 
@@ -707,7 +707,7 @@ class PortfolioAnalytics:
         if len(trades) < 10:
             return {"error": "Insufficient data for VaR analysis"}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl]
+        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
         pnl_sorted = sorted(pnl_values)
 
         var_levels = [0.01, 0.05, 0.10, 0.25]
@@ -834,7 +834,7 @@ class PortfolioAnalytics:
 
             symbol_stats[symbol]["trades"] += 1
 
-            if trade.pnl:
+            if trade.pnl is not None:
                 pnl = float(trade.pnl)
                 symbol_stats[symbol]["total_pnl"] += pnl
                 symbol_stats[symbol]["pnl_values"].append(pnl)
@@ -954,7 +954,7 @@ class PortfolioAnalytics:
         if len(trades) < 2:
             return {"error": "Insufficient data for risk-adjusted returns"}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl]
+        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
         if len(pnl_values) < 2:
             return {"error": "Insufficient P&L data"}
 
@@ -1076,7 +1076,7 @@ class PortfolioAnalytics:
             )
         ).all()
 
-        daily_pnl = sum(float(t.pnl) for t in recent_trades if t.pnl)
+        daily_pnl = sum(float(t.pnl) for t in recent_trades if t.pnl is not None)
 
         return {
             "configured_limits": {
