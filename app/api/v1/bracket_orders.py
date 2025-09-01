@@ -10,7 +10,7 @@ from app.database import get_db
 from app.core.auth import get_current_verified_user
 from app.models.user import User
 from app.models.order import Order
-from app.core.types import OrderStatus
+from app.core.types import OrderStatus, OrderType
 from app.execution.order_executor import OrderExecutor
 from app.execution.bracket_order_processor import BracketOrderProcessor
 
@@ -241,8 +241,8 @@ async def get_bracket_orders_statistics(
             Order.parent_order_id.in_(all_child_ids)
         ).all() if all_child_ids else []
         
-        executed_sl = len([o for o in child_orders if o.order_type == "stop" and o.status == OrderStatus.FILLED])
-        executed_tp = len([o for o in child_orders if o.order_type == "limit" and o.status == OrderStatus.FILLED])
+        executed_sl = len([o for o in child_orders if o.order_type == OrderType.STOP.value and o.status == OrderStatus.FILLED])
+        executed_tp = len([o for o in child_orders if o.order_type == OrderType.LIMIT.value and o.status == OrderStatus.FILLED])
         
         return {
             "status": "success",

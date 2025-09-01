@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.order import Order
-from app.core.types import OrderStatus
+from app.core.types import OrderStatus, OrderType
 
 # NOTE: BracketOrderProcessor is imported for type checking to avoid
 # circular import issues at runtime.
@@ -29,7 +29,7 @@ class OrderExecutor:
         symbol: str,
         side: str,
         quantity: float,
-        order_type: str = "market",
+        order_type: str = OrderType.MARKET.value,
         limit_price: Optional[float] = None,
         stop_price: Optional[float] = None,
         client_order_id: Optional[str] = None,
@@ -283,7 +283,7 @@ class OrderExecutor:
                 symbol=symbol,
                 side="buy",
                 quantity=quantity,
-                order_type="market",
+                order_type=OrderType.MARKET.value,
                 status=OrderStatus.FILLED,
                 is_bracket_parent=True,
                 user_id=1,  # Test user

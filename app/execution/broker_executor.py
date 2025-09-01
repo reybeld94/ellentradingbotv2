@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.order import Order
-from app.core.types import OrderStatus
+from app.core.types import OrderStatus, OrderType
 from app.integrations.alpaca.client import AlpacaClient
 from typing import Optional, Dict, Any
 from decimal import Decimal
@@ -110,7 +110,7 @@ class BrokerExecutor:
             symbol=order.symbol,
             qty=Decimal(str(order.quantity)),
             side=order.side,
-            order_type=order.order_type or "market",
+            order_type=order.order_type or OrderType.MARKET.value,
             price=Decimal(str(order.limit_price)) if order.limit_price else None,
         )
 
@@ -120,7 +120,7 @@ class BrokerExecutor:
             symbol=order.symbol,
             qty=Decimal(str(order.quantity)),
             side=order.side,
-            order_type=order.order_type or "market",
+            order_type=order.order_type or OrderType.MARKET.value,
         )
 
     def _is_crypto_symbol(self, symbol: str) -> bool:

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.order import Order
 from app.models.strategy_exit_rules import StrategyExitRules
 from app.services.exit_rules_service import ExitRulesService
-from app.core.types import OrderStatus
+from app.core.types import OrderStatus, OrderType
 from typing import List, Dict, Any
 import logging
 
@@ -58,7 +58,7 @@ class TrailingStopMonitor:
             self.db.query(Order)
             .join(Order.signal)
             .filter(
-                Order.order_type == "stop",
+                Order.order_type == OrderType.STOP.value,
                 Order.status.in_(["new", "sent", "accepted"]),
                 Order.parent_order_id.isnot(None)  # Es una orden de salida
             )
