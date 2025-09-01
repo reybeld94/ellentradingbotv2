@@ -12,7 +12,7 @@ def test_create_bracket_order_aborts_on_price_error(monkeypatch):
 
     called = {"flag": False}
 
-    def fake_create_order_from_signal(signal, user_id, portfolio_id):
+    def fake_create_order_from_signal(signal, user_id, portfolio_id, **kwargs):
         called["flag"] = True
         return None
 

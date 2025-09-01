@@ -203,7 +203,9 @@ class OrderManager:
                 raise ValueError("Calculated quantity below 1 for non-fractionable asset")
             return qty
 
-    def create_bracket_order_from_signal(self, signal: Signal, user_id: int, portfolio_id: int) -> Dict[str, Any]:
+    def create_bracket_order_from_signal(
+        self, signal: Signal, user_id: int, portfolio_id: int, commit: bool = True
+    ) -> Dict[str, Any]:
         """Crear bracket order completa (Entry + SL + TP) desde una señal"""
         try:
             # 1. Obtener precio actual del símbolo
@@ -280,7 +282,13 @@ class OrderManager:
             main_order.is_bracket_parent = True
 
             # Guardar cambios
-            self.db.commit()
+            if commit:
+                self.db.commit()
+                self.db.refresh(main_order)
+                self.db.refresh(stop_loss_order)
+                self.db.refresh(take_profit_order)
+            else:
+                self.db.flush()
 
             logger.info(
                 f"Created bracket order for {signal.symbol}: "
@@ -299,13 +307,16 @@ class OrderManager:
                 "message": "Bracket order created successfully",
             }
         except PriceUnavailableError as e:
+            if commit and self.db:
+                self.db.rollback()
             logger.error(f"Error getting price for {signal.symbol}: {e}")
             return {
                 "status": "error",
                 "message": f"Bracket order aborted: {e}",
             }
         except Exception as e:
-            self.db.rollback()
+            if commit and self.db:
+                self.db.rollback()
             logger.error(f"Error creating bracket order: {str(e)}")
             return {
                 "status": "error",
