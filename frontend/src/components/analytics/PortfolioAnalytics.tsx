@@ -184,6 +184,8 @@ const PortfolioAnalytics: React.FC = () => {
     );
   }
 
+  const pf = metrics.profit_factor;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -264,10 +266,16 @@ const PortfolioAnalytics: React.FC = () => {
 
             <MetricCard
               title="Profit Factor"
-              value={metrics.profit_factor.toFixed(2)}
-              subtitle={metrics.profit_factor > 1 ? 'Profitable' : 'Unprofitable'}
+              value={pf > 0 && isFinite(pf) ? pf.toFixed(2) : '∞'}
+              subtitle={
+                pf > 0 && isFinite(pf)
+                  ? pf > 1
+                    ? 'Profitable'
+                    : 'Unprofitable'
+                  : 'No losing trades'
+              }
               icon={Trophy}
-              colorClass={metrics.profit_factor > 1 ? 'text-green-600' : 'text-red-600'}
+              colorClass={pf > 1 ? 'text-green-600' : 'text-red-600'}
             />
 
             <MetricCard
