@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  BarChart3, Activity, List, Settings, Menu, X, LogOut, User,
-  Home, Briefcase, Bell, ChevronRight,
-  RefreshCw, Target, Shield
-} from 'lucide-react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -17,298 +13,14 @@ import StrategiesPage from './pages/strategies';
 import RiskDashboard from './pages/RiskDashboard';
 import Analytics from './pages/Analytics';
 import ExitRulesManager from './components/ExitRulesManager';
+import Layout from './components/layout/Layout';
+import { Page } from './components/layout/Sidebar';
 
-// Tipos para las páginas
-type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'risk' | 'analytics' | 'settings';
-
-// Componente de navegación mejorado
-const Sidebar: React.FC<{
-  currentPage: Page;
-  onPageChange: (page: Page) => void;
-  isOpen: boolean;
-  onToggle: () => void;
-  pendingSignalsCount: number; // ✅ NUEVO: Pasar el count como prop
-}> = ({ currentPage, onPageChange, isOpen, onToggle, pendingSignalsCount }) => {
-  const { user, logout } = useAuth();
-
-  // ✅ ACTUALIZADO: menuItems con badge dinámico
-  const menuItems = [
-    {
-      id: 'dashboard' as Page,
-      name: 'Dashboard',
-      icon: Home,
-      description: 'Overview & analytics',
-      badge: null
-    },
-    {
-      id: 'signals' as Page,
-      name: 'Signals',
-      icon: Activity,
-      description: 'Trading signals',
-      badge: pendingSignalsCount > 0 ? pendingSignalsCount.toString() : null // ✅ DINÁMICO!
-    },
-    {
-      id: 'orders' as Page,
-      name: 'Orders',
-      icon: List,
-      description: 'Order history',
-      badge: null
-    },
-    {
-      id: 'trades' as Page,
-      name: 'Trades',
-      icon: BarChart3,
-      description: 'Trade history',
-      badge: null
-    },
-    {
-      id: 'strategies' as Page,
-      name: 'Strategies',
-      icon: Target,
-      description: 'Strategy configs',
-      badge: null
-    },
-    {
-      id: 'risk' as Page,
-      name: 'Risk',
-      icon: Shield,
-      description: 'Risk management',
-      badge: null
-    },
-    {
-      id: 'analytics' as Page,
-      name: 'Analytics',
-      icon: BarChart3,
-      description: 'Portfolio analytics',
-      badge: null
-    },
-    {
-      id: 'settings' as Page,
-      name: 'Settings',
-      icon: Settings,
-      description: 'Account preferences',
-      badge: null
-    },
-  ];
-
-  const handleLogout = () => {
-    logout();
-    if (window.innerWidth < 1024) {
-      onToggle();
-    }
-  };
-
-  return (
-    <>
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300"
-          onClick={onToggle}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`
-        fixed lg:static lg:translate-x-0 inset-y-0 left-0 z-50
-        w-80 bg-white shadow-2xl transform transition-all duration-300 ease-in-out border-r border-gray-100
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
-                  <Briefcase className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">TradingBot</h2>
-                  <p className="text-sm text-blue-600 font-medium">Professional</p>
-                </div>
-              </div>
-              <button
-                onClick={onToggle}
-                className="lg:hidden p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-white/50 transition-all duration-200"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* User Profile Card */}
-          <div className="p-6 border-b border-gray-100">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <User className="h-6 w-6 text-white" />
-                </div>
-                <div className="ml-3 flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
-                    {user?.full_name || user?.username}
-                  </p>
-                  <p className="text-xs text-gray-600 truncate">{user?.email}</p>
-                  <div className="flex items-center mt-2 space-x-2">
-                    {user?.is_admin && (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                        Admin
-                      </span>
-                    )}
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full mr-1"></div>
-                      <span className="text-xs text-emerald-600 font-medium">Active</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          {/* Navigation */}
-          <nav className="flex-1 p-4">
-            <ul className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentPage === item.id;
-
-                return (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => {
-                        onPageChange(item.id);
-                        // En mobile, cerrar sidebar al seleccionar
-                        if (window.innerWidth < 1024) {
-                          onToggle();
-                        }
-                      }}
-                      className={`
-                        w-full flex items-center px-4 py-4 text-left rounded-2xl transition-all duration-200 group
-                        ${isActive
-                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border border-blue-100'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                        }
-                      `}
-                    >
-                      <div className={`p-2 rounded-xl mr-3 ${
-                        isActive ? 'bg-blue-100' : 'bg-gray-100 group-hover:bg-gray-200'
-                      }`}>
-                        <Icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-500">{item.description}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {item.badge && (
-                          <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
-                            {item.badge}
-                          </span>
-                        )}
-                        {isActive && (
-                          <ChevronRight className="h-4 w-4 text-blue-600" />
-                        )}
-                      </div>
-                    </button>
-                  </li>
-                );
-              })}
-              <li>
-                <Link
-                  to="/exit-rules"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"
-                  onClick={() => {
-                    if (window.innerWidth < 1024) {
-                      onToggle();
-                    }
-                  }}
-                >
-                  <Settings className="w-4 h-4" />
-                  Exit Rules
-                </Link>
-              </li>
-            </ul>
-          </nav>
-
-          {/* Logout Button */}
-          <div className="p-4 border-t border-gray-100">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center px-4 py-3 text-left rounded-2xl text-red-600 hover:bg-red-50 transition-all duration-200 group"
-            >
-              <div className="p-2 rounded-xl mr-3 bg-red-100 group-hover:bg-red-200">
-                <LogOut className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Sign Out</p>
-                <p className="text-xs text-red-500">Logout from account</p>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-};
-
-// Header mejorado para mobile
-const MobileHeader: React.FC<{
-  currentPage: Page;
-  onToggleSidebar: () => void;
-}> = ({ currentPage, onToggleSidebar }) => {
-  const pageNames: Record<Page, string> = {
-    dashboard: 'Dashboard',
-    signals: 'Signals',
-    orders: 'Orders',
-    strategies: 'Strategies',
-    risk: 'Risk',
-    analytics: 'Analytics',
-    settings: 'Settings',
-    trades: 'Trades'
-  };
-
-  return (
-    <div className="lg:hidden bg-white shadow-sm border-b border-gray-100 sticky top-0 z-30">
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center">
-          <button
-            onClick={onToggleSidebar}
-            className="p-3 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200 mr-3"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
-              <Briefcase className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">{pageNames[currentPage]}</h1>
-              <p className="text-xs text-gray-500">TradingBot Pro</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <button className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200">
-            <Bell className="h-5 w-5" />
-          </button>
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <User className="h-4 w-4 text-white" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-// Componente principal del dashboard autenticado
 const AuthenticatedApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // ✅ NUEVO: Estado para contar signals pendientes
   const [pendingSignalsCount, setPendingSignalsCount] = useState(0);
 
-  // ✅ NUEVO: Función para obtener el count de signals
+  // Fetch signals count logic (mantener el existente)
   useEffect(() => {
     const fetchSignalsCount = async () => {
       try {
@@ -325,13 +37,10 @@ const AuthenticatedApp: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           const signals = Array.isArray(data) ? data : [];
-          // Contar solo signals pendientes o con errores (que necesitan atención)
           const pendingCount = signals.filter(s =>
             s.status === 'pending' || s.status === 'error'
           ).length;
           setPendingSignalsCount(pendingCount);
-
-          console.log(`📊 Signals count updated: ${pendingCount} pending/error signals`);
         }
       } catch (error) {
         console.error('Error fetching signals count:', error);
@@ -340,18 +49,9 @@ const AuthenticatedApp: React.FC = () => {
     };
 
     fetchSignalsCount();
-    // Actualizar cada 30 segundos
     const interval = setInterval(fetchSignalsCount, 30000);
     return () => clearInterval(interval);
   }, []);
-
-  // ✅ NUEVO: También actualizar el count cuando cambie de página a signals
-  useEffect(() => {
-    if (currentPage === 'signals') {
-      // Resetear el count cuando el usuario ve la página de signals
-      // (opcional: podrías mantenerlo o hacer un refetch)
-    }
-  }, [currentPage]);
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -377,37 +77,19 @@ const AuthenticatedApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <Sidebar
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
-        pendingSignalsCount={pendingSignalsCount} // ✅ PASAR el count como prop
-      />
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col lg:ml-0">
-        {/* Mobile Header */}
-        <MobileHeader
-          currentPage={currentPage}
-          onToggleSidebar={() => setSidebarOpen(true)}
-        />
-
-        {/* Page content */}
-        <main className="flex-1">
-          <Routes>
-            <Route path="/exit-rules" element={<ExitRulesManager />} />
-            <Route path="*" element={renderCurrentPage()} />
-          </Routes>
-        </main>
-      </div>
-    </div>
+    <Layout
+      currentPage={currentPage}
+      onPageChange={setCurrentPage}
+      pendingSignalsCount={pendingSignalsCount}
+    >
+      <Routes>
+        <Route path="/exit-rules" element={<ExitRulesManager />} />
+        <Route path="*" element={renderCurrentPage()} />
+      </Routes>
+    </Layout>
   );
 };
 
-// Loading component mejorado
 const LoadingScreen: React.FC = () => (
   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
     <div className="text-center">
@@ -423,7 +105,6 @@ const LoadingScreen: React.FC = () => (
   </div>
 );
 
-// Componente principal App con AuthProvider
 const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -434,7 +115,6 @@ const App: React.FC = () => {
   );
 };
 
-// Contenido de la app que puede acceder al contexto de auth
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -456,3 +136,4 @@ const AppContent: React.FC = () => {
 };
 
 export default App;
+
