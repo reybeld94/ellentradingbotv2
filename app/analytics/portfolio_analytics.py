@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
 from app.models.trades import Trade
 from decimal import Decimal
 import pandas as pd
+import statistics
 
 
 class PortfolioAnalytics:
@@ -71,28 +72,134 @@ class PortfolioAnalytics:
         return (total_pnl / float(total_invested)) * 100
 
     def _calculate_sharpe_ratio(self, query) -> float:
-        return 0.0
+        """Calcula Sharpe Ratio (retorno/riesgo)."""
+        trades = query.all()
+        if len(trades) < 2:
+            return 0.0
+
+        returns: List[float] = []
+        for trade in trades:
+            if trade.pnl is not None and trade.quantity and trade.entry_price:
+                daily_return = (trade.pnl / (trade.quantity * trade.entry_price)) * 100
+                returns.append(daily_return)
+
+        if len(returns) < 2:
+            return 0.0
+
+        avg_return = statistics.mean(returns)
+        std_return = statistics.stdev(returns)
+
+        if std_return == 0:
+            return 0.0
+
+        risk_free_rate = 0.0055
+        sharpe = (avg_return - risk_free_rate) / std_return
+        return round(sharpe, 4)
 
     def _calculate_max_drawdown(self, query) -> float:
-        return 0.0
+        """Calcula máximo drawdown (mayor pérdida desde peak)."""
+        trades = query.order_by(Trade.opened_at.asc()).all()
+        if not trades:
+            return 0.0
+
+        equity_curve: List[float] = []
+        running_pnl = 0.0
+
+        for trade in trades:
+            if trade.pnl is not None:
+                running_pnl += float(trade.pnl)
+                equity_curve.append(running_pnl)
+
+        if len(equity_curve) < 2:
+            return 0.0
+
+        peak = equity_curve[0]
+        max_drawdown = 0.0
+
+        for equity in equity_curve:
+            if equity > peak:
+                peak = equity
+            drawdown = ((equity - peak) / peak) * 100 if peak != 0 else 0.0
+            if drawdown < max_drawdown:
+                max_drawdown = drawdown
+
+        return round(max_drawdown, 2)
 
     def _calculate_win_rate(self, query) -> float:
-        return 0.0
+        """Calcula win rate como porcentaje."""
+        total_trades = query.count()
+        if total_trades == 0:
+            return 0.0
 
-    def _calculate_avg_hold_time(self, query) -> float:
-        return 0.0
+        winning_trades = query.filter(Trade.pnl > 0).count()
+        win_rate = (winning_trades / total_trades) * 100
+        return round(win_rate, 2)
+
+    def _calculate_avg_hold_time(self, query) -> str:
+        """Calcula tiempo promedio de hold en formato legible."""
+        trades = query.filter(
+            and_(Trade.opened_at.isnot(None), Trade.closed_at.isnot(None))
+        ).all()
+
+        if not trades:
+            return "0m"
+
+        total_seconds = 0.0
+        valid_trades = 0
+
+        for trade in trades:
+            if trade.opened_at and trade.closed_at:
+                hold_time = trade.closed_at - trade.opened_at
+                total_seconds += hold_time.total_seconds()
+                valid_trades += 1
+
+        if valid_trades == 0:
+            return "0m"
+
+        avg_seconds = total_seconds / valid_trades
+
+        days = int(avg_seconds // 86400)
+        hours = int((avg_seconds % 86400) // 3600)
+        minutes = int((avg_seconds % 3600) // 60)
+
+        if days > 0:
+            return f"{days}d {hours}h"
+        if hours > 0:
+            return f"{hours}h {minutes}m"
+        return f"{minutes}m"
 
     def _calculate_profit_factor(self, query) -> float:
-        return 0.0
+        """Calcula Profit Factor: Ganancia total / Pérdida total."""
+        winning_trades = query.filter(Trade.pnl > 0)
+        losing_trades = query.filter(Trade.pnl < 0)
+
+        total_profit = winning_trades.with_entities(func.sum(Trade.pnl)).scalar() or 0
+        total_loss = abs(losing_trades.with_entities(func.sum(Trade.pnl)).scalar() or 0)
+
+        if total_loss == 0:
+            return float("inf") if total_profit > 0 else 0.0
+
+        profit_factor = total_profit / total_loss
+        return round(profit_factor, 3)
 
     def _get_largest_win(self, query) -> float:
-        return 0.0
+        """Retorna el trade más exitoso."""
+        result = query.with_entities(func.max(Trade.pnl)).scalar()
+        return float(result) if result else 0.0
 
     def _get_largest_loss(self, query) -> float:
-        return 0.0
+        """Retorna la pérdida más grande."""
+        result = query.with_entities(func.min(Trade.pnl)).scalar()
+        return float(result) if result else 0.0
 
     def _get_avg_win(self, query) -> float:
-        return 0.0
+        """Retorna ganancia promedio de trades ganadores."""
+        winning_query = query.filter(Trade.pnl > 0)
+        result = winning_query.with_entities(func.avg(Trade.pnl)).scalar()
+        return float(result) if result else 0.0
 
     def _get_avg_loss(self, query) -> float:
-        return 0.0
+        """Retorna pérdida promedio de trades perdedores."""
+        losing_query = query.filter(Trade.pnl < 0)
+        result = losing_query.with_entities(func.avg(Trade.pnl)).scalar()
+        return float(result) if result else 0.0
