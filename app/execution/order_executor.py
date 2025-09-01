@@ -54,6 +54,32 @@ class OrderExecutor:
         logger.info("Simulated cancel of broker order %s", broker_order_id)
         return {"status": "success", "broker_order_id": broker_order_id}
 
+    async def _get_order_status_from_broker(self, broker_order_id: str) -> Optional[str]:
+        """Obtener el estado actual de una orden desde el broker.
+
+        Esta implementación simplificada utiliza el BrokerExecutor para
+        consultar el estado. En entornos de prueba donde no se pueda
+        conectar con el broker, devuelve ``None``.
+        """
+        try:
+            from app.execution.broker_executor import BrokerExecutor
+
+            broker_exec = BrokerExecutor(self.db)
+            order = self.db.query(Order).filter(
+                Order.broker_order_id == broker_order_id
+            ).first()
+            if not order:
+                order = Order(broker_order_id=broker_order_id)
+
+            status_info = broker_exec.get_order_status(order)
+            if status_info:
+                return str(status_info.get("status"))
+        except Exception as e:  # pragma: no cover - best effort logging
+            logger.error(
+                "Error getting broker status for %s: %s", broker_order_id, str(e)
+            )
+        return None
+
     async def _handle_order_fill(self, order: Order, fill_data: Dict[str, Any]) -> None:
         """Handle when an order gets filled - with bracket order support"""
         try:

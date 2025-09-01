@@ -293,3 +293,29 @@ async def test_bracket_order_flow(
     except Exception as e:
         logger.error(f"Error in bracket flow test: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/reconcile")
+async def manual_bracket_reconciliation(
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db)
+):
+    """Ejecutar reconciliación manual de bracket orders (solo admin)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        from app.services.bracket_reconciliation_service import BracketReconciliationService
+
+        service = BracketReconciliationService()
+        result = await service.run_reconciliation_cycle()
+
+        return {
+            "status": "success",
+            "reconciliation_result": result,
+            "message": "Manual reconciliation completed"
+        }
+
+    except Exception as e:
+        logger.error(f"Error in manual reconciliation: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
