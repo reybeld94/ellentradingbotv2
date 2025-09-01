@@ -176,6 +176,12 @@ export const api = {
       const params = portfolioId ? `?portfolio_id=${portfolioId}` : '';
       return authenticatedFetch(`${API_BASE_URL}/analytics/monthly-performance${params}`);
     },
+
+    getRiskDashboard: async (timeframe: string = '3M', portfolioId?: number) => {
+      const params = new URLSearchParams({ timeframe });
+      if (portfolioId) params.append('portfolio_id', portfolioId.toString());
+      return authenticatedFetch(`${API_BASE_URL}/analytics/risk-dashboard?${params}`);
+    },
   },
 
   // Strategy endpoints

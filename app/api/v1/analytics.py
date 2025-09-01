@@ -227,3 +227,34 @@ async def get_monthly_performance(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting monthly performance: {str(e)}")
+
+
+@router.get("/risk-dashboard")
+async def get_risk_dashboard(
+    timeframe: TimeframeEnum = Query(TimeframeEnum.THREE_MONTHS, description="Período para análisis de riesgo"),
+    portfolio_id: Optional[int] = Query(None, description="ID del portfolio específico (opcional)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Obtiene dashboard completo de análisis de riesgo"""
+    try:
+        if portfolio_id:
+            portfolio = portfolio_service.get_by_id(db, portfolio_id, current_user.id)
+            if not portfolio:
+                raise HTTPException(status_code=404, detail="Portfolio not found")
+        else:
+            portfolio = portfolio_service.get_active(db, current_user)
+            if not portfolio:
+                raise HTTPException(status_code=400, detail="No active portfolio found")
+
+        analytics = PortfolioAnalytics(db)
+        risk_dashboard = analytics.get_risk_dashboard_data(
+            user_id=current_user.id,
+            portfolio_id=portfolio.id,
+            timeframe=timeframe.value
+        )
+
+        return risk_dashboard
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting risk dashboard: {str(e)}")
