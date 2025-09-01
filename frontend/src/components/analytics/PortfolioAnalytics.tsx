@@ -16,6 +16,7 @@ import api from '../../services/api';
 import EquityCurve from './EquityCurve';
 import TradeDistribution from './TradeDistribution';
 import MonthlyHeatmap from './MonthlyHeatmap';
+import RiskDashboard from './RiskDashboard';
 
 interface PerformanceMetrics {
   total_pnl: number;
@@ -65,7 +66,7 @@ const PortfolioAnalytics: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('1M');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'equity' | 'distribution' | 'monthly'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'equity' | 'distribution' | 'monthly' | 'risk'>('overview');
 
   const timeframeOptions = [
     { value: '1D', label: '1 Day' },
@@ -214,11 +215,12 @@ const PortfolioAnalytics: React.FC = () => {
 
       {/* Tab Navigation */}
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6">
-        {[
+        {[ 
           { key: 'overview', label: 'Overview', icon: BarChart3 },
           { key: 'equity', label: 'Equity Curve', icon: TrendingUp },
           { key: 'distribution', label: 'Trade Distribution', icon: PieChart },
           { key: 'monthly', label: 'Monthly Performance', icon: Calendar },
+          { key: 'risk', label: 'Risk Dashboard', icon: Shield },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -423,6 +425,10 @@ const PortfolioAnalytics: React.FC = () => {
 
       {activeTab === 'monthly' && (
         <MonthlyHeatmap portfolioId={summary?.portfolio_id} />
+      )}
+
+      {activeTab === 'risk' && (
+        <RiskDashboard timeframe={selectedTimeframe} portfolioId={summary?.portfolio_id} />
       )}
     </div>
   );
