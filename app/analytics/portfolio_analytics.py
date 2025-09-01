@@ -3,10 +3,13 @@ from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, case, select
 from app.models.trades import Trade
-from decimal import Decimal
+from decimal import Decimal, getcontext
 import pandas as pd
 import statistics
 import numpy as np
+
+
+getcontext().prec = 28
 
 
 class PortfolioAnalytics:
@@ -61,16 +64,23 @@ class PortfolioAnalytics:
             "end_date": end_date.isoformat(),
         }
 
-    def _calculate_total_pnl(self, query) -> float:
+    def _calculate_total_pnl(self, query) -> Decimal:
         result = query.with_entities(func.sum(Trade.pnl)).scalar()
-        return float(result) if result else 0.0
+        return Decimal(result) if result is not None else Decimal("0")
 
-    def _calculate_total_pnl_percentage(self, query) -> float:
-        total_invested = query.with_entities(func.sum(Trade.quantity * Trade.entry_price)).scalar()
+    def _calculate_total_pnl_percentage(self, query) -> Decimal:
+        total_invested_raw = query.with_entities(
+            func.sum(Trade.quantity * Trade.entry_price)
+        ).scalar()
+        total_invested = (
+            Decimal(total_invested_raw)
+            if total_invested_raw is not None
+            else Decimal("0")
+        )
         total_pnl = self._calculate_total_pnl(query)
-        if not total_invested or total_invested == 0:
-            return 0.0
-        return (total_pnl / float(total_invested)) * 100
+        if total_invested == 0:
+            return Decimal("0")
+        return (total_pnl / total_invested) * Decimal("100")
 
     def _calculate_sharpe_ratio(self, query) -> float:
         """Calcula Sharpe Ratio (retorno/riesgo)."""
