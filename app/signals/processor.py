@@ -168,7 +168,6 @@ class WebhookProcessor:
             # 1. Validar que es una señal de entrada
             if signal.action not in ["buy", "long_entry"]:
                 signal.status = "processed_no_bracket"
-                self.db.commit()
                 return {
                     "status": "skipped",
                     "reason": "Not an entry signal - bracket orders only for entries",
@@ -186,7 +185,6 @@ class WebhookProcessor:
                 if not rules:
                     signal.status = "bracket_failed"
                     signal.notes = "No exit rules configured for strategy"
-                    self.db.commit()
                     return {
                         "status": "failed",
                         "reason": "No exit rules configured for this strategy",
@@ -199,7 +197,6 @@ class WebhookProcessor:
                 )
                 signal.status = "bracket_failed"
                 signal.notes = f"Exit rules error: {str(e)}"
-                self.db.commit()
                 return {
                     "status": "failed",
                     "reason": f"Exit rules service error: {str(e)}",
@@ -216,7 +213,6 @@ class WebhookProcessor:
                 if not market_status["is_open"]:
                     signal.status = "bracket_failed"
                     signal.notes = f"Market closed: {market_status.get('status', 'Unknown')}"
-                    self.db.commit()
                     return {
                         "status": "failed",
                         "reason": "Market is closed - cannot create bracket orders",
@@ -239,7 +235,7 @@ class WebhookProcessor:
 
             try:
                 bracket_result = order_manager.create_bracket_order_from_signal(
-                    signal, user_id, portfolio_id
+                    signal, user_id, portfolio_id, commit=False
                 )
 
                 if bracket_result["status"] == "success":
@@ -316,10 +312,6 @@ class WebhookProcessor:
                     "orders_created": 0,
                 }
 
-            finally:
-                # Commit del estado de la señal
-                self.db.commit()
-
         except Exception as e:
             logger.error(
                 f"Critical error in _create_automatic_bracket_orders for signal {signal.id}: {str(e)}"
@@ -329,7 +321,6 @@ class WebhookProcessor:
             try:
                 signal.status = "error"
                 signal.notes = f"Critical error: {str(e)}"
-                self.db.commit()
             except:
                 pass
 
@@ -338,6 +329,9 @@ class WebhookProcessor:
                 "reason": str(e),
                 "orders_created": 0,
             }
+
+        finally:
+            self.db.commit()
 
 
     async def _initialize_bracket_tracking(self, main_order_id: int) -> None:
