@@ -212,7 +212,7 @@ class WebhookProcessor:
             executor = OrderExecutor()
 
             try:
-                market_status = executor.check_market_hours(signal.symbol)
+                market_status = await executor.get_market_hours(signal.symbol)
                 if not market_status["is_open"]:
                     signal.status = "bracket_failed"
                     signal.notes = f"Market closed: {market_status.get('status', 'Unknown')}"

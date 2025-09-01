@@ -54,6 +54,39 @@ class OrderExecutor:
         logger.info("Simulated cancel of broker order %s", broker_order_id)
         return {"status": "success", "broker_order_id": broker_order_id}
 
+    async def get_market_hours(self, symbol: str) -> Dict[str, Any]:
+        """Check with the broker if the market for ``symbol`` is open.
+
+        Returns a dictionary with ``is_open`` and ``status`` keys. If the broker
+        cannot be reached or doesn't provide the information, the method falls
+        back to a best-effort offline check and returns ``{"is_open": False,
+        "status": "unknown"}``.
+        """
+        try:
+            from app.integrations.alpaca.client import AlpacaClient, _in_regular_trading_hours
+
+            client = AlpacaClient()
+
+            # Crypto markets trade 24/7
+            if client.is_crypto_symbol(symbol):
+                return {"is_open": True, "status": "open"}
+
+            trading = client.api
+            if trading:
+                clock = trading.get_clock()
+                is_open = bool(getattr(clock, "is_open", False))
+                status = "open" if is_open else "closed"
+                return {"is_open": is_open, "status": status}
+
+            # Fallback to local time check if broker client isn't available
+            is_open = _in_regular_trading_hours()
+            status = "open" if is_open else "closed"
+            return {"is_open": is_open, "status": status}
+
+        except Exception as e:  # pragma: no cover - best effort
+            logger.warning("Market hours check failed for %s: %s", symbol, str(e))
+            return {"is_open": False, "status": "unknown"}
+
     async def _get_order_status_from_broker(self, broker_order_id: str) -> Optional[str]:
         """Obtener el estado actual de una orden desde el broker.
 
