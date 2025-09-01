@@ -81,7 +81,7 @@ class PortfolioAnalytics:
         returns: List[float] = []
         for trade in trades:
             if trade.pnl is not None and trade.quantity and trade.entry_price:
-                daily_return = (trade.pnl / (trade.quantity * trade.entry_price)) * 100
+                daily_return = trade.pnl / (trade.quantity * trade.entry_price)
                 returns.append(daily_return)
 
         if len(returns) < 2:
@@ -93,7 +93,7 @@ class PortfolioAnalytics:
         if std_return == 0:
             return 0.0
 
-        risk_free_rate = 0.0055
+        risk_free_rate = 0.0055 / 252
         sharpe = (avg_return - risk_free_rate) / std_return
         return round(sharpe, 4)
 

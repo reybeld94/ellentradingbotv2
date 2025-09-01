@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
+import statistics
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -103,4 +104,36 @@ def test_profit_factor_calculation(db_session, test_user, test_portfolio):
     pf = analytics._calculate_profit_factor(base_query)
 
     assert pf == 3.0
+
+
+def test_sharpe_ratio_calculation(db_session, test_user, test_portfolio):
+    """Test cálculo de Sharpe Ratio con retornos en decimales"""
+    analytics = PortfolioAnalytics(db_session)
+
+    pnls = [10.0, -5.0, 15.0, -7.0, 5.0]
+    for pnl in pnls:
+        trade = Trade(
+            user_id=test_user.id,
+            portfolio_id=test_portfolio.id,
+            symbol="AAPL",
+            pnl=pnl,
+            quantity=1,
+            entry_price=100.0,
+            status="closed",
+            opened_at=datetime.utcnow(),
+        )
+        db_session.add(trade)
+
+    db_session.commit()
+
+    query = db_session.query(Trade).filter(Trade.user_id == test_user.id)
+    sharpe = analytics._calculate_sharpe_ratio(query)
+
+    returns = [p / 100.0 for p in pnls]
+    avg_return = statistics.mean(returns)
+    std_return = statistics.stdev(returns)
+    risk_free_rate = 0.0055 / 252
+    expected_sharpe = round((avg_return - risk_free_rate) / std_return, 4)
+
+    assert sharpe == expected_sharpe
 
