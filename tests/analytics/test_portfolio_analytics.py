@@ -1,10 +1,12 @@
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
 from app.models.user import User
 from app.models.portfolio import Portfolio
+from app.models.trades import Trade
+from app.models.strategy import Strategy
 from app.analytics.portfolio_analytics import PortfolioAnalytics
 from tests.conftest import create_test_trade  # noqa: F401
 
@@ -60,3 +62,37 @@ def test_get_performance_metrics_empty(db_session, test_user, test_portfolio):
     assert metrics["total_trades"] == 0
     assert metrics["win_rate"] == 0.0
     assert metrics["timeframe"] == "1M"
+
+
+def test_strategy_performance_single_query(db_session, test_user, test_portfolio):
+    strat_a = Strategy(name="s1")
+    strat_b = Strategy(name="s2")
+    db_session.add_all([strat_a, strat_b])
+    db_session.commit()
+
+    for i in range(1000):
+        create_test_trade(
+            db_session,
+            user_id=test_user.id,
+            portfolio_id=test_portfolio.id,
+            strategy_id=str(strat_a.id if i % 2 == 0 else strat_b.id),
+            pnl=1.0 if i % 2 == 0 else -1.0,
+        )
+
+    analytics = PortfolioAnalytics(db_session)
+    base_query = db_session.query(Trade).filter(
+        Trade.user_id == test_user.id,
+        Trade.portfolio_id == test_portfolio.id,
+    )
+
+    executed = []
+
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        if statement.lower().startswith("select"):
+            executed.append(statement)
+
+    event.listen(db_session.bind, "before_cursor_execute", before_cursor_execute)
+    analytics._get_strategy_performance(base_query)
+    event.remove(db_session.bind, "before_cursor_execute", before_cursor_execute)
+
+    assert len(executed) == 1

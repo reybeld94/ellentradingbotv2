@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, case, select
 from app.models.trades import Trade
 from decimal import Decimal
 import pandas as pd
@@ -479,16 +479,18 @@ class PortfolioAnalytics:
         """
         from app.models.strategy import Strategy
 
+        trade_ids = query.with_entities(Trade.id).subquery()
+
         strategy_stats = self.db.query(
             Strategy.name,
             func.sum(Trade.pnl).label('total_pnl'),
             func.count(Trade.id).label('total_trades'),
-            func.sum(func.case([(Trade.pnl > 0, 1)], else_=0)).label('winners'),
+            func.sum(case((Trade.pnl > 0, 1), else_=0)).label('winners'),
             func.avg(Trade.pnl).label('avg_pnl')
         ).join(
             Trade, Trade.strategy_id == Strategy.id
         ).filter(
-            Trade.id.in_([t.id for t in query.all()])
+            Trade.id.in_(select(trade_ids.c.id))
         ).group_by(Strategy.id, Strategy.name).all()
 
         strategy_breakdown = []
