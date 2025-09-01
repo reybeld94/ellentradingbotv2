@@ -15,10 +15,11 @@ import Profile from './pages/Profile';
 import TradesPage from './pages/trades';
 import StrategiesPage from './pages/strategies';
 import RiskDashboard from './pages/RiskDashboard';
+import Analytics from './pages/Analytics';
 import ExitRulesManager from './components/ExitRulesManager';
 
 // Tipos para las páginas
-type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'risk' | 'settings';
+type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'risk' | 'analytics' | 'settings';
 
 // Componente de navegación mejorado
 const Sidebar: React.FC<{
@@ -72,6 +73,13 @@ const Sidebar: React.FC<{
       name: 'Risk',
       icon: Shield,
       description: 'Risk management',
+      badge: null
+    },
+    {
+      id: 'analytics' as Page,
+      name: 'Analytics',
+      icon: BarChart3,
+      description: 'Portfolio analytics',
       badge: null
     },
     {
@@ -252,6 +260,7 @@ const MobileHeader: React.FC<{
     orders: 'Orders',
     strategies: 'Strategies',
     risk: 'Risk',
+    analytics: 'Analytics',
     settings: 'Settings',
     trades: 'Trades'
   };
@@ -358,6 +367,8 @@ const AuthenticatedApp: React.FC = () => {
         return <StrategiesPage />;
       case 'risk':
         return <RiskDashboard />;
+      case 'analytics':
+        return <Analytics />;
       case 'settings':
         return <Profile />;
       default:
