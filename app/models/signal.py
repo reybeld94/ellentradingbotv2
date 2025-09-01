@@ -1,7 +1,7 @@
 # backend/app/models/signal.py
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, foreign
 from app.database import Base
 from app.utils.time import now_eastern
 
@@ -38,6 +38,13 @@ class Signal(Base):
 
     # En la clase Signal, añadir esta relación
     orders = relationship("Order", back_populates="signal")
+
+    # Strategy relation
+    strategy = relationship(
+        "Strategy",
+        back_populates="signals",
+        primaryjoin="foreign(Signal.strategy_id)==Strategy.name",
+    )
 
     def __repr__(self):
         return f"<Signal({self.strategy_id}:{self.symbol}, {self.action}, {self.status}, user:{self.user_id})>"
