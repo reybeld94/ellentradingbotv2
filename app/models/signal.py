@@ -20,6 +20,7 @@ class Signal(Base):
     processed = Column(Boolean, default=False)
     status = Column(String(20), default="pending")  # pending, processed, error
     error_message = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
 
     # Campos para análisis avanzado
     reason = Column(String(50), nullable=True)  # fibonacci_entry, fibonacci_exit, trailing_stop
