@@ -383,7 +383,12 @@ class OrderManager:
         try:
             from app.integrations import broker_client
             trade = broker_client.get_latest_trade(symbol)
-            return float(getattr(trade, "price", 0.0))
+            price = float(getattr(trade, "price", 0.0))
+            if price <= 0:
+                raise PriceUnavailableError(f"Current price unavailable for {symbol}")
+            return price
+        except PriceUnavailableError:
+            raise
         except Exception as e:
             logger.error(f"Error getting current price for {symbol}: {e}")
             raise PriceUnavailableError(f"Current price unavailable for {symbol}") from e
