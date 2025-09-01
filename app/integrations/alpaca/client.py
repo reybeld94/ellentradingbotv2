@@ -7,6 +7,7 @@ import concurrent.futures
 import logging
 from decimal import Decimal
 from app.utils.time import EASTERN_TZ, now_eastern
+from app.core.types import OrderType
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import GetOrdersRequest
@@ -130,7 +131,7 @@ class AlpacaClient:
             return None
 
     # --- Trading --------------------------------------------------------------
-    def submit_order(self, symbol, qty, side, order_type="market", price=None, timeout=None):
+    def submit_order(self, symbol, qty, side, order_type=OrderType.MARKET.value, price=None, timeout=None):
         if not self._trading:
             raise RuntimeError("Alpaca API credentials not configured")
 
@@ -142,7 +143,7 @@ class AlpacaClient:
 
         qty_str = str(qty) if isinstance(qty, Decimal) else str(qty)
         price_str = str(price) if isinstance(price, Decimal) else (str(price) if price is not None else None)
-        if order_type == "market":
+        if order_type == OrderType.MARKET.value:
             order_data = MarketOrderRequest(
                 symbol=symbol,
                 qty=qty_str,
@@ -175,7 +176,7 @@ class AlpacaClient:
             logger.exception("submit_order failed for %s: %s", symbol, e)
             raise
 
-    def submit_crypto_order(self, symbol, qty, side, order_type="market"):
+    def submit_crypto_order(self, symbol, qty, side, order_type=OrderType.MARKET.value):
         return self.submit_order(symbol, qty, side, order_type)
 
     def is_crypto_symbol(self, symbol: str) -> bool:

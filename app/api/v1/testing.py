@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.core.auth import get_current_verified_user, get_admin_user
 from app.execution.testing import ExecutionTester
+from app.core.types import OrderType
 from typing import Optional
 from decimal import Decimal
 import logging
@@ -165,20 +166,20 @@ async def test_full_bracket_flow(
                 "symbol": test_signal.symbol,
                 "side": "buy",
                 "quantity": test_signal.quantity,
-                "order_type": "market"
+                "order_type": OrderType.MARKET.value
             },
             "stop_loss_order": {
                 "symbol": test_signal.symbol,
                 "side": "sell",
                 "quantity": test_signal.quantity,
-                "order_type": "stop",
+                "order_type": OrderType.STOP.value,
                 "stop_price": exit_calculation["stop_loss_price"]
             },
             "take_profit_order": {
                 "symbol": test_signal.symbol,
                 "side": "sell",
                 "quantity": test_signal.quantity,
-                "order_type": "limit",
+                "order_type": OrderType.LIMIT.value,
                 "limit_price": exit_calculation["take_profit_price"]
             }
         }
