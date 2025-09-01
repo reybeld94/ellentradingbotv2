@@ -53,6 +53,7 @@ class Order(Base):
     # Retry y error handling
     retry_count = Column(Integer, default=0, nullable=False)
     last_error = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
     
     # Time in force
     time_in_force = Column(String(10), default="day", nullable=False)
