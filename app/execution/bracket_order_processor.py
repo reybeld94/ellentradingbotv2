@@ -18,7 +18,7 @@ class BracketOrderProcessor:
     
     def __init__(self, db: Session):
         self.db = db
-        self.executor = OrderExecutor()
+        self.executor = OrderExecutor(self.db)
     
     async def activate_bracket_orders(self, parent_order_id: int) -> Dict[str, Any]:
         """
