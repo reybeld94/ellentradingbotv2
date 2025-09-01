@@ -56,17 +56,16 @@ const MonthlyHeatmap: React.FC<MonthlyHeatmapProps> = ({ portfolioId }) => {
     }).format(amount);
   };
 
+  const greenLevels = ['bg-green-100', 'bg-green-200', 'bg-green-300', 'bg-green-400', 'bg-green-500'];
+  const redLevels = ['bg-red-100', 'bg-red-200', 'bg-red-300', 'bg-red-400', 'bg-red-500'];
+
   const getColorIntensity = (pnl: number, maxAbsPnl: number): string => {
     if (pnl === 0) return 'bg-gray-100';
 
     const intensity = Math.abs(pnl) / maxAbsPnl;
     const level = Math.min(Math.floor(intensity * 5) + 1, 5);
 
-    if (pnl > 0) {
-      return `bg-green-${level * 100}`;
-    } else {
-      return `bg-red-${level * 100}`;
-    }
+    return pnl > 0 ? greenLevels[level - 1] : redLevels[level - 1];
   };
 
   if (loading) {
