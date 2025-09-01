@@ -195,7 +195,12 @@ class BracketOrderProcessor:
                     "status": parent_order.status,
                     "symbol": parent_order.symbol,
                     "quantity": parent_order.quantity,
-                    "filled_qty": parent_order.filled_qty or 0
+                    "filled_quantity": getattr(
+                        parent_order,
+                        "filled_quantity",
+                        getattr(parent_order, "filled_qty", 0),
+                    )
+                    or 0
                 },
                 "child_orders": [
                     {
