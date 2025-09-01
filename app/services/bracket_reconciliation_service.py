@@ -163,7 +163,7 @@ class BracketReconciliationService:
                             child_order.broker_order_id
                         )
 
-                    if broker_status and broker_status != child_order.status.value:
+                    if broker_status and broker_status != child_order.status:
                         logger.info(
                             f"Found inconsistent child order {child_order.id}: DB={child_order.status}, Broker={broker_status}"
                         )
