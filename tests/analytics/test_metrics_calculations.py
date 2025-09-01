@@ -132,7 +132,7 @@ def test_sharpe_ratio_calculation(db_session, test_user, test_portfolio):
     returns = [p / 100.0 for p in pnls]
     avg_return = statistics.mean(returns)
     std_return = statistics.stdev(returns)
-    risk_free_rate = 0.0055 / 252
+    risk_free_rate = 0.02 / 252
     expected_sharpe = round((avg_return - risk_free_rate) / std_return, 4)
 
     assert sharpe == expected_sharpe

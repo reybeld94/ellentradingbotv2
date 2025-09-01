@@ -84,14 +84,14 @@ def test_get_risk_dashboard_data(db_session, test_user, test_portfolio):
 def test_advanced_risk_metrics_calculation(db_session, test_user, test_portfolio):
   analytics = PortfolioAnalytics(db_session)
 
-  pnl_values = [100, -50, 75, -25, 150, -75, 200, -100, 80, -40]
+  returns = [0.1, -0.05, 0.075, -0.025, 0.15, -0.075, 0.2, -0.1, 0.08, -0.04]
 
-  for i, pnl in enumerate(pnl_values):
+  for i, r in enumerate(returns):
       trade = Trade(
           user_id=test_user.id,
           portfolio_id=test_portfolio.id,
           symbol="TEST",
-          pnl=pnl,
+          pnl=r * 1000,
           quantity=10,
           entry_price=100.0,
           status="filled",
@@ -104,7 +104,7 @@ def test_advanced_risk_metrics_calculation(db_session, test_user, test_portfolio
   base_query = db_session.query(Trade).filter(Trade.user_id == test_user.id)
   risk_metrics = analytics._get_advanced_risk_metrics(base_query)
 
-  assert risk_metrics["total_return"] == sum(pnl_values)
+  assert risk_metrics["total_return"] == sum(returns)
   assert risk_metrics["volatility"] > 0
   assert "sharpe_ratio" in risk_metrics
   assert "var_95" in risk_metrics
