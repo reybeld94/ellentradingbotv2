@@ -93,7 +93,7 @@ describe('PortfolioAnalytics', () => {
     fireEvent.click(weekButton);
 
     await waitFor(() => {
-      expect(api.analytics.getPerformanceMetrics).toHaveBeenCalledWith('1W');
+      expect(api.analytics.getPerformanceMetrics).toHaveBeenCalledWith('1W', undefined, expect.any(AbortSignal));
     });
   });
 });

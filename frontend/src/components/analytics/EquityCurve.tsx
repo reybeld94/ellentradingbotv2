@@ -50,32 +50,42 @@ const EquityCurve: React.FC<EquityCurveProps> = ({
   const [showDrawdown, setShowDrawdown] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
+    const fetchEquityCurveData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await api.analytics.getEquityCurve(timeframe, portfolioId, controller.signal);
+
+        const formattedData = response.equity_curve.map((point: EquityCurveData) => ({
+          ...point,
+          date: new Date(point.date).toLocaleDateString(),
+          equity: Math.round(point.equity * 100) / 100,
+          drawdown: Math.round(point.drawdown * 100) / 100,
+        }));
+
+        if (!isMounted) return;
+        setData(formattedData);
+        setDrawdownPeriods(response.drawdown_periods || []);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Error fetching equity curve:', err);
+        setError('Error loading equity curve data');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
     fetchEquityCurveData();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [timeframe, portfolioId]);
-
-  const fetchEquityCurveData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await api.analytics.getEquityCurve(timeframe, portfolioId);
-
-      const formattedData = response.equity_curve.map((point: EquityCurveData) => ({
-        ...point,
-        date: new Date(point.date).toLocaleDateString(),
-        equity: Math.round(point.equity * 100) / 100,
-        drawdown: Math.round(point.drawdown * 100) / 100,
-      }));
-
-      setData(formattedData);
-      setDrawdownPeriods(response.drawdown_periods || []);
-    } catch (err) {
-      console.error('Error fetching equity curve:', err);
-      setError('Error loading equity curve data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('en-US', {

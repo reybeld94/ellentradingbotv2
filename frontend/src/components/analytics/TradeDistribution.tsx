@@ -47,23 +47,33 @@ const TradeDistribution: React.FC<TradeDistributionProps> = ({
   const [viewType, setViewType] = useState<'bar' | 'pie'>('bar');
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
+    const fetchTradeDistribution = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await api.analytics.getTradeAnalytics(timeframe, portfolioId, controller.signal);
+        if (!isMounted) return;
+        setDistribution(response.trade_distribution);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Error fetching trade distribution:', err);
+        setError('Error loading trade distribution data');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
     fetchTradeDistribution();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [timeframe, portfolioId]);
-
-  const fetchTradeDistribution = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await api.analytics.getTradeAnalytics(timeframe, portfolioId);
-      setDistribution(response.trade_distribution);
-    } catch (err) {
-      console.error('Error fetching trade distribution:', err);
-      setError('Error loading trade distribution data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {

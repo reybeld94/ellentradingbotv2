@@ -64,23 +64,36 @@ const RiskDashboard: React.FC<RiskDashboardProps> = ({ timeframe = '3M', portfol
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<'overview' | 'var' | 'positions' | 'time' | 'correlations'>('overview');
 
-  useEffect(() => {
-    fetchRiskDashboard();
-  }, [timeframe, portfolioId]);
+  const fetchRiskDashboardRef = React.useRef<() => void>(() => {});
 
-  const fetchRiskDashboard = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.analytics.getRiskDashboard(timeframe, portfolioId);
-      setData(response);
-    } catch (err) {
-      console.error('Error fetching risk dashboard:', err);
-      setError('Error loading risk dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
+    const fetchRiskDashboard = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await api.analytics.getRiskDashboard(timeframe, portfolioId, controller.signal);
+        if (!isMounted) return;
+        setData(response);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Error fetching risk dashboard:', err);
+        setError('Error loading risk dashboard data');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchRiskDashboardRef.current = fetchRiskDashboard;
+    fetchRiskDashboard();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [timeframe, portfolioId]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
@@ -150,7 +163,7 @@ const RiskDashboard: React.FC<RiskDashboardProps> = ({ timeframe = '3M', portfol
           <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
           <span className="text-red-700">{error || 'No risk data available'}</span>
         </div>
-        <button onClick={fetchRiskDashboard} className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors">Retry</button>
+        <button onClick={() => fetchRiskDashboardRef.current()} className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors">Retry</button>
       </div>
     );
   }
