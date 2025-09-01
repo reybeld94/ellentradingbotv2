@@ -1,22 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Target,
-  Activity,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Zap,
-  Brain,
-  ArrowUpRight,
-  ArrowDownRight,
-  BarChart3,
-  Eye,
-  EyeOff
+  DollarSign, TrendingUp, TrendingDown, Activity, Target,
+  BarChart3, Eye, EyeOff, RefreshCw
 } from 'lucide-react';
-import SymbolLogo from '../components/SymbolLogo';
+import MetricCard from '../components/dashboard/MetricCard';
+import PortfolioChart from '../components/dashboard/PortfolioChart';
+import RecentActivity from '../components/dashboard/RecentActivity';
+import QuickActions from '../components/dashboard/QuickActions';
 
 interface AccountData {
   cash: number;
@@ -34,55 +24,28 @@ interface Position {
   cost_basis: number;
   avg_entry_price: number;
   current_price: number;
-  percentage: number;
 }
 
-interface RiskData {
-  current_positions: Position[];
-  account_info: {
-    buying_power: number;
-    portfolio_value: number;
-    total_unrealized_pl: number;
-  };
-}
-
-interface Signal {
-  id: number;
+interface ActivityItem {
+  id: string;
+  type: 'trade' | 'signal' | 'order' | 'alert';
   symbol: string;
   action: 'BUY' | 'SELL';
-  price: number;
-  confidence: number;
-  strategy_id: string;
-  created_at: string;
-  status: 'pending' | 'processed' | 'error';
-}
-
-interface StrategyMetrics {
-  id: string;
-  name: string;
-  total_trades: number;
-  win_rate: number;
-  total_pnl: number;
-  avg_win: number;
-  avg_loss: number;
-  max_drawdown: number;
-  sharpe_ratio: number;
-}
-
-interface Strategy {
-  id: string;
-  name: string;
+  status: 'success' | 'pending' | 'error' | 'warning';
+  amount?: number;
+  price?: number;
+  quantity?: number;
+  timestamp: string;
+  description: string;
 }
 
 const Dashboard: React.FC = () => {
   const [accountData, setAccountData] = useState<AccountData | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
-  const [riskData, setRiskData] = useState<RiskData | null>(null);
-  const [signals, setSignals] = useState<Signal[]>([]);
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
-  const [selectedStrategy, setSelectedStrategy] = useState<string>('');
-  const [strategyMetrics, setStrategyMetrics] = useState<StrategyMetrics | null>(null);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [showValues, setShowValues] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<Array<{date: string, value: number}>>([]);
 
   const getAuthToken = (): string | null => {
     return localStorage.getItem('token');
@@ -90,9 +53,7 @@ const Dashboard: React.FC = () => {
 
   const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
-    if (!token) {
-      throw new Error('No authentication token available');
-    }
+    if (!token) throw new Error('No authentication token available');
 
     const headers = {
       'Content-Type': 'application/json',
@@ -101,102 +62,78 @@ const Dashboard: React.FC = () => {
     };
 
     const response = await fetch(url, { ...options, headers });
-
     if (response.status === 401) {
       localStorage.removeItem('token');
       window.location.reload();
       throw new Error('Authentication failed');
     }
-
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
     return response;
   };
 
-  const fetchSignals = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await authenticatedFetch('/api/v1/signals?limit=10');
-      const data = await response.json();
-      setSignals(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Error fetching signals:', error);
-      setSignals([]);
-    }
-  };
+      setLoading(true);
+      
+      // Fetch account data
+      const accountResponse = await authenticatedFetch('/api/v1/portfolio/account');
+      const accountData = await accountResponse.json();
+      setAccountData(accountData);
 
-  const fetchStrategies = async () => {
-    try {
-      const response = await authenticatedFetch('/api/v1/strategies');
-      const data = await response.json();
-      const strategiesList = Array.isArray(data) ? data : [];
-      setStrategies(strategiesList);
-      if (strategiesList.length > 0 && !selectedStrategy) {
-        setSelectedStrategy(strategiesList[0].id);
-      }
-    } catch (error) {
-      console.error('Error fetching strategies:', error);
-      setStrategies([]);
-    }
-  };
+      // Fetch positions
+      const positionsResponse = await authenticatedFetch('/api/v1/positions');
+      const positionsData = await positionsResponse.json();
+      setPositions(Array.isArray(positionsData) ? positionsData : []);
 
-  const fetchStrategyMetrics = async (strategyId: string) => {
-    if (!strategyId) return;
-    try {
-      const response = await authenticatedFetch(`/api/v1/strategies/${strategyId}/metrics`);
-      const data = await response.json();
-      setStrategyMetrics(data);
-    } catch (error) {
-      console.error('Error fetching strategy metrics:', error);
-      setStrategyMetrics(null);
-    }
-  };
+      // Generate mock chart data (replace with real API call)
+      const mockChartData = Array.from({ length: 30 }, (_, i) => ({
+        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString(),
+        value: accountData.portfolio_value + (Math.random() - 0.5) * 1000 * i
+      }));
+      setChartData(mockChartData);
 
-  const fetchAccountData = async () => {
-    try {
-      const response = await authenticatedFetch('/api/v1/account');
-      const data = await response.json();
-      setAccountData(data);
-    } catch (error) {
-      console.error('Error fetching account data:', error);
-      setAccountData(null);
-    }
-  };
+      // Generate mock activities (replace with real API call)
+      const mockActivities: ActivityItem[] = [
+        {
+          id: '1',
+          type: 'trade',
+          symbol: 'AAPL',
+          action: 'BUY',
+          status: 'success',
+          amount: 1500,
+          price: 150.25,
+          quantity: 10,
+          timestamp: new Date().toISOString(),
+          description: 'Market order executed successfully'
+        },
+        {
+          id: '2',
+          type: 'signal',
+          symbol: 'TSLA',
+          action: 'SELL',
+          status: 'pending',
+          timestamp: new Date(Date.now() - 300000).toISOString(),
+          description: 'Signal generated - awaiting execution'
+        }
+      ];
+      setActivities(mockActivities);
 
-  const fetchRiskData = async () => {
-    try {
-      const response = await authenticatedFetch('/api/v1/risk/status');
-      const data = await response.json();
-      setRiskData(data);
-      setPositions(data.current_positions || []);
     } catch (error) {
-      console.error('Error fetching risk data:', error);
-      setPositions([]);
-      setRiskData(null);
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAccountData();
-    fetchRiskData();
-    fetchSignals();
-    fetchStrategies();
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (selectedStrategy) {
-      fetchStrategyMetrics(selectedStrategy);
-    }
-  }, [selectedStrategy]);
-
-  const totalPnL = riskData?.account_info?.total_unrealized_pl || 0;
-  const winningTrades = positions.filter(pos => (pos.unrealized_pl || 0) > 0).length;
-  const winRate = positions.length > 0 ? (winningTrades / positions.length) * 100 : 0;
 
   const formatCurrency = (value: number | null | undefined) => {
     if (!showValues) return '••••••';
-    if (value == null || value === undefined || isNaN(value)) return '$0';
+    if (value == null || isNaN(value)) return '$0';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -205,31 +142,32 @@ const Dashboard: React.FC = () => {
     }).format(Math.abs(value));
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const totalPnL = positions.reduce((sum, pos) => sum + (pos.unrealized_pl || 0), 0);
+  const totalValue = accountData?.portfolio_value || 0;
+  const dayChange = totalPnL >= 0 ? 'positive' : 'negative';
 
-  const getSignalStatusIcon = (status: string) => {
-    switch (status) {
-      case 'processed':
-        return <CheckCircle className="w-3 h-3 text-emerald-500" />;
-      case 'pending':
-        return <Clock className="w-3 h-3 text-amber-500" />;
-      case 'error':
-        return <XCircle className="w-3 h-3 text-rose-500" />;
-      default:
-        return null;
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'new-strategy':
+        // Navigate to strategies page
+        break;
+      case 'view-signals':
+        // Navigate to signals page
+        break;
+      case 'analytics':
+        // Navigate to analytics page
+        break;
+      case 'risk-check':
+        // Navigate to risk page
+        break;
     }
   };
 
-  if (!accountData) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 mx-auto animate-pulse">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center mb-6 mx-auto animate-pulse">
             <BarChart3 className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Loading Dashboard</h2>
@@ -239,306 +177,207 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const dayPnLChange = totalPnL >= 0 ? 'positive' : 'negative';
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Trading Dashboard</h1>
-            <p className="text-slate-600 mt-1">Real-time portfolio insights and performance metrics</p>
+            <p className="text-slate-600 mt-1">
+              Welcome back! Here's what's happening with your portfolio.
+            </p>
           </div>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowValues(!showValues)}
-              className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-white transition-all duration-200 shadow-sm"
+              className="btn-ghost"
             >
-              {showValues ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span className="text-sm font-medium">{showValues ? 'Hide' : 'Show'} Values</span>
+              {showValues ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+              {showValues ? 'Hide' : 'Show'} Values
             </button>
-            <div className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-slate-700">Live</span>
-            </div>
+            <button
+              onClick={fetchDashboardData}
+              className="btn-secondary"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </button>
           </div>
         </div>
 
-        {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Portfolio Value */}
-          <div className="group relative bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-slate-500 mb-1">Portfolio Value</p>
-                <p className="text-2xl font-bold text-slate-900 mb-1">
-                  {formatCurrency(accountData.portfolio_value)}
-                </p>
-                <div className="flex items-center text-sm text-emerald-600">
-                  <ArrowUpRight className="w-4 h-4 mr-1" />
-                  <span>+2.4% today</span>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <DollarSign className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
-
-          {/* Day P&L */}
-          <div className={`group relative bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg ${dayPnLChange === 'positive' ? 'ring-1 ring-emerald-100' : 'ring-1 ring-rose-100'}`}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-slate-500 mb-1">Day P&L</p>
-                <p className={`text-2xl font-bold mb-1 ${totalPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {totalPnL >= 0 ? '+' : '-'}{formatCurrency(totalPnL)}
-                </p>
-                <div className={`flex items-center text-sm ${totalPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {totalPnL >= 0 ? <ArrowUpRight className="w-4 h-4 mr-1" /> : <ArrowDownRight className="w-4 h-4 mr-1" />}
-                  <span>{totalPnL >= 0 ? '+' : ''}{((totalPnL / accountData.portfolio_value) * 100).toFixed(2)}%</span>
-                </div>
-              </div>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ${totalPnL >= 0 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-rose-500 to-rose-600'}`}>
-                {totalPnL >= 0 ? <TrendingUp className="w-6 h-6 text-white" /> : <TrendingDown className="w-6 h-6 text-white" />}
-              </div>
-            </div>
-          </div>
-
-          {/* Buying Power */}
-          <div className="group relative bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-slate-500 mb-1">Buying Power</p>
-                <p className="text-2xl font-bold text-slate-900 mb-1">
-                  {formatCurrency(accountData.buying_power)}
-                </p>
-                <div className="flex items-center text-sm text-slate-600">
-                  <Activity className="w-4 h-4 mr-1" />
-                  <span>Available</span>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Activity className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
-
-          {/* Win Rate */}
-          <div className="group relative bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-lg">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-slate-500 mb-1">Win Rate</p>
-                <p className="text-2xl font-bold text-slate-900 mb-1">{winRate.toFixed(1)}%</p>
-                <div className="flex items-center text-sm text-slate-600">
-                  <span>{winningTrades}/{positions.length} positions</span>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Target className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
+        {/* Metrics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <MetricCard
+            title="Portfolio Value"
+            value={formatCurrency(totalValue)}
+            change={{
+              value: `${totalPnL >= 0 ? '+' : ''}${formatCurrency(totalPnL)}`,
+              type: dayChange as 'positive' | 'negative',
+              period: 'Today'
+            }}
+            icon={DollarSign}
+            loading={loading}
+          />
+          <MetricCard
+            title="Available Cash"
+            value={formatCurrency(accountData?.cash)}
+            icon={TrendingUp}
+            loading={loading}
+          />
+          <MetricCard
+            title="Active Positions"
+            value={positions.length.toString()}
+            change={{
+              value: `${positions.filter(p => p.unrealized_pl > 0).length} profitable`,
+              type: 'neutral',
+              period: 'Current'
+            }}
+            icon={Activity}
+            loading={loading}
+          />
+          <MetricCard
+            title="Buying Power"
+            value={formatCurrency(accountData?.buying_power)}
+            icon={Target}
+            loading={loading}
+          />
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Active Trades */}
-          <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[40rem] flex flex-col">
-              <div className="p-6 border-b border-slate-100 flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Active Positions</h3>
-                    <p className="text-sm text-slate-500">Real-time P&L tracking</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1.5 rounded-full">
-                      {positions.length} positions
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 flex-1 overflow-y-auto">
-                <div className="space-y-1">
-                  {positions.length === 0 ? (
-                    <div className="text-center py-12">
-                      <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                      <p className="text-slate-500 font-medium">No active positions</p>
-                      <p className="text-sm text-slate-400">Your positions will appear here when opened</p>
-                    </div>
-                  ) : (
-                    positions.map((position) => (
-                      <div key={position.symbol} className="group flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all duration-200 border border-transparent hover:border-slate-200">
-                        <div className="flex items-center space-x-4">
-                          <SymbolLogo symbol={position.symbol} size={32} />
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <p className="font-bold text-slate-900">{position.symbol}</p>
-                              <span className="text-xs px-2 py-1 rounded-full font-medium bg-blue-100 text-blue-800">
-                                LONG
-                              </span>
-                            </div>
-                            <p className="text-sm text-slate-500">{position.quantity.toFixed(4)} shares @ ${position.avg_entry_price.toFixed(4)}</p>
-                            <p className="text-xs text-slate-400">Value: ${position.market_value.toFixed(2)}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className={`font-bold text-lg ${position.unrealized_pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {position.unrealized_pl >= 0 ? '+' : ''}${showValues ? position.unrealized_pl.toFixed(2) : '••••'}
-                          </p>
-                          <p className={`text-sm font-medium ${position.unrealized_pl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {position.unrealized_plpc >= 0 ? '+' : ''}{showValues ? position.unrealized_plpc.toFixed(4) : '••.••'}%
-                          </p>
-                          <p className="text-xs text-slate-400">${showValues ? position.current_price.toFixed(4) : '••••'}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Portfolio Chart - Takes 2 columns on large screens */}
+          <div className="lg:col-span-2">
+            <PortfolioChart
+              data={chartData}
+              loading={loading}
+              timeframe="1D"
+              onTimeframeChange={(timeframe) => {
+                // Handle timeframe change
+                console.log('Timeframe changed to:', timeframe);
+              }}
+            />
           </div>
 
-          {/* Recent Signals */}
-          <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[40rem] flex flex-col">
-              <div className="p-6 border-b border-slate-100 flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Trading Signals</h3>
-                    <p className="text-sm text-slate-500">Recent algorithmic signals</p>
-                  </div>
-                  <Zap className="w-5 h-5 text-amber-500" />
-                </div>
-              </div>
-              <div className="p-4 flex-1 overflow-y-auto">
-                <div className="space-y-1">
-                  {signals.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                      <p className="text-slate-500 font-medium">No recent signals</p>
-                      <p className="text-sm text-slate-400">Algorithmic signals will appear here</p>
+          {/* Quick Actions */}
+          <div>
+            <QuickActions onAction={handleQuickAction} />
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Activity */}
+          <RecentActivity activities={activities} loading={loading} />
+
+          {/* Top Positions */}
+          <div className="card p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-slate-900">Top Positions</h3>
+              <button className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                View All
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center space-x-4 animate-pulse">
+                    <div className="w-10 h-10 bg-slate-200 rounded-xl"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-slate-200 rounded w-1/2"></div>
                     </div>
-                  ) : (
-                    signals.map((signal) => (
-                      <div key={signal.id} className="group flex items-center justify-between p-4 hover:bg-slate-50 rounded-xl transition-all duration-200">
-                        <div className="flex items-center space-x-4">
-                          {getSignalStatusIcon(signal.status)}
-                          <SymbolLogo symbol={signal.symbol} size={32} />
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <p className="font-bold text-slate-900">{signal.symbol}</p>
-                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                signal.action === 'BUY' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                              }`}>
-                                {signal.action}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2 text-sm text-slate-500">
-                              <span>${signal.price}</span>
-                              <span>•</span>
-                              <span className="font-medium">{signal.confidence}% confidence</span>
-                            </div>
-                          </div>
+                    <div className="h-4 bg-slate-200 rounded w-16"></div>
+                  </div>
+                ))}
+              </div>
+            ) : positions.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BarChart3 className="h-8 w-8 text-slate-400" />
+                </div>
+                <p className="text-slate-500">No open positions</p>
+                <p className="text-sm text-slate-400 mt-1">
+                  Your positions will appear here once you start trading
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {positions.slice(0, 5).map((position) => {
+                  const isProfit = position.unrealized_pl >= 0;
+                  const percentChange = position.unrealized_plpc || 0;
+                  
+                  return (
+                    <div
+                      key={position.symbol}
+                      className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors duration-200"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+                          <span className="text-primary-700 font-semibold text-sm">
+                            {position.symbol.substring(0, 2)}
+                          </span>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-slate-400">{formatTime(signal.created_at)}</p>
-                          <div className={`text-xs px-2 py-1 rounded-full font-medium mt-1 ${
-                            signal.status === 'processed' ? 'bg-emerald-100 text-emerald-800' :
-                            signal.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                            'bg-rose-100 text-rose-800'
-                          }`}>
-                            {signal.status}
-                          </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">{position.symbol}</p>
+                          <p className="text-sm text-slate-600">
+                            {Math.abs(position.quantity)} shares
+                          </p>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                      
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-900">
+                          {formatCurrency(position.market_value)}
+                        </p>
+                        <div className={`flex items-center text-sm font-medium ${
+                          isProfit ? 'text-success-600' : 'text-error-600'
+                        }`}>
+                          {isProfit ? (
+                            <TrendingUp className="h-3 w-3 mr-1" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 mr-1" />
+                          )}
+                          <span>
+                            {isProfit ? '+' : ''}{formatCurrency(position.unrealized_pl)} 
+                            ({percentChange.toFixed(2)}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Market Status Footer */}
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-success-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-slate-900">Market Open</span>
+              </div>
+              <div className="text-sm text-slate-600">
+                Last updated: {new Date().toLocaleTimeString()}
               </div>
             </div>
-          </div>
-
-          {/* Strategy Metrics */}
-          <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 h-[40rem] flex flex-col">
-              <div className="p-6 border-b border-slate-100 flex-shrink-0">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Strategy Analytics</h3>
-                    <p className="text-sm text-slate-500">Performance metrics</p>
-                  </div>
-                  <Brain className="w-5 h-5 text-indigo-500" />
-                </div>
-                <select 
-                  value={selectedStrategy} 
-                  onChange={(e) => setSelectedStrategy(e.target.value)}
-                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                >
-                  {strategies.map((strategy) => (
-                    <option key={strategy.id} value={strategy.id}>
-                      {strategy.name}
-                    </option>
-                  ))}
-                </select>
+            
+            <div className="flex items-center space-x-6 text-sm">
+              <div>
+                <span className="text-slate-500">SPY: </span>
+                <span className="font-medium text-success-600">+0.45%</span>
               </div>
-              <div className="p-6 flex-1 overflow-y-auto">
-                {strategyMetrics ? (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-slate-50 rounded-xl">
-                        <p className="text-xs font-medium text-slate-500 mb-1">Total Trades</p>
-                        <p className="text-xl font-bold text-slate-900">{strategyMetrics.total_trades}</p>
-                      </div>
-                      <div className="text-center p-4 bg-blue-50 rounded-xl">
-                        <p className="text-xs font-medium text-slate-500 mb-1">Win Rate</p>
-                        <p className="text-xl font-bold text-blue-600">{(strategyMetrics.win_rate || 0).toFixed(1)}%</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                        <span className="text-sm font-medium text-slate-600">Total P&L</span>
-                        <span className={`font-bold ${strategyMetrics.total_pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {formatCurrency(strategyMetrics.total_pnl)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
-                        <span className="text-sm font-medium text-slate-600">Avg Win</span>
-                        <span className="font-bold text-emerald-600">{formatCurrency(strategyMetrics.avg_win)}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center p-3 bg-rose-50 rounded-lg">
-                        <span className="text-sm font-medium text-slate-600">Avg Loss</span>
-                        <span className="font-bold text-rose-600">{formatCurrency(Math.abs(strategyMetrics.avg_loss))}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                        <span className="text-sm font-medium text-slate-600">Max Drawdown</span>
-                        <span className="font-bold text-rose-600">{formatCurrency(Math.abs(strategyMetrics.max_drawdown))}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                        <span className="text-sm font-medium text-slate-600">Sharpe Ratio</span>
-                        <span className="font-bold text-blue-600">{strategyMetrics.sharpe_ratio}</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <Brain className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-500 font-medium">Loading metrics...</p>
-                    <div className="mt-3 flex justify-center">
-                      <div className="animate-pulse flex space-x-1">
-                        <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
-                        <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
-                        <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <div>
+                <span className="text-slate-500">QQQ: </span>
+                <span className="font-medium text-success-600">+0.32%</span>
+              </div>
+              <div>
+                <span className="text-slate-500">VIX: </span>
+                <span className="font-medium text-error-600">-2.1%</span>
               </div>
             </div>
           </div>
@@ -549,3 +388,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
