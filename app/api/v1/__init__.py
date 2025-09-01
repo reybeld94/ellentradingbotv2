@@ -1,9 +1,17 @@
-from . import execution
-from fastapi import FastAPI
-from .exit_rules import router as exit_rules_router
-from .bracket_orders import router as bracket_orders_router
+from fastapi import APIRouter
+from .auth import router as auth_router
+from .trades import router as trades_router
+from .portfolios import router as portfolios_router
+from .strategies import router as strategies_router
+from .risk import router as risk_router
+from .analytics import router as analytics_router
 
+api_router = APIRouter()
 
-def include_all_routers(app: FastAPI):
-    app.include_router(exit_rules_router, prefix="/api/v1/exit-rules", tags=["Exit Rules"])
-    app.include_router(bracket_orders_router, prefix="/api/v1/bracket-orders", tags=["Bracket Orders"])
+# Incluir todos los routers
+api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
+api_router.include_router(trades_router, prefix="/trades", tags=["trades"])
+api_router.include_router(portfolios_router, prefix="/portfolios", tags=["portfolios"])
+api_router.include_router(strategies_router, prefix="/strategies", tags=["strategies"])
+api_router.include_router(risk_router, prefix="/risk", tags=["risk"])
+api_router.include_router(analytics_router, prefix="/analytics", tags=["analytics"])

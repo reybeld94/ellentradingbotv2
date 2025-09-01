@@ -7,17 +7,16 @@ from app.api.v1.portfolios import router as portfolios_router
 from app.api.v1.streaming import router as streaming_router
 from app.api.v1.exit_rules import router as exit_rules_router
 from app.api.v1.bracket_orders import router as bracket_orders_router
+from app.api.v1.analytics import router as analytics_router
 from app.api.ws import router as ws_router
-from app.api.v1 import auth, trades, strategies, portfolio, risk, execution, system, testing
+from app.api.v1 import auth, trades, strategies, portfolio, risk, system
 from app.database import SessionLocal
 from app.services import portfolio_service
 from app.integrations import refresh_broker_client
-from app.execution.background_tasks import execution_lifespan
 
 app = FastAPI(
     title=settings.app_name,
     debug=settings.debug,
-    lifespan=execution_lifespan,
 )
 
 # CORS para el frontend React
@@ -39,11 +38,10 @@ app.include_router(portfolios_router, prefix="/api/v1", tags=["portfolios"])
 app.include_router(streaming_router, prefix="/api/v1", tags=["streaming"])
 app.include_router(risk.router, prefix="/api/v1", tags=["risk"])
 app.include_router(portfolio.router, prefix="/api/v1", tags=["portfolio"])
-app.include_router(execution.router, prefix="/api/v1/execution", tags=["execution"])
 app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
-app.include_router(testing.router, prefix="/api/v1/testing", tags=["testing"])
 app.include_router(exit_rules_router, prefix="/api/v1/exit-rules", tags=["Exit Rules"])
 app.include_router(bracket_orders_router, prefix="/api/v1/bracket-orders", tags=["Bracket Orders"])
+app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(ws_router)
 
 
