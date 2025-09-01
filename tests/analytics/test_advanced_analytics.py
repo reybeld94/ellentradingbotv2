@@ -90,16 +90,16 @@ def test_trade_distribution_analysis(db_session, test_user, test_portfolio):
     """Test análisis de distribución de trades"""
     analytics = PortfolioAnalytics(db_session)
 
-    pnl_values = [100, 150, 75, 200, -50, -25, -100, -75, 300, -150]
+    returns = [1.0, 1.5, 0.75, 2.0, -0.5, -0.25, -1.0, -0.75, 3.0, -1.5]
 
-    for pnl in pnl_values:
+    for r in returns:
         trade = Trade(
             user_id=test_user.id,
             portfolio_id=test_portfolio.id,
             symbol="AAPL",
             quantity=1,
             entry_price=100.0,
-            pnl=pnl,
+            pnl=r * 100.0,
             status="filled",
         )
         db_session.add(trade)

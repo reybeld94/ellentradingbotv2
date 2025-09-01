@@ -93,7 +93,7 @@ class PortfolioAnalytics:
         if std_return == 0:
             return 0.0
 
-        risk_free_rate = 0.0055 / 252
+        risk_free_rate = 0.02 / 252
         sharpe = (avg_return - risk_free_rate) / std_return
         return round(sharpe, 4)
 
@@ -337,19 +337,23 @@ class PortfolioAnalytics:
         if not trades:
             return {"bins": [], "win_distribution": [], "loss_distribution": []}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
-        if not pnl_values:
+        returns = [
+            float(t.pnl) / (float(t.quantity) * float(t.entry_price))
+            for t in trades
+            if t.pnl is not None and t.quantity and t.entry_price
+        ]
+        if not returns:
             return {"bins": [], "win_distribution": [], "loss_distribution": []}
 
-        winners = [pnl for pnl in pnl_values if pnl > 0]
-        losers = [pnl for pnl in pnl_values if pnl < 0]
+        winners = [r for r in returns if r > 0]
+        losers = [r for r in returns if r < 0]
 
         win_distribution = []
         if winners:
             win_bins = np.histogram(winners, bins=10)
             for i, count in enumerate(win_bins[0]):
                 win_distribution.append({
-                    "range": f"${win_bins[1][i]:.0f} - ${win_bins[1][i+1]:.0f}",
+                    "range": f"{win_bins[1][i] * 100:.1f}% - {win_bins[1][i+1] * 100:.1f}%",
                     "count": int(count),
                     "percentage": (count / len(winners)) * 100
                 })
@@ -359,7 +363,7 @@ class PortfolioAnalytics:
             loss_bins = np.histogram(losers, bins=10)
             for i, count in enumerate(loss_bins[0]):
                 loss_distribution.append({
-                    "range": f"${loss_bins[1][i]:.0f} - ${loss_bins[1][i+1]:.0f}",
+                    "range": f"{loss_bins[1][i] * 100:.1f}% - {loss_bins[1][i+1] * 100:.1f}%",
                     "count": int(count),
                     "percentage": (count / len(losers)) * 100
                 })
@@ -509,31 +513,34 @@ class PortfolioAnalytics:
         if not trades:
             return {}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
-        if len(pnl_values) < 2:
+        returns = [
+            float(t.pnl) / (float(t.quantity) * float(t.entry_price))
+            for t in trades
+            if t.pnl is not None and t.quantity and t.entry_price
+        ]
+        if len(returns) < 2:
             return {}
-
         import statistics
 
-        pnl_sorted = sorted(pnl_values)
-        var_95_index = int(len(pnl_sorted) * 0.05)
-        var_95 = pnl_sorted[var_95_index] if var_95_index < len(pnl_sorted) else pnl_sorted[0]
+        returns_sorted = sorted(returns)
+        var_95_index = int(len(returns_sorted) * 0.05)
+        var_95 = returns_sorted[var_95_index] if var_95_index < len(returns_sorted) else returns_sorted[0]
 
-        worst_losses = pnl_sorted[:var_95_index] if var_95_index > 0 else [pnl_sorted[0]]
+        worst_losses = returns_sorted[:var_95_index] if var_95_index > 0 else [returns_sorted[0]]
         expected_shortfall = statistics.mean(worst_losses) if worst_losses else 0
 
-        volatility = statistics.stdev(pnl_values)
+        volatility = statistics.stdev(returns)
 
-        total_return = sum(pnl_values)
+        total_return = sum(returns)
         max_dd = abs(self._calculate_max_drawdown(query))
         calmar_ratio = (total_return / max_dd) if max_dd > 0 else 0
 
         return {
-            "volatility": round(volatility, 2),
-            "var_95": round(var_95, 2),
-            "expected_shortfall": round(expected_shortfall, 2),
+            "volatility": round(volatility, 4),
+            "var_95": round(var_95, 4),
+            "expected_shortfall": round(expected_shortfall, 4),
             "calmar_ratio": round(calmar_ratio, 3),
-            "downside_deviation": round(statistics.stdev([p for p in pnl_values if p < 0]), 2) if any(p < 0 for p in pnl_values) else 0
+            "downside_deviation": round(statistics.stdev([r for r in returns if r < 0]), 4) if any(r < 0 for r in returns) else 0,
         }
 
     def get_risk_dashboard_data(self, user_id: int, portfolio_id: int, timeframe: str = "3M") -> Dict[str, Any]:
@@ -583,15 +590,19 @@ class PortfolioAnalytics:
         if not trades:
             return {"error": "No trades available for risk analysis"}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
-        if len(pnl_values) < 2:
+        returns = [
+            float(t.pnl) / (float(t.quantity) * float(t.entry_price))
+            for t in trades
+            if t.pnl is not None and t.quantity and t.entry_price
+        ]
+        if len(returns) < 2:
             return {"error": "Insufficient data for risk analysis"}
 
         import statistics
 
-        total_return = sum(pnl_values)
-        avg_return = statistics.mean(pnl_values)
-        volatility = statistics.stdev(pnl_values)
+        total_return = sum(returns)
+        avg_return = statistics.mean(returns)
+        volatility = statistics.stdev(returns)
 
         equity_curve = []
         running_pnl = 0
@@ -623,46 +634,46 @@ class PortfolioAnalytics:
             max_drawdown = 0
             longest_drawdown = 0
 
-        pnl_sorted = sorted(pnl_values)
-        var_99 = pnl_sorted[int(len(pnl_sorted) * 0.01)] if len(pnl_sorted) > 100 else pnl_sorted[0]
-        var_95 = pnl_sorted[int(len(pnl_sorted) * 0.05)] if len(pnl_sorted) > 20 else pnl_sorted[0]
-        var_90 = pnl_sorted[int(len(pnl_sorted) * 0.10)] if len(pnl_sorted) > 10 else pnl_sorted[0]
+        returns_sorted = sorted(returns)
+        var_99 = returns_sorted[int(len(returns_sorted) * 0.01)] if len(returns_sorted) > 100 else returns_sorted[0]
+        var_95 = returns_sorted[int(len(returns_sorted) * 0.05)] if len(returns_sorted) > 20 else returns_sorted[0]
+        var_90 = returns_sorted[int(len(returns_sorted) * 0.10)] if len(returns_sorted) > 10 else returns_sorted[0]
 
-        es_95_threshold = int(len(pnl_sorted) * 0.05)
-        expected_shortfall_95 = statistics.mean(pnl_sorted[:es_95_threshold]) if es_95_threshold > 0 else 0
+        es_95_threshold = int(len(returns_sorted) * 0.05)
+        expected_shortfall_95 = statistics.mean(returns_sorted[:es_95_threshold]) if es_95_threshold > 0 else 0
 
         sortino_ratio = 0
-        downside_returns = [r for r in pnl_values if r < 0]
+        downside_returns = [r for r in returns if r < 0]
         if downside_returns:
             downside_deviation = statistics.stdev(downside_returns)
             sortino_ratio = avg_return / downside_deviation if downside_deviation > 0 else 0
 
         calmar_ratio = (total_return / abs(max_drawdown)) if max_drawdown != 0 else 0
 
-        n = len(pnl_values)
+        n = len(returns)
         mean = avg_return
         skewness = 0
         kurtosis = 0
         if n > 2 and volatility > 0:
-            third_moment = sum(((x - mean) ** 3) for x in pnl_values) / n
-            fourth_moment = sum(((x - mean) ** 4) for x in pnl_values) / n
+            third_moment = sum(((x - mean) ** 3) for x in returns) / n
+            fourth_moment = sum(((x - mean) ** 4) for x in returns) / n
 
             skewness = third_moment / (volatility ** 3)
             kurtosis = (fourth_moment / (volatility ** 4)) - 3
 
         return {
-            "total_return": round(total_return, 2),
-            "volatility": round(volatility, 2),
+            "total_return": round(total_return, 4),
+            "volatility": round(volatility, 4),
             "sharpe_ratio": round((avg_return / volatility) if volatility > 0 else 0, 3),
             "sortino_ratio": round(sortino_ratio, 3),
             "calmar_ratio": round(calmar_ratio, 3),
             "max_drawdown": round(max_drawdown * 100, 2),
             "longest_drawdown_periods": longest_drawdown,
-            "var_99": round(var_99, 2),
-            "var_95": round(var_95, 2),
-            "var_90": round(var_90, 2),
-            "expected_shortfall_95": round(expected_shortfall_95, 2),
-            "downside_deviation": round(statistics.stdev(downside_returns), 2) if downside_returns else 0,
+            "var_99": round(var_99, 4),
+            "var_95": round(var_95, 4),
+            "var_90": round(var_90, 4),
+            "expected_shortfall_95": round(expected_shortfall_95, 4),
+            "downside_deviation": round(statistics.stdev(downside_returns), 4) if downside_returns else 0,
             "skewness": round(skewness, 3),
             "kurtosis": round(kurtosis, 3),
             "total_trades": len(trades),
@@ -707,35 +718,39 @@ class PortfolioAnalytics:
         if len(trades) < 10:
             return {"error": "Insufficient data for VaR analysis"}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
-        pnl_sorted = sorted(pnl_values)
+        returns = [
+            float(t.pnl) / (float(t.quantity) * float(t.entry_price))
+            for t in trades
+            if t.pnl is not None and t.quantity and t.entry_price
+        ]
+        returns_sorted = sorted(returns)
 
         var_levels = [0.01, 0.05, 0.10, 0.25]
         var_results = {}
 
         for level in var_levels:
-            index = int(len(pnl_sorted) * level)
-            var_value = pnl_sorted[index] if index < len(pnl_sorted) else pnl_sorted[0]
+            index = int(len(returns_sorted) * level)
+            var_value = returns_sorted[index] if index < len(returns_sorted) else returns_sorted[0]
             confidence = int((1 - level) * 100)
 
             var_results[f"var_{confidence}"] = {
-                "value": round(var_value, 2),
+                "value": round(var_value, 4),
                 "confidence": f"{confidence}%",
-                "interpretation": f"95% of the time, losses won't exceed ${abs(var_value):.0f}"
+                "interpretation": f"{confidence}% confidence returns won't drop below {abs(var_value) * 100:.1f}%"
             }
 
-        es_threshold = int(len(pnl_sorted) * 0.05)
-        tail_losses = pnl_sorted[:es_threshold] if es_threshold > 0 else [pnl_sorted[0]]
+        es_threshold = int(len(returns_sorted) * 0.05)
+        tail_losses = returns_sorted[:es_threshold] if es_threshold > 0 else [returns_sorted[0]]
         expected_shortfall = statistics.mean(tail_losses)
 
         return {
             "var_levels": var_results,
             "expected_shortfall": {
-                "value": round(expected_shortfall, 2),
-                "interpretation": f"Average loss in worst 5% of cases: ${abs(expected_shortfall):.0f}"
+                "value": round(expected_shortfall, 4),
+                "interpretation": f"Average loss in worst 5% of cases: {abs(expected_shortfall) * 100:.1f}%"
             },
             "worst_case": {
-                "single_trade": round(min(pnl_values), 2),
+                "single_trade": round(min(returns), 4),
                 "percentile_1": var_results["var_99"]["value"]
             }
         }
@@ -829,7 +844,7 @@ class PortfolioAnalytics:
                     "losing_trades": 0,
                     "max_win": 0,
                     "max_loss": 0,
-                    "pnl_values": []
+                    "returns": []
                 }
 
             symbol_stats[symbol]["trades"] += 1
@@ -837,7 +852,9 @@ class PortfolioAnalytics:
             if trade.pnl is not None:
                 pnl = float(trade.pnl)
                 symbol_stats[symbol]["total_pnl"] += pnl
-                symbol_stats[symbol]["pnl_values"].append(pnl)
+                if trade.quantity and trade.entry_price:
+                    ret = pnl / (float(trade.quantity) * float(trade.entry_price))
+                    symbol_stats[symbol]["returns"].append(ret)
 
                 if pnl > 0:
                     symbol_stats[symbol]["winning_trades"] += 1
@@ -859,9 +876,9 @@ class PortfolioAnalytics:
             volume_share = (stats["total_volume"] / total_volume) * 100 if total_volume > 0 else 0
 
             symbol_volatility = 0
-            if len(stats["pnl_values"]) > 1:
+            if len(stats["returns"]) > 1:
                 import statistics
-                symbol_volatility = statistics.stdev(stats["pnl_values"])
+                symbol_volatility = statistics.stdev(stats["returns"])
 
             exposure_analysis.append({
                 "symbol": symbol,
@@ -891,19 +908,21 @@ class PortfolioAnalytics:
             if trade.opened_at and trade.pnl:
                 hour = trade.opened_at.hour
                 if hour not in hourly_stats:
-                    hourly_stats[hour] = {"trades": 0, "total_pnl": 0, "pnl_values": []}
+                    hourly_stats[hour] = {"trades": 0, "total_pnl": 0, "returns": []}
 
                 hourly_stats[hour]["trades"] += 1
                 hourly_stats[hour]["total_pnl"] += float(trade.pnl)
-                hourly_stats[hour]["pnl_values"].append(float(trade.pnl))
+                if trade.quantity and trade.entry_price:
+                    hourly_stats[hour]["returns"].append(float(trade.pnl) / (float(trade.quantity) * float(trade.entry_price)))
 
                 day_name = trade.opened_at.strftime("%A")
                 if day_name not in daily_stats:
-                    daily_stats[day_name] = {"trades": 0, "total_pnl": 0, "pnl_values": []}
+                    daily_stats[day_name] = {"trades": 0, "total_pnl": 0, "returns": []}
 
                 daily_stats[day_name]["trades"] += 1
                 daily_stats[day_name]["total_pnl"] += float(trade.pnl)
-                daily_stats[day_name]["pnl_values"].append(float(trade.pnl))
+                if trade.quantity and trade.entry_price:
+                    daily_stats[day_name]["returns"].append(float(trade.pnl) / (float(trade.quantity) * float(trade.entry_price)))
 
         hourly_analysis = []
         for hour in sorted(hourly_stats.keys()):
@@ -911,7 +930,7 @@ class PortfolioAnalytics:
             avg_pnl = stats["total_pnl"] / stats["trades"] if stats["trades"] > 0 else 0
 
             import statistics
-            volatility = statistics.stdev(stats["pnl_values"]) if len(stats["pnl_values"]) > 1 else 0
+            volatility = statistics.stdev(stats["returns"]) if len(stats["returns"]) > 1 else 0
 
             hourly_analysis.append({
                 "hour": f"{hour:02d}:00",
@@ -930,7 +949,7 @@ class PortfolioAnalytics:
                 stats = daily_stats[day]
                 avg_pnl = stats["total_pnl"] / stats["trades"] if stats["trades"] > 0 else 0
 
-                volatility = statistics.stdev(stats["pnl_values"]) if len(stats["pnl_values"]) > 1 else 0
+                volatility = statistics.stdev(stats["returns"]) if len(stats["returns"]) > 1 else 0
 
                 daily_analysis.append({
                     "day": day,
@@ -954,21 +973,25 @@ class PortfolioAnalytics:
         if len(trades) < 2:
             return {"error": "Insufficient data for risk-adjusted returns"}
 
-        pnl_values = [float(t.pnl) for t in trades if t.pnl is not None]
-        if len(pnl_values) < 2:
-            return {"error": "Insufficient P&L data"}
+        returns = [
+            float(t.pnl) / (float(t.quantity) * float(t.entry_price))
+            for t in trades
+            if t.pnl is not None and t.quantity and t.entry_price
+        ]
+        if len(returns) < 2:
+            return {"error": "Insufficient return data"}
 
         import statistics
 
-        avg_return = statistics.mean(pnl_values)
-        volatility = statistics.stdev(pnl_values)
-        total_return = sum(pnl_values)
+        avg_return = statistics.mean(returns)
+        volatility = statistics.stdev(returns)
+        total_return = sum(returns)
 
         risk_free_rate = 0.02 / 252
 
         sharpe = (avg_return - risk_free_rate) / volatility if volatility > 0 else 0
 
-        downside_returns = [r for r in pnl_values if r < risk_free_rate]
+        downside_returns = [r for r in returns if r < risk_free_rate]
         sortino = 0
         if downside_returns:
             downside_deviation = statistics.stdev(downside_returns)
