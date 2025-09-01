@@ -9,13 +9,15 @@ validation endpoints to mirror the behaviour of the service layer.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict, Any
 
 from app.database import get_db
 from app.models.user import User
 from app.core.auth import get_current_verified_user
 from app.schemas.strategy import StrategyCreate, StrategyUpdate, StrategyOut
 from app.services.strategy_manager import StrategyManager
+from app.services.trade_reporting import TradeReporting
+from app.schemas.reporting import StrategyComparisonResponse
 import logging
 
 
@@ -238,5 +240,84 @@ async def validate_strategy_config(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to validate configuration",
+        )
+
+
+@router.get("/strategies/{strategy_id}/performance", response_model=Dict[str, Any])
+async def get_strategy_performance(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Obtener métricas detalladas de performance de una estrategia"""
+    try:
+        strategy_manager = StrategyManager(db)
+        performance = strategy_manager.get_strategy_performance(strategy_id, current_user.id)
+
+        if not performance or performance.get("total_trades", 0) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Strategy not found or has no trading history",
+            )
+
+        return performance
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting strategy performance: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve strategy performance",
+        )
+
+
+@router.get("/strategies/{strategy_id}/equity-curve", response_model=List[Dict[str, Any]])
+async def get_strategy_equity_curve(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Obtener curva de equity de una estrategia"""
+    try:
+        strategy_manager = StrategyManager(db)
+        equity_curve = strategy_manager.get_strategy_equity_curve(strategy_id, current_user.id)
+
+        return equity_curve
+
+    except Exception as e:
+        logger.error(f"Error getting equity curve: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve equity curve",
+        )
+
+
+@router.get("/strategies/compare", response_model=StrategyComparisonResponse)
+async def compare_strategies(
+    strategy_ids: List[int] = Query(..., description="List of strategy IDs to compare"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Comparar performance entre múltiples estrategias"""
+    try:
+        if len(strategy_ids) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least 2 strategies required for comparison",
+            )
+
+        strategy_manager = StrategyManager(db)
+        comparison = strategy_manager.compare_strategies(current_user.id, strategy_ids)
+
+        return comparison
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error comparing strategies: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to compare strategies",
         )
 
