@@ -43,7 +43,9 @@ class PortfolioHealthResponse(BaseModel):
 
 
 class ReportRequest(BaseModel):
-    report_type: str = Field(..., regex="^(daily|weekly|strategy_comparison|portfolio_health)$")
+    report_type: str = Field(
+        ..., pattern="^(daily|weekly|strategy_comparison|portfolio_health)$"
+    )
     date: Optional[date] = None
     weeks_back: Optional[int] = Field(default=0, ge=0)
     days_period: Optional[int] = Field(default=30, ge=1, le=365)
