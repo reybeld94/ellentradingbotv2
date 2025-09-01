@@ -148,6 +148,19 @@ export const api = {
     },
   },
 
+  // Analytics endpoints
+  analytics: {
+    getPerformanceMetrics: async (timeframe: string = '1M', portfolioId?: number) => {
+      const params = new URLSearchParams({ timeframe });
+      if (portfolioId) params.append('portfolio_id', portfolioId.toString());
+      return authenticatedFetch(`${API_BASE_URL}/analytics/performance?${params}`);
+    },
+
+    getSummary: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/analytics/summary`);
+    },
+  },
+
   // Strategy endpoints
   strategies: {
     list: async () => {
