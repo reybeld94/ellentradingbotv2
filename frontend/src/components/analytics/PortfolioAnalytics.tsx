@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import {
-  TrendingUp, TrendingDown, DollarSign, Target, Clock,
-  BarChart3, PieChart, AlertTriangle, Trophy, Shield
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Target,
+  Clock,
+  BarChart3,
+  PieChart,
+  AlertTriangle,
+  Trophy,
+  Shield,
+  Calendar,
 } from 'lucide-react';
 import api from '../../services/api';
+import EquityCurve from './EquityCurve';
+import TradeDistribution from './TradeDistribution';
+import MonthlyHeatmap from './MonthlyHeatmap';
 
 interface PerformanceMetrics {
   total_pnl: number;
@@ -53,6 +65,7 @@ const PortfolioAnalytics: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('1M');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'equity' | 'distribution' | 'monthly'>('overview');
 
   const timeframeOptions = [
     { value: '1D', label: '1 Day' },
@@ -199,135 +212,218 @@ const PortfolioAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard
-          title="Total P&L"
-          value={formatCurrency(metrics.total_pnl)}
-          subtitle={formatPercentage(metrics.total_pnl_percentage)}
-          icon={DollarSign}
-          colorClass={getPnlColor(metrics.total_pnl)}
-          trend={metrics.total_pnl > 0 ? 'up' : metrics.total_pnl < 0 ? 'down' : 'neutral'}
-        />
-
-        <MetricCard
-          title="Win Rate"
-          value={formatPercentage(metrics.win_rate)}
-          subtitle={`${metrics.winning_trades}/${metrics.total_trades} trades`}
-          icon={Target}
-          colorClass={metrics.win_rate >= 50 ? 'text-green-600' : 'text-red-600'}
-        />
-
-        <MetricCard
-          title="Profit Factor"
-          value={metrics.profit_factor.toFixed(2)}
-          subtitle={metrics.profit_factor > 1 ? 'Profitable' : 'Unprofitable'}
-          icon={Trophy}
-          colorClass={metrics.profit_factor > 1 ? 'text-green-600' : 'text-red-600'}
-        />
-
-        <MetricCard
-          title="Max Drawdown"
-          value={formatPercentage(metrics.max_drawdown)}
-          icon={Shield}
-          colorClass={Math.abs(metrics.max_drawdown) < 10 ? 'text-green-600' : 'text-red-600'}
-        />
+      {/* Tab Navigation */}
+      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6">
+        {[
+          { key: 'overview', label: 'Overview', icon: BarChart3 },
+          { key: 'equity', label: 'Equity Curve', icon: TrendingUp },
+          { key: 'distribution', label: 'Trade Distribution', icon: PieChart },
+          { key: 'monthly', label: 'Monthly Performance', icon: Calendar },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as any)}
+              className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Icon className="h-4 w-4 mr-2" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Advanced Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <MetricCard
-          title="Sharpe Ratio"
-          value={metrics.sharpe_ratio.toFixed(3)}
-          subtitle={metrics.sharpe_ratio > 1 ? 'Excellent' : metrics.sharpe_ratio > 0.5 ? 'Good' : 'Poor'}
-          icon={BarChart3}
-          colorClass={metrics.sharpe_ratio > 1 ? 'text-green-600' : 'text-yellow-600'}
+      {/* Content based on active tab */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Main Metrics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <MetricCard
+              title="Total P&L"
+              value={formatCurrency(metrics.total_pnl)}
+              subtitle={formatPercentage(metrics.total_pnl_percentage)}
+              icon={DollarSign}
+              colorClass={getPnlColor(metrics.total_pnl)}
+              trend={metrics.total_pnl > 0 ? 'up' : metrics.total_pnl < 0 ? 'down' : 'neutral'}
+            />
+
+            <MetricCard
+              title="Win Rate"
+              value={formatPercentage(metrics.win_rate)}
+              subtitle={`${metrics.winning_trades}/${metrics.total_trades} trades`}
+              icon={Target}
+              colorClass={metrics.win_rate >= 50 ? 'text-green-600' : 'text-red-600'}
+            />
+
+            <MetricCard
+              title="Profit Factor"
+              value={metrics.profit_factor.toFixed(2)}
+              subtitle={metrics.profit_factor > 1 ? 'Profitable' : 'Unprofitable'}
+              icon={Trophy}
+              colorClass={metrics.profit_factor > 1 ? 'text-green-600' : 'text-red-600'}
+            />
+
+            <MetricCard
+              title="Max Drawdown"
+              value={formatPercentage(metrics.max_drawdown)}
+              icon={Shield}
+              colorClass={Math.abs(metrics.max_drawdown) < 10 ? 'text-green-600' : 'text-red-600'}
+            />
+          </div>
+
+          {/* Advanced Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <MetricCard
+              title="Sharpe Ratio"
+              value={metrics.sharpe_ratio.toFixed(3)}
+              subtitle={
+                metrics.sharpe_ratio > 1
+                  ? 'Excellent'
+                  : metrics.sharpe_ratio > 0.5
+                  ? 'Good'
+                  : 'Poor'
+              }
+              icon={BarChart3}
+              colorClass={
+                metrics.sharpe_ratio > 1 ? 'text-green-600' : 'text-yellow-600'
+              }
+            />
+
+            <MetricCard
+              title="Avg Hold Time"
+              value={metrics.avg_hold_time}
+              icon={Clock}
+              colorClass="text-purple-600"
+            />
+
+            <MetricCard
+              title="Total Trades"
+              value={metrics.total_trades}
+              subtitle={`${selectedTimeframe} period`}
+              icon={PieChart}
+              colorClass="text-blue-600"
+            />
+          </div>
+
+          {/* Trade Summary */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Trade Summary</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(metrics.largest_win)}
+                </p>
+                <p className="text-sm text-gray-500">Largest Win</p>
+              </div>
+
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrency(metrics.largest_loss)}
+                </p>
+                <p className="text-sm text-gray-500">Largest Loss</p>
+              </div>
+
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(metrics.avg_win)}
+                </p>
+                <p className="text-sm text-gray-500">Avg Win</p>
+              </div>
+
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrency(metrics.avg_loss)}
+                </p>
+                <p className="text-sm text-gray-500">Avg Loss</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Comparison */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance Comparison</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-4 font-medium text-gray-700">
+                      Period
+                    </th>
+                    <th className="text-right py-2 px-4 font-medium text-gray-700">
+                      P&L
+                    </th>
+                    <th className="text-right py-2 px-4 font-medium text-gray-700">
+                      P&L %
+                    </th>
+                    <th className="text-right py-2 px-4 font-medium text-gray-700">
+                      Win Rate
+                    </th>
+                    <th className="text-right py-2 px-4 font-medium text-gray-700">
+                      Trades
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(summary.timeframes).map(([period, data]) => (
+                    <tr key={period} className="border-b">
+                      <td className="py-2 px-4 font-medium capitalize">
+                        {period
+                          .replace('d', ' day')
+                          .replace('w', ' week')
+                          .replace('m', ' month')}
+                      </td>
+                      <td
+                        className={`py-2 px-4 text-right font-medium ${getPnlColor(
+                          data.total_pnl,
+                        )}`}
+                      >
+                        {formatCurrency(data.total_pnl)}
+                      </td>
+                      <td
+                        className={`py-2 px-4 text-right ${getPnlColor(
+                          data.total_pnl_percentage,
+                        )}`}
+                      >
+                        {formatPercentage(data.total_pnl_percentage)}
+                      </td>
+                      <td className="py-2 px-4 text-right">
+                        {formatPercentage(data.win_rate)}
+                      </td>
+                      <td className="py-2 px-4 text-right">
+                        {data.total_trades}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'equity' && (
+        <EquityCurve
+          timeframe={selectedTimeframe}
+          portfolioId={summary?.portfolio_id}
+          height={500}
         />
+      )}
 
-        <MetricCard
-          title="Avg Hold Time"
-          value={metrics.avg_hold_time}
-          icon={Clock}
-          colorClass="text-purple-600"
+      {activeTab === 'distribution' && (
+        <TradeDistribution
+          timeframe={selectedTimeframe}
+          portfolioId={summary?.portfolio_id}
         />
+      )}
 
-        <MetricCard
-          title="Total Trades"
-          value={metrics.total_trades}
-          subtitle={`${selectedTimeframe} period`}
-          icon={PieChart}
-          colorClass="text-blue-600"
-        />
-      </div>
-
-      {/* Trade Summary */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Trade Summary</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(metrics.largest_win)}
-            </p>
-            <p className="text-sm text-gray-500">Largest Win</p>
-          </div>
-
-          <div className="text-center">
-            <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(metrics.largest_loss)}
-            </p>
-            <p className="text-sm text-gray-500">Largest Loss</p>
-          </div>
-
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(metrics.avg_win)}
-            </p>
-            <p className="text-sm text-gray-500">Avg Win</p>
-          </div>
-
-          <div className="text-center">
-            <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(metrics.avg_loss)}
-            </p>
-            <p className="text-sm text-gray-500">Avg Loss</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Timeframe Comparison */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance Comparison</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2 px-4 font-medium text-gray-700">Period</th>
-                <th className="text-right py-2 px-4 font-medium text-gray-700">P&L</th>
-                <th className="text-right py-2 px-4 font-medium text-gray-700">P&L %</th>
-                <th className="text-right py-2 px-4 font-medium text-gray-700">Win Rate</th>
-                <th className="text-right py-2 px-4 font-medium text-gray-700">Trades</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(summary.timeframes).map(([period, data]) => (
-                <tr key={period} className="border-b">
-                  <td className="py-2 px-4 font-medium capitalize">{period.replace('d', ' day').replace('w', ' week').replace('m', ' month')}</td>
-                  <td className={`py-2 px-4 text-right font-medium ${getPnlColor(data.total_pnl)}`}>
-                    {formatCurrency(data.total_pnl)}
-                  </td>
-                  <td className={`py-2 px-4 text-right ${getPnlColor(data.total_pnl_percentage)}`}>
-                    {formatPercentage(data.total_pnl_percentage)}
-                  </td>
-                  <td className="py-2 px-4 text-right">
-                    {formatPercentage(data.win_rate)}
-                  </td>
-                  <td className="py-2 px-4 text-right">{data.total_trades}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {activeTab === 'monthly' && (
+        <MonthlyHeatmap portfolioId={summary?.portfolio_id} />
+      )}
     </div>
   );
 };

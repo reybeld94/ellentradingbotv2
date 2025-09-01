@@ -1,7 +1,13 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
+class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+(globalThis as any).ResizeObserver = ResizeObserver;
 import PortfolioAnalytics from '../PortfolioAnalytics';
 import api from '../../../services/api';
 
@@ -83,7 +89,7 @@ describe('PortfolioAnalytics', () => {
       expect(screen.getByText('1 Week')).toBeInTheDocument();
     });
 
-    const weekButton = screen.getByText('1 Week');
+    const weekButton = screen.getAllByText('1 Week')[0];
     fireEvent.click(weekButton);
 
     await waitFor(() => {
