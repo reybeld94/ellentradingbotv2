@@ -200,21 +200,43 @@ class OrderExecutor:
             # No re-raise aquí para no afectar el fill principal
 
     def get_active_bracket_orders(
-        self, user_id: Optional[int] = None
+        self,
+        user_id: Optional[int] = None,
+        statuses: Optional[List[OrderStatus]] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Obtener todas las bracket orders activas"""
         try:
             from app.execution.bracket_order_processor import BracketOrderProcessor
 
-            query = self.db.query(Order).filter(
-                Order.is_bracket_parent == True,  # noqa: E712
-                Order.status.in_(
-                    [OrderStatus.FILLED, OrderStatus.SENT, OrderStatus.ACCEPTED]
-                ),
-            )
+            query = self.db.query(Order).filter(Order.is_bracket_parent == True)  # noqa: E712
+
+            if statuses:
+                query = query.filter(Order.status.in_(statuses))
+            else:
+                query = query.filter(
+                    Order.status.in_(
+                        [OrderStatus.FILLED, OrderStatus.SENT, OrderStatus.ACCEPTED]
+                    )
+                )
 
             if user_id:
                 query = query.filter(Order.user_id == user_id)
+
+            if start_date:
+                query = query.filter(Order.created_at >= start_date)
+
+            if end_date:
+                query = query.filter(Order.created_at <= end_date)
+
+            if offset:
+                query = query.offset(offset)
+
+            if limit:
+                query = query.limit(limit)
 
             parent_orders = query.all()
             bracket_processor = BracketOrderProcessor(self.db)

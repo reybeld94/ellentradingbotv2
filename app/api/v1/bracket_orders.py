@@ -4,6 +4,7 @@ Bracket Orders API - Endpoints para monitoreo y control de bracket orders
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 import logging
 
 from app.database import get_db
@@ -21,6 +22,11 @@ router = APIRouter()
 @router.get("/active")
 async def get_active_bracket_orders(
     user_id: Optional[int] = Query(None, description="Filter by user ID (admin only)"),
+    status: Optional[List[OrderStatus]] = Query(None, description="Filter by order status"),
+    start_date: Optional[datetime] = Query(None, description="Filter orders created after this date"),
+    end_date: Optional[datetime] = Query(None, description="Filter orders created before this date"),
+    limit: int = Query(100, ge=1, le=1000, description="Max records to return"),
+    offset: int = Query(0, ge=0, description="Records to skip"),
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db)
 ):
@@ -30,19 +36,26 @@ async def get_active_bracket_orders(
         filter_user_id = current_user.id
         if current_user.is_admin and user_id:
             filter_user_id = user_id
-        
+
         executor = OrderExecutor()
         executor.db = db
-        
-        bracket_orders = executor.get_active_bracket_orders(filter_user_id)
-        
+
+        bracket_orders = executor.get_active_bracket_orders(
+            user_id=filter_user_id,
+            statuses=status,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
+        )
+
         return {
             "status": "success",
             "bracket_orders": bracket_orders,
             "total_count": len(bracket_orders),
-            "user_id": filter_user_id
+            "user_id": filter_user_id,
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting active bracket orders: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
