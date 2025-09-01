@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   TrendingDown,
   Clock,
-  Target,
   BarChart3,
   Gauge,
   Users,
@@ -417,7 +416,7 @@ const RiskDashboard: React.FC<RiskDashboardProps> = ({ timeframe = '3M', portfol
                 {data.risk_limits_status.configured_limits && Object.entries(data.risk_limits_status.configured_limits).map(([key, value]) => (
                   <div key={key} className="flex justify-between text-sm">
                     <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ').replace(/max /g, 'Max ').replace(/trading/g, 'Trading')}:</span>
-                    <span className="font-medium text-gray-900">{typeof value === 'number' ? (key.includes('drawdown') ? `${value}%` : formatCurrency(value)) : value}</span>
+                    <span className="font-medium text-gray-900">{typeof value === 'number' ? (key.includes('drawdown') ? `${value}%` : formatCurrency(value)) : String(value)}</span>
                   </div>
                 ))}
               </div>

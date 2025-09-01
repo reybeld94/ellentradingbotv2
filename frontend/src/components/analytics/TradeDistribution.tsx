@@ -228,12 +228,12 @@ const TradeDistribution: React.FC<TradeDistributionProps> = ({
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent = 0 }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                 outerRadius={120}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {pieData.map((entry, index) => (
+                {pieData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
