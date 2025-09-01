@@ -14,6 +14,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 # Create lightweight app.execution package to avoid heavy dependencies
 execution_pkg = types.ModuleType("app.execution")
+execution_pkg.__path__ = []
 sys.modules.setdefault("app.execution", execution_pkg)
 
 
@@ -28,3 +29,4 @@ _load_module("app.execution.order_executor", str(ROOT / "app/execution/order_exe
 _load_module(
     "app.execution.bracket_order_processor", str(ROOT / "app/execution/bracket_order_processor.py")
 )
+_load_module("app.execution.order_manager", str(ROOT / "app/execution/order_manager.py"))
