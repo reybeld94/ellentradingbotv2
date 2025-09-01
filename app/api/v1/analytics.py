@@ -131,3 +131,99 @@ async def get_analytics_summary(
             status_code=500,
             detail=f"Error getting analytics summary: {str(e)}",
         )
+
+
+@router.get("/trade-analytics")
+async def get_trade_analytics(
+    timeframe: TimeframeEnum = Query(TimeframeEnum.THREE_MONTHS, description="Período para análisis"),
+    portfolio_id: Optional[int] = Query(None, description="ID del portfolio específico (opcional)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Obtiene analytics avanzados de trades incluyendo equity curve, drawdowns y distribuciones"""
+    try:
+        if portfolio_id:
+            portfolio = portfolio_service.get_by_id(db, portfolio_id, current_user.id)
+            if not portfolio:
+                raise HTTPException(status_code=404, detail="Portfolio not found")
+        else:
+            portfolio = portfolio_service.get_active(db, current_user)
+            if not portfolio:
+                raise HTTPException(status_code=400, detail="No active portfolio found")
+
+        analytics = PortfolioAnalytics(db)
+        trade_analytics = analytics.get_trade_analytics(
+            user_id=current_user.id,
+            portfolio_id=portfolio.id,
+            timeframe=timeframe.value,
+        )
+
+        return trade_analytics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting trade analytics: {str(e)}")
+
+
+@router.get("/equity-curve")
+async def get_equity_curve(
+    timeframe: TimeframeEnum = Query(TimeframeEnum.THREE_MONTHS, description="Período para equity curve"),
+    portfolio_id: Optional[int] = Query(None, description="ID del portfolio específico (opcional)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Obtiene datos de equity curve para gráfico"""
+    try:
+        if portfolio_id:
+            portfolio = portfolio_service.get_by_id(db, portfolio_id, current_user.id)
+            if not portfolio:
+                raise HTTPException(status_code=404, detail="Portfolio not found")
+        else:
+            portfolio = portfolio_service.get_active(db, current_user)
+            if not portfolio:
+                raise HTTPException(status_code=400, detail="No active portfolio found")
+
+        analytics = PortfolioAnalytics(db)
+        trade_analytics = analytics.get_trade_analytics(
+            user_id=current_user.id,
+            portfolio_id=portfolio.id,
+            timeframe=timeframe.value,
+        )
+
+        return {
+            "equity_curve": trade_analytics["equity_curve"],
+            "drawdown_periods": trade_analytics["drawdown_periods"],
+            "timeframe": timeframe.value,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting equity curve: {str(e)}")
+
+
+@router.get("/monthly-performance")
+async def get_monthly_performance(
+    portfolio_id: Optional[int] = Query(None, description="ID del portfolio específico (opcional)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Obtiene performance mensual para heatmap"""
+    try:
+        if portfolio_id:
+            portfolio = portfolio_service.get_by_id(db, portfolio_id, current_user.id)
+            if not portfolio:
+                raise HTTPException(status_code=404, detail="Portfolio not found")
+        else:
+            portfolio = portfolio_service.get_active(db, current_user)
+            if not portfolio:
+                raise HTTPException(status_code=400, detail="No active portfolio found")
+
+        analytics = PortfolioAnalytics(db)
+        trade_analytics = analytics.get_trade_analytics(
+            user_id=current_user.id,
+            portfolio_id=portfolio.id,
+            timeframe="ALL",
+        )
+
+        return {
+            "monthly_returns": trade_analytics["monthly_returns"],
+            "strategy_breakdown": trade_analytics["strategy_breakdown"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting monthly performance: {str(e)}")

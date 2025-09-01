@@ -159,6 +159,23 @@ export const api = {
     getSummary: async () => {
       return authenticatedFetch(`${API_BASE_URL}/analytics/summary`);
     },
+
+    getTradeAnalytics: async (timeframe: string = '3M', portfolioId?: number) => {
+      const params = new URLSearchParams({ timeframe });
+      if (portfolioId) params.append('portfolio_id', portfolioId.toString());
+      return authenticatedFetch(`${API_BASE_URL}/analytics/trade-analytics?${params}`);
+    },
+
+    getEquityCurve: async (timeframe: string = '3M', portfolioId?: number) => {
+      const params = new URLSearchParams({ timeframe });
+      if (portfolioId) params.append('portfolio_id', portfolioId.toString());
+      return authenticatedFetch(`${API_BASE_URL}/analytics/equity-curve?${params}`);
+    },
+
+    getMonthlyPerformance: async (portfolioId?: number) => {
+      const params = portfolioId ? `?portfolio_id=${portfolioId}` : '';
+      return authenticatedFetch(`${API_BASE_URL}/analytics/monthly-performance${params}`);
+    },
   },
 
   // Strategy endpoints
