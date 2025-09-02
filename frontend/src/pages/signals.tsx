@@ -1,56 +1,70 @@
 import React, { useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
-import { connectWebSocket } from '../services/ws';
 import {
-  Activity, CheckCircle, XCircle, Clock, AlertCircle, RefreshCw, Filter,
-  Search, TrendingUp, TrendingDown,
-  ArrowUp, ArrowDown, Calendar, Eye, Settings2
+  Plus, Filter, Download, RefreshCw, Zap,
+  LayoutGrid, List as ListIcon
 } from 'lucide-react';
-import Pagination from '../components/Pagination';
-import SymbolLogo from '../components/SymbolLogo';
+import SignalCard from '../components/signals/SignalCard';
+import SignalFilters from '../components/signals/SignalFilters';
+import SignalStats from '../components/signals/SignalStats';
+import SignalModal from '../components/signals/SignalModal';
 
 interface Signal {
   id: number;
   symbol: string;
-  action: string;
-  quantity: number;
-  status: string;
-  error_message?: string;
-  timestamp: string;
-  source: string;
-  strategy_id?: string;
-  reason?: string;
-  confidence?: number;
+  action: 'BUY' | 'SELL';
+  price: number;
+  confidence: number;
+  strategy_id: string;
+  strategy_name?: string;
+  created_at: string;
+  status: 'pending' | 'processed' | 'error' | 'cancelled';
+  quantity?: number;
+  target_price?: number;
+  stop_loss?: number;
+  reasoning?: string;
+  market_conditions?: string;
+  risk_score?: number;
+  expected_return?: number;
+}
+
+interface Strategy {
+  id: string;
+  name: string;
+}
+
+interface FilterOptions {
+  search: string;
+  status: string[];
+  action: string[];
+  confidence: [number, number];
+  dateRange: string;
+  strategy: string[];
 }
 
 const SignalsPage: React.FC = () => {
-  const [signals, setSignals] = useState<Signal[]>([]); // Inicializar como array vacío
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'processed' | 'error' | 'pending'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'timestamp' | 'confidence' | 'symbol'>('timestamp');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  const [filters, setFilters] = useState<FilterOptions>({
+    search: '',
+    status: [],
+    action: [],
+    confidence: [0, 100],
+    dateRange: '30d',
+    strategy: []
+  });
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, searchTerm, sortBy, sortOrder]);
-
-  // Función para obtener el token del localStorage
   const getAuthToken = (): string | null => {
     return localStorage.getItem('token');
   };
 
-  // Función para hacer requests autenticados
   const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
-
-    if (!token) {
-      console.error('❌ No authentication token found');
-      throw new Error('No authentication token available');
-    }
+    if (!token) throw new Error('No authentication token available');
 
     const headers = {
       'Content-Type': 'application/json',
@@ -58,526 +72,292 @@ const SignalsPage: React.FC = () => {
       ...options.headers,
     };
 
-    console.log('🔐 Making authenticated request to:', url);
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-
-      console.log('📨 Response status:', response.status);
-
-      if (response.status === 401) {
-        console.error('❌ Token expired or invalid');
-        localStorage.removeItem('token');
-        window.location.reload();
-        throw new Error('Authentication failed - token expired');
-      }
-
-      if (response.status === 403) {
-        console.error('❌ Access forbidden');
-        const errorText = await response.text();
-        console.error('📋 Error details:', errorText);
-        throw new Error('Access forbidden - check permissions');
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API Error:', response.status, errorText);
-        throw new Error(`API Error: ${response.status}`);
-      }
-
-      return response;
-    } catch (error) {
-      console.error('💥 Network error:', error);
-      throw error;
+    const response = await fetch(url, { ...options, headers });
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.reload();
+      throw new Error('Authentication failed');
     }
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    return response;
   };
 
   const fetchSignals = async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      console.log('🔄 Fetching signals...');
       const response = await authenticatedFetch('/api/v1/signals');
       const data = await response.json();
-
-      console.log('✅ Signals fetched successfully:', data);
-
-      // Asegurar que data es un array
-      if (Array.isArray(data)) {
-        setSignals(data);
-      } else {
-        console.warn('⚠️ Signals response is not an array:', data);
-        setSignals([]); // Fallback a array vacío
-      }
-
-    } catch (err: any) {
-      console.error('❌ Error fetching signals:', err);
-      setError(err.message || 'Failed to load signals');
-      setSignals([]); // IMPORTANTE: asegurar que signals sea un array vacío en caso de error
+      setSignals(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching signals:', error);
+      setSignals([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchStrategies = async () => {
+    try {
+      const response = await authenticatedFetch('/api/v1/strategies');
+      const data = await response.json();
+      setStrategies(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching strategies:', error);
+      setStrategies([]);
+    }
+  };
+
   useEffect(() => {
     fetchSignals();
-    const ws = connectWebSocket({
-      onSignal: (sig) => setSignals((prev) => [sig, ...prev]),
-    });
-    return () => ws.close();
+    fetchStrategies();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchSignals, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Stats Card Component
-  const StatsCard: React.FC<{
-    title: string;
-    value: string | number;
-    icon: React.ComponentType<any>;
-    gradient: string;
-    trend?: { value: string; positive: boolean };
-  }> = ({ title, value, icon: Icon, gradient, trend }) => (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-300 group">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-          {trend && (
-            <div className={`flex items-center mt-2 text-sm font-medium ${
-              trend.positive ? 'text-emerald-600' : 'text-red-500'
-            }`}>
-              {trend.positive ?
-                <ArrowUp className="h-4 w-4 mr-1" /> :
-                <ArrowDown className="h-4 w-4 mr-1" />
-              }
-              {trend.value}
-            </div>
-          )}
-        </div>
-        <div className={`p-4 rounded-2xl ${gradient} group-hover:scale-110 transition-transform duration-300`}>
-          <Icon className="h-7 w-7 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-
-  // Filter Button Component
-  const FilterButton: React.FC<{
-    active: boolean;
-    onClick: () => void;
-    children: ReactNode;
-    count?: number;
-  }> = ({ active, onClick, children, count }) => (
-    <button
-      onClick={onClick}
-      className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-        active
-          ? 'bg-blue-100 text-blue-800 shadow-sm'
-          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-      }`}
-    >
-      {children}
-      {count !== undefined && count > 0 && (
-        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-          {count}
-        </span>
-      )}
-    </button>
-  );
-
-  // Signal Row Component
-  const SignalRow: React.FC<{ signal: Signal }> = ({ signal }) => {
-    const getStatusIcon = () => {
-      switch (signal.status) {
-        case 'processed':
-          return <CheckCircle className="h-5 w-5 text-emerald-600" />;
-        case 'error':
-          return (
-            <span title={signal.error_message}>
-              <XCircle className="h-5 w-5 text-red-600" />
-            </span>
-          );
-        case 'pending':
-          return <Clock className="h-5 w-5 text-yellow-600" />;
-        default:
-          return null;
-      }
-    };
-
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'processed': return 'bg-emerald-100 text-emerald-800';
-        case 'error': return 'bg-red-100 text-red-800';
-        case 'pending': return 'bg-yellow-100 text-yellow-800';
-        default: return 'bg-gray-100 text-gray-800';
-      }
-    };
-
-    return (
-      <tr className="hover:bg-gray-50 transition-colors duration-200 group">
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="flex items-center">
-            {getStatusIcon()}
-            <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(signal.status)}`}>
-              {signal.status}
-            </span>
-          </div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="flex items-center">
-            <SymbolLogo symbol={signal.symbol} className="mr-3" />
-            <span className="text-sm font-semibold text-gray-900">{signal.symbol}</span>
-          </div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="flex items-center">
-            {signal.action.toLowerCase() === 'buy' ?
-              <TrendingUp className="h-4 w-4 text-emerald-600 mr-2" /> :
-              <TrendingDown className="h-4 w-4 text-red-600 mr-2" />
-            }
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-              signal.action.toLowerCase() === 'buy' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-            }`}>
-              {signal.action.toUpperCase()}
-            </span>
-          </div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div>
-            <p className="text-sm font-medium text-gray-900">{signal.strategy_id || 'Unknown'}</p>
-            {signal.reason && (
-              <p className="text-xs text-gray-500 truncate max-w-32" title={signal.reason}>
-                {signal.reason}
-              </p>
-            )}
-          </div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-          {signal.quantity || 'Auto'}
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          {signal.confidence ? (
-            <div className="flex items-center">
-              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                <div
-                  className={`h-2 rounded-full ${
-                    signal.confidence >= 80 ? 'bg-emerald-500' :
-                    signal.confidence >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${signal.confidence}%` }}
-                ></div>
-              </div>
-              <span className="text-sm font-medium text-gray-600">{signal.confidence}%</span>
-            </div>
-          ) : (
-            <span className="text-sm text-gray-400">--</span>
-          )}
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          <div>
-            <p>{new Date(signal.timestamp).toLocaleDateString()}</p>
-            <p className="text-xs">{new Date(signal.timestamp).toLocaleTimeString()}</p>
-          </div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button className="p-1 text-gray-400 hover:text-blue-600 transition-colors duration-200">
-              <Eye className="h-4 w-4" />
-            </button>
-            <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200">
-              <Settings2 className="h-4 w-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    );
-  };
-
-  // Asegurar que signals es un array antes de usar filter
-  const safeSignals = Array.isArray(signals) ? signals : [];
-
-  // Filtrar y ordenar signals
-  const filteredAndSortedSignals = safeSignals
-    .filter(signal => {
-      const matchesFilter = filter === 'all' || signal.status === filter;
-      const matchesSearch = signal.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           signal.strategy_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           signal.source.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesFilter && matchesSearch;
-    })
-    .sort((a, b) => {
-      let aVal, bVal;
-      switch (sortBy) {
-        case 'confidence':
-          aVal = a.confidence || 0;
-          bVal = b.confidence || 0;
-          break;
-        case 'symbol':
-          aVal = a.symbol;
-          bVal = b.symbol;
-          break;
-        default:
-          aVal = new Date(a.timestamp).getTime();
-          bVal = new Date(b.timestamp).getTime();
-      }
-
-      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-  const totalPages = Math.ceil(filteredAndSortedSignals.length / PAGE_SIZE);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages || 1);
+  // Filter signals based on current filters
+  const filteredSignals = signals.filter(signal => {
+    // Search filter
+    if (filters.search && !signal.symbol.toLowerCase().includes(filters.search.toLowerCase()) &&
+        !signal.strategy_name?.toLowerCase().includes(filters.search.toLowerCase())) {
+      return false;
     }
-  }, [totalPages, currentPage]);
 
-  const paginatedSignals = filteredAndSortedSignals.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+    // Status filter
+    if (filters.status.length > 0 && !filters.status.includes(signal.status)) {
+      return false;
+    }
 
+    // Action filter
+    if (filters.action.length > 0 && !filters.action.includes(signal.action)) {
+      return false;
+    }
+
+    // Confidence filter
+    if (signal.confidence < filters.confidence[0] || signal.confidence > filters.confidence[1]) {
+      return false;
+    }
+
+    // Strategy filter
+    if (filters.strategy.length > 0 && !filters.strategy.includes(signal.strategy_id)) {
+      return false;
+    }
+
+    // Date range filter
+    const signalDate = new Date(signal.created_at);
+    const now = new Date();
+    const daysDiff = Math.floor((now.getTime() - signalDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    switch (filters.dateRange) {
+      case 'today':
+        return daysDiff === 0;
+      case '7d':
+        return daysDiff <= 7;
+      case '30d':
+        return daysDiff <= 30;
+      case '90d':
+        return daysDiff <= 90;
+      default:
+        return true;
+    }
+  });
+
+  // Calculate stats
   const stats = {
-    total: safeSignals.length,
-    processed: safeSignals.filter(s => s.status === 'processed').length,
-    errors: safeSignals.filter(s => s.status === 'error').length,
-    pending: safeSignals.filter(s => s.status === 'pending').length,
+    total: signals.length,
+    pending: signals.filter(s => s.status === 'pending').length,
+    executed: signals.filter(s => s.status === 'processed').length,
+    failed: signals.filter(s => s.status === 'error').length,
+    averageConfidence: signals.length > 0 
+      ? signals.reduce((sum, s) => sum + s.confidence, 0) / signals.length 
+      : 0,
+    successRate: signals.length > 0 
+      ? (signals.filter(s => s.status === 'processed').length / signals.length) * 100 
+      : 0,
+    todayCount: signals.filter(s => {
+      const signalDate = new Date(s.created_at);
+      const today = new Date();
+      return signalDate.toDateString() === today.toDateString();
+    }).length,
+    topStrategy: 'AI Momentum'
   };
 
-  const successRate = stats.total > 0 ? ((stats.processed / stats.total) * 100).toFixed(1) : '0';
+  const handleExecuteSignal = async (signalId: number) => {
+    try {
+      await authenticatedFetch(`/api/v1/signals/${signalId}/execute`, {
+        method: 'POST'
+      });
+      // Refresh signals after execution
+      fetchSignals();
+    } catch (error) {
+      console.error('Error executing signal:', error);
+    }
+  };
 
-  if (loading) {
+  const handleCancelSignal = async (signalId: number) => {
+    try {
+      await authenticatedFetch(`/api/v1/signals/${signalId}`, {
+        method: 'DELETE'
+      });
+      // Refresh signals after cancellation
+      fetchSignals();
+    } catch (error) {
+      console.error('Error cancelling signal:', error);
+    }
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      search: '',
+      status: [],
+      action: [],
+      confidence: [0, 100],
+      dateRange: '30d',
+      strategy: []
+    });
+  };
+
+  const exportSignals = () => {
+    // Implementation for exporting signals to CSV
+    console.log('Exporting signals...');
+  };
+
+  if (loading && signals.length === 0) {
     return (
-      <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600 font-medium">Loading signals...</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center mb-6 mx-auto animate-pulse">
+            <Zap className="w-8 h-8 text-white" />
           </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Loading Signals</h2>
+          <p className="text-slate-600">Fetching your trading signals...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Trading Signals</h1>
-            <p className="text-gray-600">Monitor and analyze all trading signals from TradingView</p>
+            <h1 className="text-3xl font-bold text-slate-900">Trading Signals</h1>
+            <p className="text-slate-600 mt-1">
+              AI-generated trading opportunities and market insights
+            </p>
           </div>
-          <div className="mt-4 lg:mt-0 flex flex-wrap gap-3">
+          
+          <div className="flex items-center space-x-3">
             <button
-              onClick={fetchSignals}
-              className="flex items-center px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200"
+              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+              className="btn-ghost"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              {viewMode === 'grid' ? <ListIcon className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+            </button>
+            
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`btn-secondary ${showFilters ? 'bg-primary-50 text-primary-700 border-primary-200' : ''}`}
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filters
+            </button>
+            
+            <button onClick={exportSignals} className="btn-ghost">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </button>
+            
+            <button onClick={fetchSignals} className="btn-secondary">
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
+            </button>
+            
+            <button className="btn-primary">
+              <Plus className="w-4 h-4 mr-2" />
+              Manual Signal
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Total Signals"
-          value={stats.total}
-          icon={Activity}
-          gradient="bg-gradient-to-r from-blue-500 to-indigo-500"
-        />
-        <StatsCard
-          title="Processed"
-          value={stats.processed}
-          icon={CheckCircle}
-          gradient="bg-gradient-to-r from-emerald-500 to-green-500"
-          trend={{ value: `${successRate}% success`, positive: parseFloat(successRate) > 70 }}
-        />
-        <StatsCard
-          title="Pending"
-          value={stats.pending}
-          icon={Clock}
-          gradient="bg-gradient-to-r from-yellow-500 to-orange-500"
-        />
-        <StatsCard
-          title="Errors"
-          value={stats.errors}
-          icon={XCircle}
-          gradient="bg-gradient-to-r from-red-500 to-pink-500"
-        />
-      </div>
+        {/* Stats */}
+        <SignalStats stats={stats} loading={loading} />
 
-      {/* Error Alert */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <div className="flex">
-            <AlertCircle className="h-5 w-5 text-red-400" />
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-              <button
-                onClick={fetchSignals}
-                className="mt-2 text-sm text-red-600 underline hover:text-red-500"
-              >
-                Try again
-              </button>
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Filters Sidebar */}
+          {showFilters && (
+            <div className="lg:col-span-1">
+              <SignalFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                strategies={strategies}
+                onReset={resetFilters}
+              />
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filters and Search */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search signals, symbols, strategies..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none w-80 transition-all duration-200"
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Filter className="h-5 w-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-700">Filter:</span>
-                <div className="flex space-x-2">
-                  <FilterButton
-                    active={filter === 'all'}
-                    onClick={() => setFilter('all')}
-                    count={stats.total}
-                  >
-                    All
-                  </FilterButton>
-                  <FilterButton
-                    active={filter === 'processed'}
-                    onClick={() => setFilter('processed')}
-                    count={stats.processed}
-                  >
-                    Processed
-                  </FilterButton>
-                  <FilterButton
-                    active={filter === 'pending'}
-                    onClick={() => setFilter('pending')}
-                    count={stats.pending}
-                  >
-                    Pending
-                  </FilterButton>
-                  <FilterButton
-                    active={filter === 'error'}
-                    onClick={() => setFilter('error')}
-                    count={stats.errors}
-                  >
-                    Errors
-                  </FilterButton>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Sort by:</span>
-              <select
-                value={`${sortBy}-${sortOrder}`}
-                onChange={(e) => {
-                  const [field, order] = e.target.value.split('-');
-                  setSortBy(field as any);
-                  setSortOrder(order as any);
-                }}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              >
-                <option value="timestamp-desc">Latest first</option>
-                <option value="timestamp-asc">Oldest first</option>
-                <option value="confidence-desc">Confidence high to low</option>
-                <option value="confidence-asc">Confidence low to high</option>
-                <option value="symbol-asc">Symbol A-Z</option>
-                <option value="symbol-desc">Symbol Z-A</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Signals Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Signals ({filteredAndSortedSignals.length})
-            </h3>
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-500">Last 30 days</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          {filteredAndSortedSignals.length === 0 ? (
-            <div className="p-12 text-center">
-              <Activity className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg mb-2">
-                {error ? 'Unable to load signals' : 'No signals found'}
-              </p>
-              <p className="text-gray-400 mb-4">
-                {filter !== 'all' && !error ? 'Try adjusting your filters' : 'Signals from TradingView will appear here'}
-              </p>
-              {filter !== 'all' && !error && (
-                <button
-                  onClick={() => {
-                    setFilter('all');
-                    setSearchTerm('');
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200"
-                >
-                  Clear filters
-                </button>
-              )}
-              {error && (
-                <button
-                  onClick={fetchSignals}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200"
-                >
-                  Retry
-                </button>
-              )}
-            </div>
-          ) : (
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Symbol</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Strategy</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Quantity</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Confidence</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Timestamp</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedSignals.map((signal) => (
-                  <SignalRow key={signal.id} signal={signal} />
-                ))}
-              </tbody>
-            </table>
           )}
+
+          {/* Signals List */}
+          <div className={showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}>
+            {filteredSignals.length === 0 ? (
+              <div className="card p-12 text-center">
+                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Zap className="w-10 h-10 text-slate-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">No Signals Found</h3>
+                <p className="text-slate-600 mb-6">
+                  {signals.length === 0 
+                    ? "No trading signals have been generated yet."
+                    : "No signals match your current filters. Try adjusting your search criteria."
+                  }
+                </p>
+                {signals.length > 0 && (
+                  <button onClick={resetFilters} className="btn-secondary">
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className={`space-y-4 ${
+                viewMode === 'grid' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 space-y-0' 
+                  : ''
+              }`}>
+                {filteredSignals.map((signal) => (
+                  <SignalCard
+                    key={signal.id}
+                    signal={signal}
+                    compact={viewMode === 'list'}
+                    onExecute={handleExecuteSignal}
+                    onCancel={handleCancelSignal}
+                    onViewDetails={setSelectedSignal}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        <Pagination
-          currentPage={currentPage}
-          totalItems={filteredAndSortedSignals.length}
-          pageSize={PAGE_SIZE}
-          onPageChange={setCurrentPage}
-        />
+
+        {/* Load More */}
+        {filteredSignals.length >= 20 && (
+          <div className="text-center pt-8">
+            <button className="btn-secondary">
+              Load More Signals
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Signal Detail Modal */}
+      <SignalModal
+        signal={selectedSignal}
+        isOpen={selectedSignal !== null}
+        onClose={() => setSelectedSignal(null)}
+        onExecute={handleExecuteSignal}
+        onCancel={handleCancelSignal}
+      />
     </div>
   );
 };
