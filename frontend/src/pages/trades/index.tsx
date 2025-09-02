@@ -1,0 +1,493 @@
+import React, { useState, useEffect } from 'react';
+import { Filter, Download, RefreshCw, BarChart3, LayoutGrid, List as ListIcon } from 'lucide-react';
+import TradeCard from '../../components/trades/TradeCard';
+import TradeMetrics from '../../components/trades/TradeMetrics';
+import TradeFilters from '../../components/trades/TradeFilters';
+import PnLChart from '../../components/trades/PnLChart';
+
+interface Trade {
+  id: string;
+  symbol: string;
+  action: 'buy' | 'sell';
+  quantity: number;
+  entry_price: number;
+  exit_price?: number;
+  pnl?: number;
+  opened_at: string;
+  closed_at?: string;
+  status: 'open' | 'closed';
+  strategy_id?: string;
+}
+
+interface Strategy {
+  id: string;
+  name: string;
+}
+
+interface FilterOptions {
+  search: string;
+  status: string[];
+  side: string[];
+  dateRange: string;
+  strategy: string[];
+  minPnL: string;
+  maxPnL: string;
+  profitableOnly: boolean;
+  minDuration: string;
+  maxDuration: string;
+}
+
+interface ChartDataPoint {
+  date: string;
+  cumulativePnL: number;
+  dailyPnL: number;
+  tradeCount: number;
+}
+
+interface StrategyStat {
+  id: string;
+  name: string;
+  totalPnL: number;
+  winRate: number;
+  trades: number;
+}
+
+const defaultMetrics = {
+  totalTrades: 0,
+  openTrades: 0,
+  closedTrades: 0,
+  winningTrades: 0,
+  losingTrades: 0,
+  totalPnL: 0,
+  winRate: 0,
+  avgWin: 0,
+  avgLoss: 0,
+  bestTrade: 0,
+  worstTrade: 0,
+  avgHoldTime: 0,
+  profitFactor: 0,
+  sharpeRatio: 0,
+  maxDrawdown: 0,
+  totalVolume: 0,
+};
+
+const TradesPage: React.FC = () => {
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [strategyStats, setStrategyStats] = useState<StrategyStat[]>([]);
+  const [statsMetrics, setStatsMetrics] = useState(defaultMetrics);
+  const [metrics, setMetrics] = useState(defaultMetrics);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  const [filters, setFilters] = useState<FilterOptions>({
+    search: '',
+    status: [],
+    side: [],
+    dateRange: '30d',
+    strategy: [],
+    minPnL: '',
+    maxPnL: '',
+    profitableOnly: false,
+    minDuration: '',
+    maxDuration: ''
+  });
+
+  const getAuthToken = (): string | null => {
+    return localStorage.getItem('token');
+  };
+
+  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    if (!token) throw new Error('No authentication token available');
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    };
+
+    const response = await fetch(url, { ...options, headers });
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.reload();
+      throw new Error('Authentication failed');
+    }
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    return response;
+  };
+
+  const fetchTrades = async () => {
+    try {
+      setLoading(true);
+      const response = await authenticatedFetch('/api/v1/trades');
+      const data = await response.json();
+      const parsed = Array.isArray(data)
+        ? data.map((t: any) => ({
+            id: t.id.toString(),
+            symbol: t.symbol,
+            action: t.action,
+            quantity: t.quantity,
+            entry_price: t.entry_price,
+            exit_price: t.exit_price ?? undefined,
+            pnl: t.pnl ?? 0,
+            opened_at: t.opened_at,
+            closed_at: t.closed_at ?? undefined,
+            status: t.status,
+            strategy_id: t.strategy_id ?? undefined,
+          }))
+        : [];
+      setTrades(parsed);
+    } catch (error) {
+      console.error('Error fetching trades:', error);
+      setTrades([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStrategies = async () => {
+    try {
+      const response = await authenticatedFetch('/api/v1/strategies');
+      const data = await response.json();
+      setStrategies(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching strategies:', error);
+      setStrategies([]);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await authenticatedFetch('/api/v1/trades/stats');
+      const data = await response.json();
+      setStatsMetrics({
+        totalTrades: data.total_trades ?? 0,
+        openTrades: data.open_trades ?? 0,
+        closedTrades: data.closed_trades ?? 0,
+        winningTrades: data.winning_trades ?? 0,
+        losingTrades: data.losing_trades ?? 0,
+        totalPnL: data.total_pnl ?? 0,
+        winRate: data.win_rate ?? 0,
+        avgWin: data.average_win ?? data.avg_win ?? 0,
+        avgLoss: data.average_loss ?? data.avg_loss ?? 0,
+        bestTrade: data.best_trade ?? 0,
+        worstTrade: data.worst_trade ?? 0,
+        avgHoldTime: data.avg_hold_time ?? 0,
+        profitFactor: data.profit_factor ?? 0,
+        sharpeRatio: data.sharpe_ratio ?? 0,
+        maxDrawdown: data.max_drawdown ?? 0,
+        totalVolume: data.total_volume ?? 0,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchEquityCurve = async () => {
+    try {
+      const response = await authenticatedFetch('/api/v1/equity-curve');
+      const data = await response.json();
+      const parsed = Array.isArray(data)
+        ? data.map((p: any) => ({
+            date: p.date || p.timestamp,
+            cumulativePnL: p.cumulative_pnl ?? p.equity ?? 0,
+            dailyPnL: p.daily_pnl ?? 0,
+            tradeCount: p.trade_count ?? 0,
+          }))
+        : [];
+      setChartData(parsed);
+    } catch (error) {
+      console.error('Error fetching equity curve:', error);
+      setChartData([]);
+    }
+  };
+
+  const fetchStrategyPerformance = async () => {
+    try {
+      const results = await Promise.all(
+        strategies.map(async s => {
+          try {
+            const res = await authenticatedFetch(`/api/v1/trades/by-strategy/${s.id}`);
+            const data = await res.json();
+            const trades = Array.isArray(data) ? data : [];
+            const totalPnL = trades.reduce((sum: number, t: any) => sum + (t.pnl || t.realized_pnl || 0), 0);
+            const wins = trades.filter((t: any) => (t.pnl || t.realized_pnl || 0) > 0).length;
+            const winRate = trades.length > 0 ? (wins / trades.length) * 100 : 0;
+            return { id: s.id, name: s.name, totalPnL, winRate, trades: trades.length };
+          } catch {
+            return { id: s.id, name: s.name, totalPnL: 0, winRate: 0, trades: 0 };
+          }
+        })
+      );
+      setStrategyStats(results);
+    } catch (error) {
+      console.error('Error fetching strategy performance:', error);
+      setStrategyStats([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrades();
+    fetchStrategies();
+    fetchStats();
+    fetchEquityCurve();
+  }, []);
+
+  useEffect(() => {
+    if (strategies.length > 0) {
+      fetchStrategyPerformance();
+    }
+  }, [strategies]);
+
+  const filteredTrades = trades.filter(trade => {
+    if (filters.search &&
+        !trade.symbol.toLowerCase().includes(filters.search.toLowerCase()) &&
+        !trade.id.toLowerCase().includes(filters.search.toLowerCase())) {
+      return false;
+    }
+    if (filters.status.length > 0 && !filters.status.includes(trade.status)) {
+      return false;
+    }
+    if (filters.side.length > 0 && !filters.side.includes(trade.action)) {
+      return false;
+    }
+    if (filters.strategy.length > 0 && !filters.strategy.includes(trade.strategy_id || '')) {
+      return false;
+    }
+    if (filters.profitableOnly) {
+      const pnl = trade.pnl || 0;
+      if (pnl <= 0) return false;
+    }
+    const pnl = trade.pnl || 0;
+    if (filters.minPnL && pnl < parseFloat(filters.minPnL)) {
+      return false;
+    }
+    if (filters.maxPnL && pnl > parseFloat(filters.maxPnL)) {
+      return false;
+    }
+    const tradeDate = new Date(trade.opened_at);
+    const now = new Date();
+    const daysDiff = Math.floor((now.getTime() - tradeDate.getTime()) / (1000 * 60 * 60 * 24));
+    switch (filters.dateRange) {
+      case 'today':
+        return daysDiff === 0;
+      case '7d':
+        return daysDiff <= 7;
+      case '30d':
+        return daysDiff <= 30;
+      case '90d':
+        return daysDiff <= 90;
+      case '1y':
+        return daysDiff <= 365;
+      default:
+        return true;
+    }
+  });
+
+  const calculateMetrics = (list: Trade[]) => {
+    const closedTrades = list.filter(t => t.status === 'closed' && t.pnl !== undefined);
+    const openTrades = list.filter(t => t.status === 'open');
+    const winningTrades = closedTrades.filter(t => (t.pnl || 0) > 0);
+    const losingTrades = closedTrades.filter(t => (t.pnl || 0) < 0);
+    const totalPnL = list.reduce((sum, t) => sum + (t.pnl || 0), 0);
+    const avgWin = winningTrades.length > 0
+      ? winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / winningTrades.length
+      : 0;
+    const avgLoss = losingTrades.length > 0
+      ? Math.abs(losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / losingTrades.length)
+      : 0;
+    const bestTrade = Math.max(...list.map(t => t.pnl || 0));
+    const worstTrade = Math.min(...list.map(t => t.pnl || 0));
+    const avgHoldTime = closedTrades.length > 0
+      ? closedTrades.reduce((sum, t) => {
+          const end = t.closed_at ? new Date(t.closed_at).getTime() : Date.now();
+          const start = new Date(t.opened_at).getTime();
+          return sum + (end - start) / (1000 * 60);
+        }, 0) / closedTrades.length
+      : 0;
+    const grossProfit = winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+    const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0));
+    const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 999 : 0;
+    const totalVolume = list.reduce((sum, t) => sum + (t.quantity * t.entry_price), 0);
+    return {
+      totalTrades: list.length,
+      openTrades: openTrades.length,
+      closedTrades: closedTrades.length,
+      winningTrades: winningTrades.length,
+      losingTrades: losingTrades.length,
+      totalPnL,
+      winRate: closedTrades.length > 0 ? (winningTrades.length / closedTrades.length) * 100 : 0,
+      avgWin,
+      avgLoss,
+      bestTrade,
+      worstTrade,
+      avgHoldTime,
+      profitFactor,
+      sharpeRatio: statsMetrics.sharpeRatio,
+      maxDrawdown: statsMetrics.maxDrawdown,
+      totalVolume,
+    };
+  };
+
+  useEffect(() => {
+    const computed = calculateMetrics(filteredTrades);
+    setMetrics({ ...computed, profitFactor: statsMetrics.profitFactor || computed.profitFactor });
+  }, [trades, filters, statsMetrics]);
+
+  const handleCloseTrade = async (tradeId: string) => {
+    try {
+      await authenticatedFetch(`/api/v1/trades/${tradeId}/close`, { method: 'POST' });
+      fetchTrades();
+    } catch (error) {
+      console.error('Error closing trade:', error);
+    }
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      search: '',
+      status: [],
+      side: [],
+      dateRange: '30d',
+      strategy: [],
+      minPnL: '',
+      maxPnL: '',
+      profitableOnly: false,
+      minDuration: '',
+      maxDuration: ''
+    });
+  };
+
+  const exportTrades = () => {
+    console.log('Exporting trades...');
+  };
+
+  if (loading && trades.length === 0) {
+    return (
+      <div className='min-h-screen bg-slate-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <div className='w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center mb-6 mx-auto animate-pulse'>
+            <BarChart3 className='w-8 h-8 text-white' />
+          </div>
+          <h2 className='text-2xl font-bold text-slate-900 mb-2'>Loading Trades</h2>
+          <p className='text-slate-600'>Analyzing your trading performance...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className='min-h-screen bg-slate-50 p-6'>
+      <div className='max-w-7xl mx-auto space-y-6'>
+        <div className='flex items-center justify-between'>
+          <div>
+            <h1 className='text-3xl font-bold text-slate-900'>Trade History</h1>
+            <p className='text-slate-600 mt-1'>Comprehensive analysis of your trading performance and positions</p>
+          </div>
+          <div className='flex items-center space-x-3'>
+            <button onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} className='btn-ghost'>
+              {viewMode === 'grid' ? <ListIcon className='w-4 h-4' /> : <LayoutGrid className='w-4 h-4' />}
+            </button>
+            <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary ${showFilters ? 'bg-primary-50 text-primary-700 border-primary-200' : ''}`}>
+              <Filter className='w-4 h-4 mr-2' />
+              Filters
+            </button>
+            <button onClick={exportTrades} className='btn-ghost'>
+              <Download className='w-4 h-4 mr-2' />
+              Export
+            </button>
+            <button onClick={() => { fetchTrades(); fetchStats(); fetchEquityCurve(); }} className='btn-secondary'>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <TradeMetrics metrics={metrics} loading={loading} />
+        <PnLChart data={chartData} loading={loading} />
+
+        {strategyStats.length > 0 && (
+          <div className='card p-6'>
+            <h3 className='text-lg font-semibold text-slate-900 mb-4'>Performance by Strategy</h3>
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+              {strategyStats.map(s => (
+                <div key={s.id} className='p-4 rounded-xl bg-slate-50'>
+                  <div className='flex items-center justify-between mb-2'>
+                    <span className='font-medium text-slate-700'>{s.name}</span>
+                    <span className={`text-sm font-semibold ${s.totalPnL >= 0 ? 'text-success-600' : 'text-error-600'}`}>
+                      {s.totalPnL >= 0 ? '+' : ''}${Math.abs(s.totalPnL).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className='text-xs text-slate-500'>Win Rate: {s.winRate.toFixed(1)}% ({s.trades} trades)</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
+          {showFilters && (
+            <div className='lg:col-span-1'>
+              <TradeFilters filters={filters} onFiltersChange={setFilters} strategies={strategies} onReset={resetFilters} />
+            </div>
+          )}
+          <div className={showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}>
+            {filteredTrades.length === 0 ? (
+              <div className='card p-12 text-center'>
+                <div className='w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6'>
+                  <BarChart3 className='w-10 h-10 text-slate-400' />
+                </div>
+                <h3 className='text-xl font-semibold text-slate-900 mb-2'>No Trades Found</h3>
+                <p className='text-slate-600 mb-6'>
+                  {trades.length === 0 ? "You haven't executed any trades yet. Your trading history will appear here once you start trading." : 'No trades match your current filters. Try adjusting your search criteria.'}
+                </p>
+                {trades.length > 0 && (
+                  <button onClick={resetFilters} className='btn-secondary'>
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className={`space-y-4 ${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 space-y-0' : ''}`}>
+                {filteredTrades.map(trade => (
+                  <TradeCard
+                    key={trade.id}
+                    trade={{
+                      id: trade.id,
+                      symbol: trade.symbol,
+                      side: trade.action,
+                      quantity: trade.quantity,
+                      entry_price: trade.entry_price,
+                      exit_price: trade.exit_price,
+                      realized_pnl: trade.pnl,
+                      entry_time: trade.opened_at,
+                      exit_time: trade.closed_at,
+                      status: trade.status,
+                      strategy_id: trade.strategy_id,
+                    }}
+                    compact={viewMode === 'list'}
+                    onClose={handleCloseTrade}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {filteredTrades.length >= 20 && (
+          <div className='text-center pt-8'>
+            <button className='btn-secondary'>
+              Load More Trades
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TradesPage;
+
