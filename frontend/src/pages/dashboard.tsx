@@ -7,6 +7,7 @@ import MetricCard from '../components/dashboard/MetricCard';
 import PortfolioChart from '../components/dashboard/PortfolioChart';
 import RecentActivity from '../components/dashboard/RecentActivity';
 import QuickActions from '../components/dashboard/QuickActions';
+import { api } from '../services/api';
 
 interface AccountData {
   cash: number;
@@ -46,80 +47,116 @@ const Dashboard: React.FC = () => {
   const [showValues, setShowValues] = useState(true);
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<Array<{date: string, value: number}>>([]);
-
-  const getAuthToken = (): string | null => {
-    return localStorage.getItem('token');
-  };
-
-  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
-    const token = getAuthToken();
-    if (!token) throw new Error('No authentication token available');
-
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      ...options.headers,
-    };
-
-    const response = await fetch(url, { ...options, headers });
-    if (response.status === 401) {
-      localStorage.removeItem('token');
-      window.location.reload();
-      throw new Error('Authentication failed');
-    }
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
-    return response;
-  };
+  const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch account data
-      const accountResponse = await authenticatedFetch('/api/v1/portfolio/account');
-      const accountData = await accountResponse.json();
-      setAccountData(accountData);
+      setError(null);
 
-      // Fetch positions
-      const positionsResponse = await authenticatedFetch('/api/v1/positions');
-      const positionsData = await positionsResponse.json();
-      setPositions(Array.isArray(positionsData) ? positionsData : []);
+      const [accountRes, positionsRes, signalsRes, ordersRes, equityRes] = await Promise.all([
+        api.trading.getAccount(),
+        api.trading.getPositions(),
+        api.trading.getSignals(),
+        api.trading.getOrders(),
+        api.trading.getEquityCurve().catch(() => null)
+      ]);
 
-      // Generate mock chart data (replace with real API call)
-      const mockChartData = Array.from({ length: 30 }, (_, i) => ({
-        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString(),
-        value: accountData.portfolio_value + (Math.random() - 0.5) * 1000 * i
-      }));
-      setChartData(mockChartData);
+      const accountJson = await accountRes.json();
+      setAccountData({
+        cash: parseFloat(accountJson.cash) || 0,
+        portfolio_value: parseFloat(accountJson.portfolio_value) || 0,
+        buying_power: parseFloat(accountJson.buying_power) || 0,
+        day_trade_buying_power: parseFloat(accountJson.day_trade_buying_power) || 0,
+      });
 
-      // Generate mock activities (replace with real API call)
-      const mockActivities: ActivityItem[] = [
-        {
-          id: '1',
-          type: 'trade',
-          symbol: 'AAPL',
-          action: 'BUY',
-          status: 'success',
-          amount: 1500,
-          price: 150.25,
-          quantity: 10,
-          timestamp: new Date().toISOString(),
-          description: 'Market order executed successfully'
-        },
-        {
-          id: '2',
-          type: 'signal',
-          symbol: 'TSLA',
-          action: 'SELL',
-          status: 'pending',
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          description: 'Signal generated - awaiting execution'
+      const positionsJson = await positionsRes.json();
+      let parsedPositions: Position[] = [];
+      if (Array.isArray(positionsJson)) {
+        parsedPositions = positionsJson as Position[];
+      } else if (Array.isArray(positionsJson.positions)) {
+        parsedPositions = positionsJson.positions as Position[];
+      } else if (positionsJson.positions && typeof positionsJson.positions === 'object') {
+        parsedPositions = Object.entries(positionsJson.positions).map(([symbol, quantity]) => ({
+          symbol,
+          quantity: Number(quantity),
+          market_value: 0,
+          unrealized_pl: 0,
+          unrealized_plpc: 0,
+          cost_basis: 0,
+          avg_entry_price: 0,
+          current_price: 0,
+        }));
+      }
+      setPositions(parsedPositions);
+
+      let equityData: Array<{ date: string; value: number }> = [];
+      if (equityRes) {
+        const equityJson = await equityRes.json();
+        if (Array.isArray(equityJson)) {
+          equityData = equityJson.map((p: any) => ({
+            date: p.timestamp,
+            value: Number(p.equity)
+          }));
         }
-      ];
-      setActivities(mockActivities);
+      }
+      setChartData(equityData);
+
+      const signalsJson = await signalsRes.json();
+      const ordersJson = await ordersRes.json();
+
+      const signalActivities: ActivityItem[] = Array.isArray(signalsJson)
+        ? signalsJson.slice(0, 10).map((sig: any) => ({
+            id: `signal-${sig.id}`,
+            type: 'signal',
+            symbol: sig.symbol,
+            action: (sig.action || 'BUY').toUpperCase(),
+            status:
+              sig.status === 'processed'
+                ? 'success'
+                : sig.status === 'error'
+                ? 'error'
+                : sig.status === 'cancelled'
+                ? 'warning'
+                : 'pending',
+            quantity: sig.quantity,
+            timestamp: sig.timestamp,
+            description: `Signal ${sig.status}`,
+          }))
+        : [];
+
+      const orderActivities: ActivityItem[] = Array.isArray(ordersJson?.orders)
+        ? ordersJson.orders.slice(0, 10).map((ord: any) => ({
+            id: `order-${ord.id}`,
+            type: 'order',
+            symbol: ord.symbol,
+            action: (ord.side || 'buy').toUpperCase(),
+            status:
+              ord.status === 'filled'
+                ? 'success'
+                : ord.status === 'rejected'
+                ? 'error'
+                : ord.status === 'canceled' || ord.status === 'cancelled'
+                ? 'warning'
+                : 'pending',
+            quantity: parseFloat(ord.filled_qty || ord.qty),
+            price: parseFloat(ord.filled_avg_price),
+            amount:
+              parseFloat(ord.filled_avg_price || 0) *
+              parseFloat(ord.filled_qty || ord.qty || 0),
+            timestamp: ord.submitted_at,
+            description: `Order ${ord.status}`,
+          }))
+        : [];
+
+      const combined = [...signalActivities, ...orderActivities]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 10);
+      setActivities(combined);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
@@ -205,6 +242,11 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
         </div>
+        {error && (
+          <div className="bg-error-50 text-error-700 border border-error-200 p-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
