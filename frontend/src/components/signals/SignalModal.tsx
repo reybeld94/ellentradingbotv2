@@ -7,7 +7,7 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import { SignalStatus } from './SignalCard';
+import type { SignalStatus } from './SignalCard';
 
 interface Signal {
   id: number;
