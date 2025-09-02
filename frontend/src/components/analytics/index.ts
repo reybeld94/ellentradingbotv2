@@ -3,3 +3,7 @@ export { default as EquityCurve } from './EquityCurve';
 export { default as TradeDistribution } from './TradeDistribution';
 export { default as MonthlyHeatmap } from './MonthlyHeatmap';
 export { default as RiskDashboard } from './RiskDashboard';
+export { default as PortfolioAllocation } from './PortfolioAllocation';
+export { default as PerformanceComparison } from './PerformanceComparison';
+export { default as HeatMap } from './HeatMap';
+export { default as AdvancedMetrics } from './AdvancedMetrics';
