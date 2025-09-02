@@ -272,8 +272,9 @@ const PnLChart: React.FC<PnLChartProps> = ({
                   r="4"
                   fill={isPositive ? '#22c55e' : '#ef4444'}
                   className="opacity-0 hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-                  title={`${point.date}: $${value.toFixed(2)}`}
-                />
+                >
+                  <title>{`${point.date}: $${value.toFixed(2)}`}</title>
+                </circle>
               );
             })}
           </svg>

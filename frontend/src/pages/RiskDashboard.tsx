@@ -191,13 +191,13 @@ const RiskDashboard: React.FC = () => {
     fetchRiskData();
     
     // Auto-refresh every 2 minutes if enabled
-    let interval: NodeJS.Timeout | null = null;
+    let interval: number | null = null;
     if (autoRefresh) {
-      interval = setInterval(fetchRiskData, 120000);
+      interval = window.setInterval(fetchRiskData, 120000);
     }
-    
+
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval !== null) window.clearInterval(interval);
     };
   }, [autoRefresh]);
 

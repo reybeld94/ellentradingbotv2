@@ -14,7 +14,7 @@ import RiskDashboard from './pages/RiskDashboard';
 import Analytics from './pages/Analytics';
 import ExitRulesManager from './components/ExitRulesManager';
 import Layout from './components/layout/Layout';
-import { Page } from './components/layout/Sidebar';
+import type { Page } from './components/layout/Sidebar';
 
 const AuthenticatedApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');

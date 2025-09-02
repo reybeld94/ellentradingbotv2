@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar, { Page } from './Sidebar';
+import Sidebar, { type Page } from './Sidebar';
 import Header from './Header';
 
 interface LayoutProps {
