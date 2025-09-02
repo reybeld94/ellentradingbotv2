@@ -30,10 +30,13 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
   onReset
 }) => {
   const statusOptions = [
-    { value: 'pending', label: 'Pending', icon: Clock, color: 'text-warning-600' },
-    { value: 'filled', label: 'Filled', icon: CheckCircle, color: 'text-success-600' },
+    { value: 'new', label: 'New', icon: Clock, color: 'text-warning-600' },
+    { value: 'sent', label: 'Sent', icon: Clock, color: 'text-warning-600' },
+    { value: 'accepted', label: 'Accepted', icon: Clock, color: 'text-warning-600' },
     { value: 'partially_filled', label: 'Partial', icon: Activity, color: 'text-primary-600' },
-    { value: 'cancelled', label: 'Cancelled', icon: X, color: 'text-slate-500' },
+    { value: 'filled', label: 'Filled', icon: CheckCircle, color: 'text-success-600' },
+    { value: 'pending_cancel', label: 'Pending Cancel', icon: Clock, color: 'text-warning-600' },
+    { value: 'canceled', label: 'Canceled', icon: X, color: 'text-slate-500' },
     { value: 'rejected', label: 'Rejected', icon: XCircle, color: 'text-error-600' }
   ];
 
@@ -46,7 +49,8 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
     { value: 'market', label: 'Market', color: 'text-primary-600' },
     { value: 'limit', label: 'Limit', color: 'text-indigo-600' },
     { value: 'stop', label: 'Stop', color: 'text-warning-600' },
-    { value: 'stop_limit', label: 'Stop Limit', color: 'text-error-600' }
+    { value: 'stop_limit', label: 'Stop Limit', color: 'text-error-600' },
+    { value: 'bracket', label: 'Bracket', color: 'text-purple-600' }
   ];
 
   const dateRangeOptions = [
