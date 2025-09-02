@@ -8,23 +8,28 @@ import SignalFilters from '../components/signals/SignalFilters';
 import SignalStats from '../components/signals/SignalStats';
 import SignalModal from '../components/signals/SignalModal';
 
+export type SignalStatus =
+  | 'pending'
+  | 'validated'
+  | 'rejected'
+  | 'executed'
+  | 'bracket_created'
+  | 'bracket_failed'
+  | 'error';
+
 interface Signal {
   id: number;
   symbol: string;
-  action: 'BUY' | 'SELL';
-  price: number;
-  confidence: number;
+  action: 'buy' | 'sell';
   strategy_id: string;
-  strategy_name?: string;
-  created_at: string;
-  status: 'pending' | 'processed' | 'error' | 'cancelled';
+  status: SignalStatus;
+  timestamp: string;
   quantity?: number;
-  target_price?: number;
-  stop_loss?: number;
-  reasoning?: string;
-  market_conditions?: string;
-  risk_score?: number;
-  expected_return?: number;
+  confidence?: number;
+  reason?: string;
+  error_message?: string;
+  // Optional legacy fields
+  strategy_name?: string;
 }
 
 interface Strategy {
@@ -111,16 +116,19 @@ const SignalsPage: React.FC = () => {
     fetchSignals();
     fetchStrategies();
     
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchSignals, 30000);
+    // Auto-refresh every 15 seconds
+    const interval = setInterval(fetchSignals, 15000);
     return () => clearInterval(interval);
   }, []);
 
   // Filter signals based on current filters
   const filteredSignals = signals.filter(signal => {
     // Search filter
-    if (filters.search && !signal.symbol.toLowerCase().includes(filters.search.toLowerCase()) &&
-        !signal.strategy_name?.toLowerCase().includes(filters.search.toLowerCase())) {
+    if (
+      filters.search &&
+      !signal.symbol.toLowerCase().includes(filters.search.toLowerCase()) &&
+      !signal.strategy_id.toLowerCase().includes(filters.search.toLowerCase())
+    ) {
       return false;
     }
 
@@ -135,7 +143,8 @@ const SignalsPage: React.FC = () => {
     }
 
     // Confidence filter
-    if (signal.confidence < filters.confidence[0] || signal.confidence > filters.confidence[1]) {
+    const conf = signal.confidence ?? 0;
+    if (conf < filters.confidence[0] || conf > filters.confidence[1]) {
       return false;
     }
 
@@ -145,7 +154,7 @@ const SignalsPage: React.FC = () => {
     }
 
     // Date range filter
-    const signalDate = new Date(signal.created_at);
+    const signalDate = new Date(signal.timestamp);
     const now = new Date();
     const daysDiff = Math.floor((now.getTime() - signalDate.getTime()) / (1000 * 60 * 60 * 24));
     
@@ -167,43 +176,50 @@ const SignalsPage: React.FC = () => {
   const stats = {
     total: signals.length,
     pending: signals.filter(s => s.status === 'pending').length,
-    executed: signals.filter(s => s.status === 'processed').length,
-    failed: signals.filter(s => s.status === 'error').length,
-    averageConfidence: signals.length > 0 
-      ? signals.reduce((sum, s) => sum + s.confidence, 0) / signals.length 
-      : 0,
-    successRate: signals.length > 0 
-      ? (signals.filter(s => s.status === 'processed').length / signals.length) * 100 
-      : 0,
+    executed: signals.filter(s => ['executed', 'bracket_created'].includes(s.status)).length,
+    failed: signals.filter(s => ['error', 'bracket_failed', 'rejected'].includes(s.status)).length,
+    averageConfidence:
+      signals.length > 0
+        ?
+            signals.reduce(
+              (sum, s) => sum + (s.confidence ?? 0),
+              0,
+            ) / signals.length
+        : 0,
+    successRate:
+      signals.length > 0
+        ?
+            (signals.filter(s => ['executed', 'bracket_created'].includes(s.status)).length /
+              signals.length) *
+            100
+        : 0,
     todayCount: signals.filter(s => {
-      const signalDate = new Date(s.created_at);
+      const signalDate = new Date(s.timestamp);
       const today = new Date();
       return signalDate.toDateString() === today.toDateString();
     }).length,
-    topStrategy: 'AI Momentum'
+    topStrategy: 'AI Momentum',
   };
 
-  const handleExecuteSignal = async (signalId: number) => {
+  const handleApproveSignal = async (signalId: number) => {
     try {
-      await authenticatedFetch(`/api/v1/signals/${signalId}/execute`, {
-        method: 'POST'
+      await authenticatedFetch(`/api/v1/signals/${signalId}/approve`, {
+        method: 'POST',
       });
-      // Refresh signals after execution
       fetchSignals();
     } catch (error) {
-      console.error('Error executing signal:', error);
+      console.error('Error approving signal:', error);
     }
   };
 
-  const handleCancelSignal = async (signalId: number) => {
+  const handleRejectSignal = async (signalId: number) => {
     try {
-      await authenticatedFetch(`/api/v1/signals/${signalId}`, {
-        method: 'DELETE'
+      await authenticatedFetch(`/api/v1/signals/${signalId}/reject`, {
+        method: 'POST',
       });
-      // Refresh signals after cancellation
       fetchSignals();
     } catch (error) {
-      console.error('Error cancelling signal:', error);
+      console.error('Error rejecting signal:', error);
     }
   };
 
@@ -330,8 +346,8 @@ const SignalsPage: React.FC = () => {
                     key={signal.id}
                     signal={signal}
                     compact={viewMode === 'list'}
-                    onExecute={handleExecuteSignal}
-                    onCancel={handleCancelSignal}
+                    onApprove={handleApproveSignal}
+                    onReject={handleRejectSignal}
                     onViewDetails={setSelectedSignal}
                   />
                 ))}
@@ -355,8 +371,8 @@ const SignalsPage: React.FC = () => {
         signal={selectedSignal}
         isOpen={selectedSignal !== null}
         onClose={() => setSelectedSignal(null)}
-        onExecute={handleExecuteSignal}
-        onCancel={handleCancelSignal}
+        onApprove={handleApproveSignal}
+        onReject={handleRejectSignal}
       />
     </div>
   );
