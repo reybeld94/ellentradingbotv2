@@ -3,27 +3,38 @@ import {
   Plus, Filter, Download, RefreshCw,
   LayoutGrid, List as ListIcon, TrendingUp
 } from 'lucide-react';
-import OrderCard from '../components/orders/OrderCard';
-import OrderFilters from '../components/orders/OrderFilters';
-import OrderTimeline from '../components/orders/OrderTimeline';
+import OrderCard from '../../components/orders/OrderCard';
+import OrderFilters from '../../components/orders/OrderFilters';
+import OrderTimeline from '../../components/orders/OrderTimeline';
+
+type OrderStatus =
+  | 'new'
+  | 'sent'
+  | 'accepted'
+  | 'partially_filled'
+  | 'filled'
+  | 'canceled'
+  | 'rejected'
+  | 'pending_cancel';
 
 interface Order {
   id: string;
   symbol: string;
   side: 'buy' | 'sell';
-  type: 'market' | 'limit' | 'stop' | 'stop_limit';
-  status: 'pending' | 'filled' | 'partially_filled' | 'cancelled' | 'rejected';
-  quantity: number;
-  filled_quantity?: number;
+  order_type: 'market' | 'limit' | 'stop' | 'stop_limit';
+  status: OrderStatus;
+  qty: number;
+  filled_qty?: number;
   limit_price?: number;
   stop_price?: number;
   avg_fill_price?: number;
-  created_at: string;
-  updated_at: string;
+  submitted_at: string;
+  filled_at?: string;
   time_in_force?: 'day' | 'gtc' | 'ioc' | 'fok';
   strategy_id?: string;
   strategy_name?: string;
   trail_percent?: number;
+  client_order_id?: string;
 }
 
 interface Strategy {
@@ -90,7 +101,17 @@ const OrdersPage: React.FC = () => {
       setLoading(true);
       const response = await authenticatedFetch('/api/v1/orders');
       const data = await response.json();
-      setOrders(Array.isArray(data) ? data : []);
+      const parsed = Array.isArray(data.orders)
+        ? data.orders.map((o: any) => ({
+            ...o,
+            qty: parseFloat(o.qty),
+            filled_qty: parseFloat(o.filled_qty || '0'),
+            limit_price: o.limit_price ? parseFloat(o.limit_price) : undefined,
+            stop_price: o.stop_price ? parseFloat(o.stop_price) : undefined,
+            avg_fill_price: o.filled_avg_price ? parseFloat(o.filled_avg_price) : undefined
+          }))
+        : [];
+      setOrders(parsed);
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]);
@@ -139,8 +160,11 @@ const OrdersPage: React.FC = () => {
     }
 
     // Type filter
-    if (filters.type.length > 0 && !filters.type.includes(order.type)) {
-      return false;
+    if (filters.type.length > 0) {
+      const isBracket = order.client_order_id?.toLowerCase().includes('bracket');
+      if (!filters.type.some(t => (t === 'bracket' ? isBracket : t === order.order_type))) {
+        return false;
+      }
     }
 
     // Strategy filter
@@ -149,7 +173,7 @@ const OrdersPage: React.FC = () => {
     }
 
     // Amount filter
-    const orderValue = (order.limit_price || 0) * order.quantity;
+    const orderValue = (order.limit_price || 0) * order.qty;
     if (filters.minAmount && orderValue < parseFloat(filters.minAmount)) {
       return false;
     }
@@ -158,7 +182,7 @@ const OrdersPage: React.FC = () => {
     }
 
     // Date range filter
-    const orderDate = new Date(order.created_at);
+    const orderDate = new Date(order.submitted_at);
     const now = new Date();
     const daysDiff = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
     
@@ -179,12 +203,14 @@ const OrdersPage: React.FC = () => {
   // Calculate stats
   const stats = {
     total: orders.length,
-    pending: orders.filter(o => o.status === 'pending').length,
+    pending: orders.filter(o => ['new', 'sent', 'accepted', 'pending_cancel'].includes(o.status)).length,
     filled: orders.filter(o => o.status === 'filled').length,
     partiallyFilled: orders.filter(o => o.status === 'partially_filled').length,
-    cancelled: orders.filter(o => o.status === 'cancelled').length,
-    totalValue: orders.reduce((sum, o) => sum + ((o.limit_price || 0) * o.quantity), 0),
-    filledValue: orders.filter(o => o.status === 'filled').reduce((sum, o) => sum + ((o.avg_fill_price || o.limit_price || 0) * o.quantity), 0)
+    canceled: orders.filter(o => o.status === 'canceled').length,
+    totalValue: orders.reduce((sum, o) => sum + ((o.limit_price || 0) * o.qty), 0),
+    filledValue: orders
+      .filter(o => o.status === 'filled')
+      .reduce((sum, o) => sum + ((o.avg_fill_price || o.limit_price || 0) * o.qty), 0)
   };
 
   const handleCancelOrder = async (orderId: string) => {
@@ -300,8 +326,8 @@ const OrdersPage: React.FC = () => {
             <p className="text-sm text-slate-600">Partial</p>
           </div>
           <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-slate-500">{stats.cancelled}</p>
-            <p className="text-sm text-slate-600">Cancelled</p>
+            <p className="text-2xl font-bold text-slate-500">{stats.canceled}</p>
+            <p className="text-sm text-slate-600">Canceled</p>
           </div>
           <div className="card p-4 text-center">
             <p className="text-lg font-bold text-slate-900">
@@ -390,18 +416,18 @@ const OrdersPage: React.FC = () => {
                   {
                     id: '1',
                     type: 'created',
-                    timestamp: selectedOrder.created_at,
+                    timestamp: selectedOrder.submitted_at,
                     description: 'Order created',
-                    details: `${selectedOrder.side.toUpperCase()} ${selectedOrder.quantity} ${selectedOrder.symbol}`
+                    details: `${selectedOrder.side.toUpperCase()} ${selectedOrder.qty} ${selectedOrder.symbol}`
                   },
                   {
                     id: '2',
                     type: 'submitted',
-                    timestamp: selectedOrder.created_at,
+                    timestamp: selectedOrder.submitted_at,
                     description: 'Order submitted to exchange',
                     details: 'Waiting for execution'
                   }
-                ]} 
+                ]}
               />
             </div>
           </div>

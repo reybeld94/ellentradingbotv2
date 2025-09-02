@@ -2,23 +2,34 @@ import React from 'react';
 import { TrendingUp, TrendingDown, Clock, CheckCircle, XCircle, X, MoreVertical, Eye, Activity } from 'lucide-react';
 import SymbolLogo from '../SymbolLogo';
 
+type OrderStatus =
+  | 'new'
+  | 'sent'
+  | 'accepted'
+  | 'partially_filled'
+  | 'filled'
+  | 'canceled'
+  | 'rejected'
+  | 'pending_cancel';
+
 interface Order {
   id: string;
   symbol: string;
   side: 'buy' | 'sell';
-  type: 'market' | 'limit' | 'stop' | 'stop_limit';
-  status: 'pending' | 'filled' | 'partially_filled' | 'cancelled' | 'rejected';
-  quantity: number;
-  filled_quantity?: number;
+  order_type: 'market' | 'limit' | 'stop' | 'stop_limit';
+  status: OrderStatus;
+  qty: number;
+  filled_qty?: number;
   limit_price?: number;
   stop_price?: number;
   avg_fill_price?: number;
-  created_at: string;
-  updated_at: string;
+  submitted_at: string;
+  filled_at?: string;
   time_in_force?: 'day' | 'gtc' | 'ioc' | 'fok';
   strategy_id?: string;
   strategy_name?: string;
   trail_percent?: number;
+  client_order_id?: string;
 }
 
 interface OrderCardProps {
@@ -38,13 +49,24 @@ const OrderCard: React.FC<OrderCardProps> = ({
 }) => {
   const getStatusConfig = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
+      case 'new':
+      case 'sent':
+      case 'accepted':
         return {
           icon: Clock,
           color: 'text-warning-600',
           bg: 'bg-warning-50',
           border: 'border-warning-200',
-          label: 'Pending',
+          label: status.charAt(0).toUpperCase() + status.slice(1),
+          pulse: true
+        };
+      case 'pending_cancel':
+        return {
+          icon: Clock,
+          color: 'text-warning-600',
+          bg: 'bg-warning-50',
+          border: 'border-warning-200',
+          label: 'Pending Cancel',
           pulse: true
         };
       case 'filled':
@@ -65,13 +87,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
           label: 'Partial',
           pulse: true
         };
-      case 'cancelled':
+      case 'canceled':
         return {
           icon: X,
           color: 'text-slate-500',
           bg: 'bg-slate-50',
           border: 'border-slate-200',
-          label: 'Cancelled',
+          label: 'Canceled',
           pulse: false
         };
       case 'rejected':
@@ -86,7 +108,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
     }
   };
 
-  const getTypeConfig = (type: Order['type']) => {
+  const getTypeConfig = (type: Order['order_type']) => {
     switch (type) {
       case 'market':
         return { label: 'Market', color: 'text-primary-700', bg: 'bg-primary-100' };
@@ -125,12 +147,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
   };
 
   const calculateProgress = () => {
-    if (order.status !== 'partially_filled' || !order.filled_quantity) return 0;
-    return (order.filled_quantity / order.quantity) * 100;
+    if (order.status !== 'partially_filled' || !order.filled_qty) return 0;
+    return (order.filled_qty / order.qty) * 100;
   };
 
   const statusConfig = getStatusConfig(order.status);
-  const typeConfig = getTypeConfig(order.type);
+  const typeConfig = getTypeConfig(order.order_type);
+  const isBracket = order.client_order_id?.toLowerCase().includes('bracket');
   const sideConfig = getSideConfig(order.side);
   const StatusIcon = statusConfig.icon;
   const SideIcon = sideConfig.icon;
@@ -150,11 +173,11 @@ const OrderCard: React.FC<OrderCardProps> = ({
                   {order.side.toUpperCase()}
                 </span>
                 <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${typeConfig.bg} ${typeConfig.color}`}>
-                  {typeConfig.label}
+                  {isBracket ? 'Bracket' : typeConfig.label}
                 </span>
               </div>
               <p className="text-sm text-slate-600">
-                {order.quantity} @ {order.limit_price ? `$${order.limit_price.toFixed(2)}` : 'Market'}
+                {order.qty} @ {order.limit_price ? `$${order.limit_price.toFixed(2)}` : 'Market'}
               </p>
             </div>
           </div>
@@ -163,7 +186,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <div className={`p-2 rounded-lg ${statusConfig.bg} ${statusConfig.border} border`}>
               <StatusIcon className={`w-4 h-4 ${statusConfig.color} ${statusConfig.pulse ? 'animate-pulse' : ''}`} />
             </div>
-            <span className="text-sm text-slate-500">{formatTime(order.created_at)}</span>
+            <span className="text-sm text-slate-500">{formatTime(order.submitted_at)}</span>
           </div>
         </div>
 
@@ -199,13 +222,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 {order.side.toUpperCase()} Order
               </span>
               <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold ${typeConfig.bg} ${typeConfig.color}`}>
-                {typeConfig.label}
+                {isBracket ? 'Bracket' : typeConfig.label}
               </span>
             </div>
             <div className="flex items-center space-x-4 text-sm text-slate-600">
               <span>Order #{order.id.slice(0, 8)}</span>
               <span>•</span>
-              <span>{formatTime(order.created_at)}</span>
+              <span>{formatTime(order.submitted_at)}</span>
               {order.strategy_name && (
                 <>
                   <span>•</span>
@@ -234,9 +257,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div className="text-center p-3 bg-slate-50 rounded-xl">
           <p className="text-xs font-medium text-slate-500 mb-1">Quantity</p>
-          <p className="text-lg font-bold text-slate-900">{order.quantity}</p>
-          {order.filled_quantity && order.filled_quantity > 0 && (
-            <p className="text-xs text-primary-600">{order.filled_quantity} filled</p>
+          <p className="text-lg font-bold text-slate-900">{order.qty}</p>
+          {order.filled_qty && order.filled_qty > 0 && (
+            <p className="text-xs text-primary-600">{order.filled_qty} filled</p>
           )}
         </div>
 
@@ -260,7 +283,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
         <div className="text-center p-3 bg-slate-50 rounded-xl">
           <p className="text-xs font-medium text-slate-500 mb-1">Value</p>
           <p className="text-lg font-bold text-slate-900">
-            ${((order.limit_price || 0) * order.quantity).toLocaleString()}
+            ${((order.limit_price || 0) * order.qty).toLocaleString()}
           </p>
           {order.time_in_force && (
             <p className="text-xs text-slate-500">{order.time_in_force.toUpperCase()}</p>
@@ -273,7 +296,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
         <div className="mb-4">
           <div className="flex justify-between text-sm text-slate-600 mb-2">
             <span>Fill Progress</span>
-            <span>{order.filled_quantity}/{order.quantity} ({progress.toFixed(1)}%)</span>
+            <span>{order.filled_qty}/{order.qty} ({progress.toFixed(1)}%)</span>
           </div>
           <div className="w-full bg-slate-200 rounded-full h-3">
             <div
@@ -288,13 +311,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
       <div className="flex items-center justify-between pt-4 border-t border-slate-100">
         <div className="text-sm text-slate-600">
           {order.status === 'filled' && order.avg_fill_price && (
-            <span>Filled at ${order.avg_fill_price.toFixed(2)} • {formatTime(order.updated_at)}</span>
+            <span>Filled at ${order.avg_fill_price.toFixed(2)} • {formatTime(order.filled_at || order.submitted_at)}</span>
           )}
-          {order.status === 'pending' && (
+          {['new', 'sent', 'accepted'].includes(order.status) && (
             <span>Waiting for execution...</span>
           )}
+          {order.status === 'pending_cancel' && (
+            <span>Cancel requested...</span>
+          )}
           {order.status === 'partially_filled' && (
-            <span>{((1 - progress/100) * order.quantity).toFixed(0)} remaining</span>
+            <span>{((1 - progress/100) * order.qty).toFixed(0)} remaining</span>
           )}
         </div>
 
@@ -307,7 +333,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
             Details
           </button>
           
-          {(order.status === 'pending' || order.status === 'partially_filled') && (
+          {(['new', 'sent', 'accepted', 'partially_filled'].includes(order.status)) && (
             <>
               <button
                 onClick={() => onModify?.(order)}

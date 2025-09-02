@@ -116,7 +116,7 @@ const Dashboard: React.FC = () => {
                 ? 'success'
                 : sig.status === 'error'
                 ? 'error'
-                : sig.status === 'cancelled'
+                : sig.status === 'canceled'
                 ? 'warning'
                 : 'pending',
             quantity: sig.quantity,
@@ -136,7 +136,7 @@ const Dashboard: React.FC = () => {
                 ? 'success'
                 : ord.status === 'rejected'
                 ? 'error'
-                : ord.status === 'canceled' || ord.status === 'cancelled'
+                : ord.status === 'canceled'
                 ? 'warning'
                 : 'pending',
             quantity: parseFloat(ord.filled_qty || ord.qty),

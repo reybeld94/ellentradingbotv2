@@ -6,7 +6,7 @@ import {
 
 interface TimelineEvent {
   id: string;
-  type: 'created' | 'submitted' | 'partially_filled' | 'filled' | 'cancelled' | 'rejected' | 'modified';
+  type: 'created' | 'submitted' | 'partially_filled' | 'filled' | 'canceled' | 'rejected' | 'modified';
   timestamp: string;
   description: string;
   details?: string;
@@ -30,7 +30,7 @@ const OrderTimeline: React.FC<OrderTimelineProps> = ({ events, loading = false }
         return { icon: Activity, color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-200' };
       case 'filled':
         return { icon: CheckCircle, color: 'text-success-600', bg: 'bg-success-100', border: 'border-success-200' };
-      case 'cancelled':
+      case 'canceled':
         return { icon: XCircle, color: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-200' };
       case 'rejected':
         return { icon: XCircle, color: 'text-error-600', bg: 'bg-error-100', border: 'border-error-200' };
