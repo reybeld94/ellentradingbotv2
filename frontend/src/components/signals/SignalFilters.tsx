@@ -1,7 +1,8 @@
 import React from 'react';
 import {
   Search, TrendingUp, TrendingDown,
-  Clock, CheckCircle, XCircle, X, SlidersHorizontal
+  Clock, CheckCircle, XCircle, X, SlidersHorizontal,
+  AlertCircle, Target
 } from 'lucide-react';
 
 interface FilterOptions {
@@ -28,14 +29,17 @@ const SignalFilters: React.FC<SignalFiltersProps> = ({
 }) => {
   const statusOptions = [
     { value: 'pending', label: 'Pending', icon: Clock, color: 'text-warning-600' },
-    { value: 'processed', label: 'Executed', icon: CheckCircle, color: 'text-success-600' },
-    { value: 'error', label: 'Failed', icon: XCircle, color: 'text-error-600' },
-    { value: 'cancelled', label: 'Cancelled', icon: X, color: 'text-slate-500' }
+    { value: 'validated', label: 'Validated', icon: CheckCircle, color: 'text-blue-600' },
+    { value: 'executed', label: 'Executed', icon: CheckCircle, color: 'text-success-600' },
+    { value: 'bracket_created', label: 'Bracket Created', icon: Target, color: 'text-indigo-600' },
+    { value: 'bracket_failed', label: 'Bracket Failed', icon: XCircle, color: 'text-error-600' },
+    { value: 'error', label: 'Error', icon: AlertCircle, color: 'text-error-600' },
+    { value: 'rejected', label: 'Rejected', icon: X, color: 'text-slate-500' },
   ];
 
   const actionOptions = [
-    { value: 'BUY', label: 'Buy', icon: TrendingUp, color: 'text-success-600' },
-    { value: 'SELL', label: 'Sell', icon: TrendingDown, color: 'text-error-600' }
+    { value: 'buy', label: 'Buy', icon: TrendingUp, color: 'text-success-600' },
+    { value: 'sell', label: 'Sell', icon: TrendingDown, color: 'text-error-600' },
   ];
 
   const dateRangeOptions = [
@@ -46,7 +50,7 @@ const SignalFilters: React.FC<SignalFiltersProps> = ({
     { value: 'custom', label: 'Custom range' }
   ];
 
-  const updateFilter = (key: keyof FilterOptions, value: any) => {
+  const updateFilter = <K extends keyof FilterOptions>(key: K, value: FilterOptions[K]) => {
     onFiltersChange({ ...filters, [key]: value });
   };
 
