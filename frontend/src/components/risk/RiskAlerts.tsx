@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  AlertTriangle, Shield, Clock, CheckCircle, XCircle,
+  AlertTriangle, Shield, CheckCircle, XCircle,
   Bell, Settings, X, Eye, EyeOff, Activity, TrendingUp,
   BarChart3, Target, Globe
 } from 'lucide-react';
