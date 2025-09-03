@@ -96,6 +96,9 @@ export const api = {
       return authenticatedFetch(`${API_BASE_URL}/positions`);
     },
 
+    getMarketHours: (symbol = 'SPY') =>
+      authenticatedFetch(`${API_BASE_URL}/market-hours?symbol=${symbol}`),
+
     getPortfolioPerformance: async (
       timeframe: '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL' = '1D'
     ) => {

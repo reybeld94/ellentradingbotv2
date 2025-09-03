@@ -1,9 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bell, Search, Menu, Settings,
   ChevronDown, User, HelpCircle, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
+
+const MarketStatusIndicator: React.FC = () => {
+  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; status: string }>(
+    {
+      isOpen: false,
+      status: 'unknown',
+    }
+  );
+
+  const fetchMarketStatus = async () => {
+    try {
+      const response = await api.trading.getMarketHours('SPY');
+      if (response.ok) {
+        const data = await response.json();
+        setMarketStatus({
+          isOpen: data.is_open || false,
+          status: data.status || 'unknown',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching market status:', error);
+      setMarketStatus({ isOpen: false, status: 'unknown' });
+    }
+  };
+
+  useEffect(() => {
+    fetchMarketStatus();
+    const interval = setInterval(fetchMarketStatus, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getStatusStyles = () => {
+    if (marketStatus.isOpen) {
+      return {
+        bg: 'bg-success-50',
+        text: 'text-success-700',
+        border: 'border-success-200',
+        dot: 'bg-success-500',
+        label: 'Market Open',
+      };
+    } else if (marketStatus.status === 'closed') {
+      return {
+        bg: 'bg-error-50',
+        text: 'text-error-700',
+        border: 'border-error-200',
+        dot: 'bg-error-500',
+        label: 'Market Closed',
+      };
+    } else {
+      return {
+        bg: 'bg-yellow-50',
+        text: 'text-yellow-700',
+        border: 'border-yellow-200',
+        dot: 'bg-yellow-500',
+        label: 'Market Status Unknown',
+      };
+    }
+  };
+
+  const styles = getStatusStyles();
+
+  return (
+    <div
+      className={`hidden sm:flex items-center px-3 py-1.5 ${styles.bg} ${styles.text} rounded-lg border ${styles.border}`}
+    >
+      <div
+        className={`w-2 h-2 ${styles.dot} rounded-full mr-2 ${
+          marketStatus.isOpen ? 'animate-pulse' : ''
+        }`}
+      ></div>
+      <span className="text-xs font-medium">{styles.label}</span>
+    </div>
+  );
+};
 
 interface HeaderProps {
   currentPage: string;
@@ -95,10 +170,7 @@ const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Market Status Indicator */}
-          <div className="hidden sm:flex items-center px-3 py-1.5 bg-success-50 text-success-700 rounded-lg border border-success-200">
-            <div className="w-2 h-2 bg-success-500 rounded-full mr-2 animate-pulse"></div>
-            <span className="text-xs font-medium">Market Open</span>
-          </div>
+          <MarketStatusIndicator />
 
           {/* User Menu */}
           <div className="relative">
