@@ -153,28 +153,25 @@ const TradesPage: React.FC = () => {
 
   const fetchRealMetrics = async () => {
     try {
-      const response = await api.analytics.getPerformanceMetrics('1M');
-      if (response.ok) {
-        const data = await response.json();
-        setStats({
-          totalPnL: data.total_pnl,
-          totalTrades: data.total_trades,
-          winningTrades: data.winning_trades,
-          losingTrades: data.losing_trades,
-          winRate: data.win_rate,
-          avgWin: data.avg_win,
-          avgLoss: data.avg_loss,
-          bestTrade: data.largest_win,
-          avgHoldTime: data.avg_hold_time,
-          openTrades: trades.filter(t => t.status === 'open').length,
-          closedTrades: data.total_trades,
-          profitFactor: data.profit_factor || 0,
-          maxDrawdown: data.max_drawdown || 0,
-          sharpeRatio: data.sharpe_ratio || 0,
-          totalVolume: 0,
-          worstTrade: 0,
-        });
-      }
+      const data = await api.analytics.getPerformanceMetrics('1M');
+      setStats({
+        totalPnL: data.total_pnl,
+        totalTrades: data.total_trades,
+        winningTrades: data.winning_trades,
+        losingTrades: data.losing_trades,
+        winRate: data.win_rate,
+        avgWin: data.avg_win,
+        avgLoss: data.avg_loss,
+        bestTrade: data.largest_win,
+        avgHoldTime: data.avg_hold_time,
+        openTrades: trades.filter(t => t.status === 'open').length,
+        closedTrades: data.total_trades,
+        profitFactor: data.profit_factor || 0,
+        maxDrawdown: data.max_drawdown || 0,
+        sharpeRatio: data.sharpe_ratio || 0,
+        totalVolume: 0,
+        worstTrade: 0,
+      });
     } catch (error) {
       console.error('Error fetching real metrics:', error);
       // Fallback to calculated metrics only if API fails
