@@ -92,10 +92,20 @@ async def get_account(
     try:
         account = broker_client.get_account()
 
+        portfolio_value = float(getattr(account, "portfolio_value", 0))
+        cash = float(getattr(account, "cash", 0))
+        buying_power = float(getattr(account, "buying_power", 0))
+        prev_close = float(getattr(account, "last_equity", portfolio_value))
+        day_change = portfolio_value - prev_close
+        day_change_percent = (day_change / prev_close * 100) if prev_close else 0
+
         return {
-            "buying_power": str(getattr(account, "buying_power", 0)),
-            "cash": str(getattr(account, "cash", 0)),
-            "portfolio_value": str(getattr(account, "portfolio_value", 0)),
+            "buying_power": buying_power,
+            "cash": cash,
+            "portfolio_value": portfolio_value,
+            "day_change": day_change,
+            "day_change_percent": day_change_percent,
+            "prev_close": prev_close,
             "status": str(getattr(account, "status", "N/A")),
             "trading_blocked": getattr(account, "trading_blocked", False),
             "crypto_status": str(getattr(account, "crypto_trading_enabled", False)),

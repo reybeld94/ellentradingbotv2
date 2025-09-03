@@ -49,12 +49,12 @@ class PositionManager:
                     detailed_positions.append({
                         'symbol': pos.symbol,
                         'quantity': float(pos.qty),
-                        'market_value': getattr(pos, 'market_value', 0.0),
-                        'unrealized_pl': getattr(pos, 'unrealized_pl', 0.0),  # SOLO PnL TOTAL
-                        'unrealized_plpc': getattr(pos, 'unrealized_plpc', 0.0),
-                        'cost_basis': getattr(pos, 'cost_basis', 0.0),
-                        'avg_entry_price': getattr(pos, 'avg_entry_price', 0.0),
-                        'current_price': getattr(pos, 'current_price', 0.0)
+                        'market_value': float(getattr(pos, 'market_value', 0) or 0.0),
+                        'unrealized_pl': float(getattr(pos, 'unrealized_pl', 0) or 0.0),  # SOLO PnL TOTAL
+                        'unrealized_plpc': float(getattr(pos, 'unrealized_plpc', 0) or 0.0),
+                        'cost_basis': float(getattr(pos, 'cost_basis', 0) or 0.0),
+                        'avg_entry_price': float(getattr(pos, 'avg_entry_price', 0) or 0.0),
+                        'current_price': float(getattr(pos, 'current_price', 0) or 0.0)
                     })
             return detailed_positions
         except Exception as e:
@@ -168,20 +168,22 @@ class PositionManager:
     def get_portfolio_summary(self, limit: int | None = None):
         """Resumen del portafolio"""
         try:
-            positions = self.get_current_positions()
+            detailed_positions = self.get_detailed_positions()
             account = self.broker.get_account()
 
             if limit is None:
                 limit = self.default_limit
 
+            total_positions = len(detailed_positions)
+
             return {
-                "total_positions": len(positions),
+                "total_positions": total_positions,
                 "max_positions": limit,
-                "remaining_slots": max(0, limit - len(positions)),
+                "remaining_slots": max(0, limit - total_positions),
                 "cash": float(account.cash),
                 "portfolio_value": float(account.portfolio_value),
                 "buying_power": float(account.buying_power),
-                "positions": positions
+                "positions": detailed_positions
             }
         except Exception as e:
             logger.error(f"Error getting portfolio summary: {e}")
