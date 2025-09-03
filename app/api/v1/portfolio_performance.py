@@ -45,16 +45,16 @@ async def get_portfolio_performance(
             timeframe_alpaca = "15Min"
         elif timeframe == TimeframeEnum.ONE_MONTH:
             start_date = end_date - timedelta(days=30)
-            timeframe_alpaca = "1Hour"
+            timeframe_alpaca = "1H"
         elif timeframe == TimeframeEnum.THREE_MONTHS:
             start_date = end_date - timedelta(days=90)
-            timeframe_alpaca = "1Day"
+            timeframe_alpaca = "1D"
         elif timeframe == TimeframeEnum.ONE_YEAR:
             start_date = end_date - timedelta(days=365)
-            timeframe_alpaca = "1Day"
+            timeframe_alpaca = "1D"
         else:  # ALL
-            start_date = end_date - timedelta(days=730)
-            timeframe_alpaca = "1Day"
+            start_date = end_date - timedelta(days=730)  # 2 years maximum
+            timeframe_alpaca = "1D"
 
         from alpaca.trading.requests import GetPortfolioHistoryRequest
 
