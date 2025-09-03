@@ -4,6 +4,7 @@ import TradeCard from '../../components/trades/TradeCard';
 import TradeMetrics from '../../components/trades/TradeMetrics';
 import TradeFilters from '../../components/trades/TradeFilters';
 import AlpacaStyleChart from '../../components/dashboard/AlpacaStyleChart';
+import ValidationAlert from '../../components/ValidationAlert';
 import { api } from '../../services/api';
 
 interface Trade {
@@ -73,6 +74,8 @@ const TradesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [validationIssues, setValidationIssues] = useState<any[]>([]);
+  const [showValidationPanel, setShowValidationPanel] = useState(false);
 
   const [filters, setFilters] = useState<FilterOptions>({
     search: '',
@@ -200,6 +203,37 @@ const TradesPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching strategy performance:', error);
       setStrategyStats([]);
+    }
+  };
+
+  const validateTrades = async () => {
+    try {
+      const response = await authenticatedFetch('/api/v1/trades/validate', {
+        method: 'POST'
+      });
+      const validation = await response.json();
+      setValidationIssues(validation.issues_found || []);
+      setShowValidationPanel(true);
+    } catch (error) {
+      console.error('Error validating trades:', error);
+    }
+  };
+
+  const cleanupOrphanedTrades = async (dryRun = true) => {
+    try {
+      const response = await authenticatedFetch(
+        `/api/v1/trades/cleanup-orphaned?dry_run=${dryRun}`,
+        { method: 'POST' }
+      );
+      const result = await response.json();
+      console.log('Cleanup result:', result);
+      if (!dryRun) {
+        await fetchTrades();
+        await fetchRealMetrics();
+      }
+      return result;
+    } catch (error) {
+      console.error('Error cleaning up trades:', error);
     }
   };
 
@@ -357,10 +391,21 @@ const TradesPage: React.FC = () => {
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
+            <button onClick={validateTrades} className='btn btn-warning'>
+              Validate with Alpaca
+            </button>
           </div>
         </div>
 
         <TradeMetrics metrics={stats} loading={loading} />
+
+        {showValidationPanel && (
+          <ValidationAlert
+            issues={validationIssues}
+            onClose={() => setShowValidationPanel(false)}
+            onCleanup={cleanupOrphanedTrades}
+          />
+        )}
 
         {/* Portfolio Performance Chart */}
         <div className="card p-6">
