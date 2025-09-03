@@ -55,9 +55,13 @@ const TradeDistribution: React.FC<TradeDistributionProps> = ({
         setLoading(true);
         setError(null);
 
-        const response = await api.analytics.getTradeAnalytics(timeframe, portfolioId, controller.signal);
+        const data = await api.analytics.getTradeAnalytics(
+          timeframe,
+          portfolioId,
+          controller.signal
+        );
         if (!isMounted) return;
-        setDistribution(response.trade_distribution);
+        setDistribution(data.trade_distribution);
       } catch (err) {
         if (!isMounted) return;
         console.error('Error fetching trade distribution:', err);

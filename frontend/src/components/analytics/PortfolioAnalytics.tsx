@@ -89,14 +89,18 @@ const PortfolioAnalytics: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const [metricsResponse, summaryResponse] = await Promise.all([
-          api.analytics.getPerformanceMetrics(selectedTimeframe, undefined, controller.signal),
-          api.analytics.getSummary(controller.signal)
+        const [metricsData, summaryData] = await Promise.all([
+          api.analytics.getPerformanceMetrics(
+            selectedTimeframe,
+            undefined,
+            controller.signal
+          ),
+          api.analytics.getSummary(undefined, controller.signal)
         ]);
 
         if (!isMounted) return;
-        setMetrics(metricsResponse);
-        setSummary(summaryResponse);
+        setMetrics(metricsData);
+        setSummary(summaryData);
       } catch (err) {
         if (!isMounted) return;
         console.error('Error fetching analytics:', err);
