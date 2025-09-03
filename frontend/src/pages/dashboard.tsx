@@ -7,6 +7,7 @@ import MetricCard from '../components/dashboard/MetricCard';
 import AlpacaStyleChart from '../components/dashboard/AlpacaStyleChart';
 import RecentActivity from '../components/dashboard/RecentActivity';
 import QuickActions from '../components/dashboard/QuickActions';
+import SymbolLogo from '../components/SymbolLogo';
 import { api } from '../services/api';
 
 interface AccountData {
@@ -166,6 +167,17 @@ const Dashboard: React.FC = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(finalValue);
+  };
+
+  const formatPnL = (value: number | null | undefined) => {
+    if (!showValues) return '••••••';
+    if (value == null || isNaN(value)) return '$0.00';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
   };
 
   const totalValue = accountData?.portfolio_value || 0;
@@ -399,11 +411,10 @@ const Dashboard: React.FC = () => {
                       className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors duration-200"
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
-                          <span className="text-primary-700 font-semibold text-sm">
-                            {position.symbol.substring(0, 2)}
-                          </span>
-                        </div>
+                        <SymbolLogo 
+                          symbol={position.symbol} 
+                          className="w-12 h-12 rounded-xl shadow-soft" 
+                        />
                         <div>
                           <p className="font-semibold text-slate-900">{position.symbol}</p>
                           <p className="text-sm text-slate-600">
@@ -425,7 +436,7 @@ const Dashboard: React.FC = () => {
                             <TrendingDown className="h-3 w-3 mr-1" />
                           )}
                           <span>
-                            {isProfit ? '+' : ''}{formatCurrency(position.unrealized_pl)} 
+                            {isProfit ? '+' : ''}{formatPnL(position.unrealized_pl)}
                             ({percentChange.toFixed(2)}%)
                           </span>
                         </div>
