@@ -39,22 +39,23 @@ async def get_portfolio_performance(
         end_date = datetime.now()
         if timeframe == TimeframeEnum.ONE_DAY:
             start_date = end_date - timedelta(days=1)
-            timeframe_alpaca = "1Min"
+            timeframe_alpaca = "1Min"  # Maximum detail for 1 day
         elif timeframe == TimeframeEnum.ONE_WEEK:
             start_date = end_date - timedelta(days=7)
-            timeframe_alpaca = "15Min"
+            timeframe_alpaca = "15Min"  # Balance detail for 1 week
         elif timeframe == TimeframeEnum.ONE_MONTH:
-            start_date = end_date - timedelta(days=30)
-            timeframe_alpaca = "1H"
+            # Use 28 days to keep the range under 30 days
+            start_date = end_date - timedelta(days=28)
+            timeframe_alpaca = "1H"  # Hourly granularity
         elif timeframe == TimeframeEnum.THREE_MONTHS:
             start_date = end_date - timedelta(days=90)
-            timeframe_alpaca = "1D"
+            timeframe_alpaca = "1D"  # Daily required for >30 days
         elif timeframe == TimeframeEnum.ONE_YEAR:
             start_date = end_date - timedelta(days=365)
-            timeframe_alpaca = "1D"
+            timeframe_alpaca = "1D"  # Daily required for >30 days
         else:  # ALL
             start_date = end_date - timedelta(days=730)  # 2 years maximum
-            timeframe_alpaca = "1D"
+            timeframe_alpaca = "1D"  # Daily required for >30 days
 
         from alpaca.trading.requests import GetPortfolioHistoryRequest
 
