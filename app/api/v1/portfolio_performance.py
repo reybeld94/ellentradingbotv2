@@ -69,16 +69,35 @@ async def get_portfolio_performance(
             portfolio_history_request
         )
 
+        # Process the data
         historical_data = []
         if portfolio_history.equity and portfolio_history.timestamp:
             for i, equity in enumerate(portfolio_history.equity):
                 if equity is not None and i < len(portfolio_history.timestamp):
-                    historical_data.append(
-                        {
-                            "timestamp": portfolio_history.timestamp[i].isoformat(),
-                            "portfolio_value": float(equity),
-                        }
-                    )
+                    timestamp_raw = portfolio_history.timestamp[i]
+
+                    try:
+                        # Attempt to convert timestamp (can be int, float, or datetime)
+                        if hasattr(timestamp_raw, "isoformat"):
+                            # Already a datetime object
+                            timestamp_str = timestamp_raw.isoformat()
+                        else:
+                            # Assume Unix timestamp in seconds
+                            timestamp_dt = datetime.fromtimestamp(float(timestamp_raw))
+                            timestamp_str = timestamp_dt.isoformat()
+
+                        historical_data.append(
+                            {
+                                "timestamp": timestamp_str,
+                                "portfolio_value": float(equity),
+                            }
+                        )
+
+                    except (ValueError, TypeError, OSError) as e:
+                        logger.warning(
+                            f"Skipping invalid timestamp {timestamp_raw}: {e}"
+                        )
+                        continue
 
         if not historical_data:
             raise HTTPException(
