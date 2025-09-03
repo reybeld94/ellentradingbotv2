@@ -24,6 +24,19 @@ class TimeframeEnum(str, Enum):
     ALL = "ALL"
 
 
+# Mapping between our public timeframes and Alpaca's expected period/timeframe
+TIMEFRAME_TO_PORTFOLIO_PARAMS = {
+    TimeframeEnum.ONE_DAY: ("1Day", "1Min"),
+    TimeframeEnum.ONE_WEEK: ("1W", "15Min"),
+    TimeframeEnum.ONE_MONTH: ("1M", "1Hour"),
+    TimeframeEnum.THREE_MONTHS: ("3M", "1Day"),
+    # Alpaca uses "A" (annual) instead of "Y" for yearly periods
+    TimeframeEnum.ONE_YEAR: ("1A", "1Day"),
+    # "ALL" is a special value accepted by the API for full history
+    TimeframeEnum.ALL: ("ALL", "1Day"),
+}
+
+
 @router.get("/portfolio/performance")
 async def get_portfolio_performance(
     timeframe: TimeframeEnum = Query(
@@ -36,24 +49,9 @@ async def get_portfolio_performance(
         alpaca_client = AlpacaClient()
 
         # Determine parameters based on timeframe
-        if timeframe == TimeframeEnum.ONE_DAY:
-            period = "1Day"
-            timeframe_alpaca = "1Min"
-        elif timeframe == TimeframeEnum.ONE_WEEK:
-            period = "1W"
-            timeframe_alpaca = "15Min"
-        elif timeframe == TimeframeEnum.ONE_MONTH:
-            period = "1M"
-            timeframe_alpaca = "1Hour"
-        elif timeframe == TimeframeEnum.THREE_MONTHS:
-            period = "1M"
-            timeframe_alpaca = "1Day"
-        elif timeframe == TimeframeEnum.ONE_YEAR:
-            period = "1A"
-            timeframe_alpaca = "1Day"
-        else:  # ALL
-            period = "1A"
-            timeframe_alpaca = "1Day"
+        period, timeframe_alpaca = TIMEFRAME_TO_PORTFOLIO_PARAMS.get(
+            timeframe, ("1Day", "1Min")
+        )
 
         from alpaca.trading.requests import GetPortfolioHistoryRequest
 
