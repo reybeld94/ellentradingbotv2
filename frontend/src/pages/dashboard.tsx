@@ -153,21 +153,19 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData(true); // Solo mostrar loading en carga inicial
-    const interval = setInterval(() => fetchDashboardData(false), 30000); // Sin loading en actualizaciones
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatCurrency = (value: number | null | undefined) => {
+  const formatCurrency = (
+    value: number | null | undefined,
+    useAbsValue = false
+  ) => {
     if (!showValues) return '••••••';
     if (value == null || isNaN(value)) return '$0';
+    const finalValue = useAbsValue ? Math.abs(value) : value;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(Math.abs(value));
+    }).format(finalValue);
   };
 
   const totalValue = accountData?.portfolio_value || 0;
@@ -179,6 +177,62 @@ const Dashboard: React.FC = () => {
       : 'neutral'
     : 'neutral';
   const dayChangeAmount = accountData?.day_change ?? 0;
+
+  const [marketStatus, setMarketStatus] = useState<{
+    isOpen: boolean;
+    status: string;
+  }>({
+    isOpen: false,
+    status: 'unknown',
+  });
+
+  const fetchMarketStatus = async () => {
+    try {
+      const response = await api.trading.getMarketHours('SPY');
+      if (response.ok) {
+        const data = await response.json();
+        setMarketStatus({
+          isOpen: data.is_open || false,
+          status: data.status || 'unknown',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching market status:', error);
+      setMarketStatus({ isOpen: false, status: 'unknown' });
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData(true);
+    fetchMarketStatus();
+    const dataInterval = setInterval(
+      () => fetchDashboardData(false),
+      30000
+    );
+    const marketInterval = setInterval(fetchMarketStatus, 60000);
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(marketInterval);
+    };
+  }, []);
+
+  const statusInfo = marketStatus.isOpen
+    ? {
+        label: 'Market Open',
+        dot: 'bg-success-500',
+        text: 'text-success-700',
+      }
+    : marketStatus.status === 'closed'
+    ? {
+        label: 'Market Closed',
+        dot: 'bg-error-500',
+        text: 'text-error-700',
+      }
+    : {
+        label: 'Market Status Unknown',
+        dot: 'bg-yellow-500',
+        text: 'text-yellow-700',
+      };
 
   const handleQuickAction = (action: string) => {
     switch (action) {
@@ -249,9 +303,9 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
             title="Portfolio Value"
-            value={formatCurrency(totalValue)}
+            value={formatCurrency(totalValue, true)}
             change={{
-              value: `${dayChangeAmount >= 0 ? '+' : ''}${formatCurrency(Math.abs(dayChangeAmount))}`,
+              value: `${dayChangeAmount >= 0 ? '+' : ''}${formatCurrency(dayChangeAmount)}`,
               type: dayChange as 'positive' | 'negative' | 'neutral',
               period: 'Today'
             }}
@@ -389,14 +443,20 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-success-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-slate-900">Market Open</span>
+                <div
+                  className={`w-3 h-3 ${statusInfo.dot} rounded-full ${
+                    marketStatus.isOpen ? 'animate-pulse' : ''
+                  }`}
+                ></div>
+                <span className={`text-sm font-medium ${statusInfo.text}`}>
+                  {statusInfo.label}
+                </span>
               </div>
               <div className="text-sm text-slate-600">
                 Last updated: {new Date().toLocaleTimeString()}
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-6 text-sm">
               <div>
                 <span className="text-slate-500">SPY: </span>

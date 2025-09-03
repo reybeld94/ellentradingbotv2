@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.orders import router as orders_router
+from app.api.v1.trading import router as trading_router
 from app.api.v1.portfolios import router as portfolios_router
 from app.api.v1.streaming import router as streaming_router
 from app.api.v1.exit_rules import router as exit_rules_router
@@ -34,6 +35,7 @@ app.add_middleware(
 # Incluir routers
 app.include_router(webhooks_router, prefix="/api/v1", tags=["webhooks"])
 app.include_router(orders_router, prefix="/api/v1", tags=["orders"])
+app.include_router(trading_router, prefix="/api/v1", tags=["trading"])
 app.include_router(trades.router, prefix="/api/v1", tags=["trades"])
 app.include_router(strategies.router, prefix="/api/v1", tags=["strategies"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
