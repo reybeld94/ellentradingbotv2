@@ -5,6 +5,7 @@ from alpaca.common.exceptions import APIError
 from sqlalchemy.orm import Session
 import logging
 from app.integrations import broker_client
+from app.integrations.alpaca.client import AlpacaClient
 from app.services.position_manager import position_manager
 from app.database import get_db
 from app.models.signal import Signal
@@ -85,41 +86,59 @@ async def get_orders(
 
 
 @router.get("/account")
-async def get_account(
-        current_user: User = Depends(get_current_verified_user)
+async def get_account_info(
+    current_user: User = Depends(get_current_verified_user),
 ):
-    """Ver info de cuenta del broker"""
+    """Ver información de la cuenta con day change real"""
     try:
         account = broker_client.get_account()
 
-        portfolio_value = float(getattr(account, "portfolio_value", 0))
-        cash = float(getattr(account, "cash", 0))
-        buying_power = float(getattr(account, "buying_power", 0))
-        prev_close = float(getattr(account, "last_equity", portfolio_value))
-        day_change = portfolio_value - prev_close
-        day_change_percent = (day_change / prev_close * 100) if prev_close else 0
+        # Get today's performance
+        alpaca_client = AlpacaClient()
+        try:
+            from alpaca.trading.requests import GetPortfolioHistoryRequest
+
+            portfolio_history_request = GetPortfolioHistoryRequest(
+                period="1Day", timeframe="1Min", extended_hours=True
+            )
+            portfolio_history = alpaca_client._trading.get_portfolio_history(
+                portfolio_history_request
+            )
+
+            day_change = 0.0
+            day_change_percent = 0.0
+            if portfolio_history.equity and len(portfolio_history.equity) >= 2:
+                current_equity = portfolio_history.equity[-1]
+                start_equity = portfolio_history.equity[0]
+                if current_equity and start_equity:
+                    day_change = float(current_equity) - float(start_equity)
+                    day_change_percent = (
+                        day_change / float(start_equity) * 100
+                    ) if start_equity != 0 else 0
+        except Exception as exc:
+            logger.warning("Could not get day change data: %s", exc)
+            day_change = 0.0
+            day_change_percent = 0.0
 
         return {
-            "buying_power": buying_power,
-            "cash": cash,
-            "portfolio_value": portfolio_value,
-            "day_change": day_change,
-            "day_change_percent": day_change_percent,
-            "prev_close": prev_close,
-            "status": str(getattr(account, "status", "N/A")),
-            "trading_blocked": getattr(account, "trading_blocked", False),
-            "crypto_status": str(getattr(account, "crypto_trading_enabled", False)),
-            "pattern_day_trader": getattr(account, "pattern_day_trader", False),
+            "cash": float(getattr(account, "cash", 0)),
+            "portfolio_value": float(getattr(account, "portfolio_value", 0)),
+            "buying_power": float(getattr(account, "buying_power", 0)),
+            "day_trade_buying_power": float(
+                getattr(account, "day_trade_buying_power", 0)
+            ),
+            "day_change": round(day_change, 2),
+            "day_change_percent": round(day_change_percent, 2),
             "day_trade_count": getattr(account, "day_trade_count", 0),
             "user": current_user.username,
         }
-    except APIError as e:
+    except APIError as e:  # pragma: no cover - external API
         logger.exception("Alpaca API error fetching account info")
         raise HTTPException(
             status_code=e.status_code or 502,
             detail=f"Alpaca API error: {getattr(e, 'message', str(e))}",
         )
-    except Exception:
+    except Exception:  # pragma: no cover
         logger.exception("Unexpected error fetching account info")
         raise
 

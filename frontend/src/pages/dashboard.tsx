@@ -4,7 +4,7 @@ import {
   BarChart3, Eye, EyeOff, RefreshCw
 } from 'lucide-react';
 import MetricCard from '../components/dashboard/MetricCard';
-import PortfolioChart from '../components/dashboard/PortfolioChart';
+import AlpacaStyleChart from '../components/dashboard/AlpacaStyleChart';
 import RecentActivity from '../components/dashboard/RecentActivity';
 import QuickActions from '../components/dashboard/QuickActions';
 import { api } from '../services/api';
@@ -14,6 +14,7 @@ interface AccountData {
   portfolio_value: number;
   buying_power: number;
   day_trade_buying_power: number;
+  day_change: number;
 }
 
 interface Position {
@@ -46,7 +47,6 @@ const Dashboard: React.FC = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [showValues, setShowValues] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<Array<{date: string, value: number}>>([]);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
@@ -54,12 +54,11 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [accountRes, positionsRes, signalsRes, ordersRes, equityRes] = await Promise.all([
+      const [accountRes, positionsRes, signalsRes, ordersRes] = await Promise.all([
         api.trading.getAccount(),
         api.trading.getPositions(),
         api.trading.getSignals(),
-        api.trading.getOrders(),
-        api.trading.getEquityCurve().catch(() => null)
+        api.trading.getOrders()
       ]);
 
       const accountJson = await accountRes.json();
@@ -68,6 +67,7 @@ const Dashboard: React.FC = () => {
         portfolio_value: parseFloat(accountJson.portfolio_value) || 0,
         buying_power: parseFloat(accountJson.buying_power) || 0,
         day_trade_buying_power: parseFloat(accountJson.day_trade_buying_power) || 0,
+        day_change: parseFloat(accountJson.day_change) || 0,
       });
 
       const positionsJson = await positionsRes.json();
@@ -90,17 +90,6 @@ const Dashboard: React.FC = () => {
       }
       setPositions(parsedPositions);
 
-      let equityData: Array<{ date: string; value: number }> = [];
-      if (equityRes) {
-        const equityJson = await equityRes.json();
-        if (Array.isArray(equityJson)) {
-          equityData = equityJson.map((p: any) => ({
-            date: p.timestamp,
-            value: Number(p.equity)
-          }));
-        }
-      }
-      setChartData(equityData);
 
       const signalsJson = await signalsRes.json();
       const ordersJson = await ordersRes.json();
@@ -179,9 +168,15 @@ const Dashboard: React.FC = () => {
     }).format(Math.abs(value));
   };
 
-  const totalPnL = positions.reduce((sum, pos) => sum + (pos.unrealized_pl || 0), 0);
   const totalValue = accountData?.portfolio_value || 0;
-  const dayChange = totalPnL >= 0 ? 'positive' : 'negative';
+  const dayChange = accountData
+    ? accountData.day_change > 0
+      ? 'positive'
+      : accountData.day_change < 0
+      ? 'negative'
+      : 'neutral'
+    : 'neutral';
+  const dayChangeAmount = accountData?.day_change ?? 0;
 
   const handleQuickAction = (action: string) => {
     switch (action) {
@@ -254,8 +249,8 @@ const Dashboard: React.FC = () => {
             title="Portfolio Value"
             value={formatCurrency(totalValue)}
             change={{
-              value: `${totalPnL >= 0 ? '+' : ''}${formatCurrency(totalPnL)}`,
-              type: dayChange as 'positive' | 'negative',
+              value: `${dayChangeAmount >= 0 ? '+' : ''}${formatCurrency(Math.abs(dayChangeAmount))}`,
+              type: dayChange as 'positive' | 'negative' | 'neutral',
               period: 'Today'
             }}
             icon={DollarSign}
@@ -290,15 +285,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Portfolio Chart - Takes 2 columns on large screens */}
           <div className="lg:col-span-2">
-            <PortfolioChart
-              data={chartData}
-              loading={loading}
-              timeframe="1D"
-              onTimeframeChange={(timeframe) => {
-                // Handle timeframe change
-                console.log('Timeframe changed to:', timeframe);
-              }}
-            />
+            <AlpacaStyleChart loading={loading} />
           </div>
 
           {/* Quick Actions */}
