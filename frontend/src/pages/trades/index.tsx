@@ -3,7 +3,8 @@ import { Filter, Download, RefreshCw, BarChart3, LayoutGrid, List as ListIcon } 
 import TradeCard from '../../components/trades/TradeCard';
 import TradeMetrics from '../../components/trades/TradeMetrics';
 import TradeFilters from '../../components/trades/TradeFilters';
-import PnLChart from '../../components/trades/PnLChart';
+import AlpacaStyleChart from '../../components/dashboard/AlpacaStyleChart';
+import { api } from '../../services/api';
 
 interface Trade {
   id: string;
@@ -37,13 +38,6 @@ interface FilterOptions {
   maxDuration: string;
 }
 
-interface ChartDataPoint {
-  date: string;
-  cumulativePnL: number;
-  dailyPnL: number;
-  tradeCount: number;
-}
-
 interface StrategyStat {
   id: string;
   name: string;
@@ -75,9 +69,7 @@ const TradesPage: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [strategyStats, setStrategyStats] = useState<StrategyStat[]>([]);
-  const [statsMetrics, setStatsMetrics] = useState(defaultMetrics);
-  const [metrics, setMetrics] = useState(defaultMetrics);
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [stats, setStats] = useState(defaultMetrics);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -159,49 +151,34 @@ const TradesPage: React.FC = () => {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchRealMetrics = async () => {
     try {
-      const response = await authenticatedFetch('/api/v1/trades/stats');
-      const data = await response.json();
-      setStatsMetrics({
-        totalTrades: data.total_trades ?? 0,
-        openTrades: data.open_trades ?? 0,
-        closedTrades: data.closed_trades ?? 0,
-        winningTrades: data.winning_trades ?? 0,
-        losingTrades: data.losing_trades ?? 0,
-        totalPnL: data.total_pnl ?? 0,
-        winRate: data.win_rate ?? 0,
-        avgWin: data.average_win ?? data.avg_win ?? 0,
-        avgLoss: data.average_loss ?? data.avg_loss ?? 0,
-        bestTrade: data.best_trade ?? 0,
-        worstTrade: data.worst_trade ?? 0,
-        avgHoldTime: data.avg_hold_time ?? 0,
-        profitFactor: data.profit_factor ?? 0,
-        sharpeRatio: data.sharpe_ratio ?? 0,
-        maxDrawdown: data.max_drawdown ?? 0,
-        totalVolume: data.total_volume ?? 0,
-      });
+      const response = await api.analytics.getPerformanceMetrics('1M');
+      if (response.ok) {
+        const data = await response.json();
+        setStats({
+          totalPnL: data.total_pnl,
+          totalTrades: data.total_trades,
+          winningTrades: data.winning_trades,
+          losingTrades: data.losing_trades,
+          winRate: data.win_rate,
+          avgWin: data.avg_win,
+          avgLoss: data.avg_loss,
+          bestTrade: data.largest_win,
+          avgHoldTime: data.avg_hold_time,
+          openTrades: trades.filter(t => t.status === 'open').length,
+          closedTrades: data.total_trades,
+          profitFactor: data.profit_factor || 0,
+          maxDrawdown: data.max_drawdown || 0,
+          sharpeRatio: data.sharpe_ratio || 0,
+          totalVolume: 0,
+          worstTrade: 0,
+        });
+      }
     } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
-
-  const fetchEquityCurve = async () => {
-    try {
-      const response = await authenticatedFetch('/api/v1/equity-curve');
-      const data = await response.json();
-      const parsed = Array.isArray(data)
-        ? data.map((p: any) => ({
-            date: p.date || p.timestamp,
-            cumulativePnL: p.cumulative_pnl ?? p.equity ?? 0,
-            dailyPnL: p.daily_pnl ?? 0,
-            tradeCount: p.trade_count ?? 0,
-          }))
-        : [];
-      setChartData(parsed);
-    } catch (error) {
-      console.error('Error fetching equity curve:', error);
-      setChartData([]);
+      console.error('Error fetching real metrics:', error);
+      // Fallback to calculated metrics only if API fails
+      setStats(calculateMetrics(trades));
     }
   };
 
@@ -230,10 +207,12 @@ const TradesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchTrades();
-    fetchStrategies();
-    fetchStats();
-    fetchEquityCurve();
+    const loadData = async () => {
+      await fetchTrades();
+      await fetchStrategies();
+      await fetchRealMetrics(); // Usar métricas reales de la API
+    };
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -288,54 +267,32 @@ const TradesPage: React.FC = () => {
   });
 
   const calculateMetrics = (list: Trade[]) => {
+    // Solo usar como fallback si la API falla
     const closedTrades = list.filter(t => t.status === 'closed' && t.pnl !== undefined);
     const openTrades = list.filter(t => t.status === 'open');
     const winningTrades = closedTrades.filter(t => (t.pnl || 0) > 0);
     const losingTrades = closedTrades.filter(t => (t.pnl || 0) < 0);
-    const totalPnL = list.reduce((sum, t) => sum + (t.pnl || 0), 0);
-    const avgWin = winningTrades.length > 0
-      ? winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / winningTrades.length
-      : 0;
-    const avgLoss = losingTrades.length > 0
-      ? Math.abs(losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / losingTrades.length)
-      : 0;
-    const bestTrade = Math.max(...list.map(t => t.pnl || 0));
-    const worstTrade = Math.min(...list.map(t => t.pnl || 0));
-    const avgHoldTime = closedTrades.length > 0
-      ? closedTrades.reduce((sum, t) => {
-          const end = t.closed_at ? new Date(t.closed_at).getTime() : Date.now();
-          const start = new Date(t.opened_at).getTime();
-          return sum + (end - start) / (1000 * 60);
-        }, 0) / closedTrades.length
-      : 0;
-    const grossProfit = winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-    const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0));
-    const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 999 : 0;
-    const totalVolume = list.reduce((sum, t) => sum + (t.quantity * t.entry_price), 0);
+    const totalPnL = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+
     return {
-      totalTrades: list.length,
-      openTrades: openTrades.length,
-      closedTrades: closedTrades.length,
+      totalPnL,
+      totalTrades: closedTrades.length,
       winningTrades: winningTrades.length,
       losingTrades: losingTrades.length,
-      totalPnL,
       winRate: closedTrades.length > 0 ? (winningTrades.length / closedTrades.length) * 100 : 0,
-      avgWin,
-      avgLoss,
-      bestTrade,
-      worstTrade,
-      avgHoldTime,
-      profitFactor,
-      sharpeRatio: statsMetrics.sharpeRatio,
-      maxDrawdown: statsMetrics.maxDrawdown,
-      totalVolume,
+      avgWin: winningTrades.length > 0 ? winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / winningTrades.length : 0,
+      avgLoss: losingTrades.length > 0 ? losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / losingTrades.length : 0,
+      bestTrade: Math.max(...closedTrades.map(t => t.pnl || 0), 0),
+      avgHoldTime: 'N/A' as any,
+      openTrades: openTrades.length,
+      closedTrades: closedTrades.length,
+      profitFactor: 0,
+      maxDrawdown: 0,
+      sharpeRatio: 0,
+      worstTrade: 0,
+      totalVolume: 0,
     };
   };
-
-  useEffect(() => {
-    const computed = calculateMetrics(filteredTrades);
-    setMetrics({ ...computed, profitFactor: statsMetrics.profitFactor || computed.profitFactor });
-  }, [trades, filters, statsMetrics]);
 
   const handleCloseTrade = async (tradeId: string) => {
     try {
@@ -399,15 +356,27 @@ const TradesPage: React.FC = () => {
               <Download className='w-4 h-4 mr-2' />
               Export
             </button>
-            <button onClick={() => { fetchTrades(); fetchStats(); fetchEquityCurve(); }} className='btn-secondary'>
+            <button onClick={() => { fetchTrades(); fetchRealMetrics(); }} className='btn-secondary'>
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
         </div>
 
-        <TradeMetrics metrics={metrics} loading={loading} />
-        <PnLChart data={chartData} loading={loading} />
+        <TradeMetrics metrics={stats} loading={loading} />
+
+        {/* Portfolio Performance Chart */}
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Portfolio Performance</h3>
+              <p className="text-sm text-slate-600">Track your trading performance over time</p>
+            </div>
+          </div>
+
+          {/* Usar el mismo componente que funciona en Dashboard */}
+          <AlpacaStyleChart loading={loading} />
+        </div>
 
         {strategyStats.length > 0 && (
           <div className='card p-6'>
