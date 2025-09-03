@@ -48,9 +48,12 @@ const AlpacaStyleChart: React.FC<AlpacaStyleChartProps> = ({
   ];
 
   const fetchData = async (
-    timeframe: '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'
+    timeframe: '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL',
+    showLoading = true
   ) => {
-    setIsLoading(true);
+    if (showLoading) {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
@@ -77,7 +80,7 @@ const AlpacaStyleChart: React.FC<AlpacaStyleChartProps> = ({
   useEffect(() => {
     if (selectedTimeframe === '1D') {
       const interval = setInterval(() => {
-        fetchData('1D');
+        fetchData('1D', false); // No mostrar loading en actualizaciones automáticas
       }, 30000);
       return () => clearInterval(interval);
     }
