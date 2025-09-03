@@ -376,9 +376,30 @@ const TradesPage: React.FC = () => {
             <p className='text-slate-600 mt-1'>Comprehensive analysis of your trading performance and positions</p>
           </div>
           <div className='flex items-center space-x-3'>
-            <button onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} className='btn-ghost'>
-              {viewMode === 'grid' ? <ListIcon className='w-4 h-4' /> : <LayoutGrid className='w-4 h-4' />}
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-primary-100 text-primary-600'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                }`}
+                title="List View"
+              >
+                <ListIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-primary-100 text-primary-600'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-5 h-5" />
+              </button>
+            </div>
             <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary ${showFilters ? 'bg-primary-50 text-primary-700 border-primary-200' : ''}`}>
               <Filter className='w-4 h-4 mr-2' />
               Filters
@@ -462,7 +483,7 @@ const TradesPage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className={`space-y-4 ${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 space-y-0' : ''}`}>
+              <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 space-y-0' : 'space-y-3'}`}>
                 {filteredTrades.map(trade => (
                   <TradeCard
                     key={trade.id}
@@ -481,6 +502,10 @@ const TradesPage: React.FC = () => {
                     }}
                     compact={viewMode === 'list'}
                     onClose={handleCloseTrade}
+                    onViewDetails={(trade) => {
+                      console.log('View details for trade:', trade.id);
+                      // Aquí puedes añadir la lógica para mostrar detalles
+                    }}
                   />
                 ))}
               </div>
