@@ -96,6 +96,14 @@ export const api = {
       return authenticatedFetch(`${API_BASE_URL}/positions`);
     },
 
+    getPortfolioPerformance: async (
+      timeframe: '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL' = '1D'
+    ) => {
+      return authenticatedFetch(
+        `${API_BASE_URL}/portfolio/performance?timeframe=${timeframe}`
+      );
+    },
+
     sendWebhook: async (webhookData: any) => {
       return authenticatedFetch(`${API_BASE_URL}/webhook`, {
         method: 'POST',
