@@ -1,7 +1,7 @@
 """Portfolio performance endpoints using Alpaca Portfolio History."""
 
 # Endpoints to expose portfolio performance history
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from enum import Enum
 
@@ -24,19 +24,6 @@ class TimeframeEnum(str, Enum):
     ALL = "ALL"
 
 
-# Mapping between our public timeframes and Alpaca's expected period/timeframe
-TIMEFRAME_TO_PORTFOLIO_PARAMS = {
-    TimeframeEnum.ONE_DAY: ("1Day", "1Min"),
-    TimeframeEnum.ONE_WEEK: ("1W", "15Min"),
-    TimeframeEnum.ONE_MONTH: ("1M", "1Hour"),
-    TimeframeEnum.THREE_MONTHS: ("3M", "1Day"),
-    # Alpaca uses "A" (annual) instead of "Y" for yearly periods
-    TimeframeEnum.ONE_YEAR: ("1A", "1Day"),
-    # "ALL" is a special value accepted by the API for full history
-    TimeframeEnum.ALL: ("ALL", "1Day"),
-}
-
-
 @router.get("/portfolio/performance")
 async def get_portfolio_performance(
     timeframe: TimeframeEnum = Query(
@@ -48,15 +35,34 @@ async def get_portfolio_performance(
     try:
         alpaca_client = AlpacaClient()
 
-        # Determine parameters based on timeframe
-        period, timeframe_alpaca = TIMEFRAME_TO_PORTFOLIO_PARAMS.get(
-            timeframe, ("1Day", "1Min")
-        )
+        # Calculate date range based on timeframe
+        end_date = datetime.now()
+        if timeframe == TimeframeEnum.ONE_DAY:
+            start_date = end_date - timedelta(days=1)
+            timeframe_alpaca = "1Min"
+        elif timeframe == TimeframeEnum.ONE_WEEK:
+            start_date = end_date - timedelta(days=7)
+            timeframe_alpaca = "15Min"
+        elif timeframe == TimeframeEnum.ONE_MONTH:
+            start_date = end_date - timedelta(days=30)
+            timeframe_alpaca = "1Hour"
+        elif timeframe == TimeframeEnum.THREE_MONTHS:
+            start_date = end_date - timedelta(days=90)
+            timeframe_alpaca = "1Day"
+        elif timeframe == TimeframeEnum.ONE_YEAR:
+            start_date = end_date - timedelta(days=365)
+            timeframe_alpaca = "1Day"
+        else:  # ALL
+            start_date = end_date - timedelta(days=730)
+            timeframe_alpaca = "1Day"
 
         from alpaca.trading.requests import GetPortfolioHistoryRequest
 
         portfolio_history_request = GetPortfolioHistoryRequest(
-            period=period, timeframe=timeframe_alpaca, extended_hours=True
+            start=start_date,
+            end=end_date,
+            timeframe=timeframe_alpaca,
+            extended_hours=True,
         )
 
         portfolio_history = alpaca_client._trading.get_portfolio_history(
