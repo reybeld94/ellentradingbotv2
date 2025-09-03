@@ -88,14 +88,14 @@ const Dashboard: React.FC = () => {
           current_price: 0,
         }));
       }
-      setPositions(parsedPositions);
+      setPositions(parsedPositions.slice(0, 5));
 
 
       const signalsJson = await signalsRes.json();
       const ordersJson = await ordersRes.json();
 
       const signalActivities: ActivityItem[] = Array.isArray(signalsJson)
-        ? signalsJson.slice(0, 10).map((sig: any) => ({
+        ? signalsJson.slice(0, 3).map((sig: any) => ({
             id: `signal-${sig.id}`,
             type: 'signal',
             symbol: sig.symbol,
@@ -115,7 +115,7 @@ const Dashboard: React.FC = () => {
         : [];
 
       const orderActivities: ActivityItem[] = Array.isArray(ordersJson?.orders)
-        ? ordersJson.orders.slice(0, 10).map((ord: any) => ({
+        ? ordersJson.orders.slice(0, 2).map((ord: any) => ({
             id: `order-${ord.id}`,
             type: 'order',
             symbol: ord.symbol,
@@ -138,10 +138,10 @@ const Dashboard: React.FC = () => {
           }))
         : [];
 
-      const combined = [...signalActivities, ...orderActivities]
+      const combinedActivities = [...signalActivities, ...orderActivities]
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 10);
-      setActivities(combined);
+        .slice(0, 5);
+      setActivities(combinedActivities);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -310,7 +310,7 @@ const Dashboard: React.FC = () => {
 
             {loading ? (
               <div className="space-y-4">
-                {[1, 2, 3, 4].map((i) => (
+                {[1, 2, 3, 4, 5].map((i) => (
                   <div key={i} className="flex items-center space-x-4 animate-pulse">
                     <div className="w-10 h-10 bg-slate-200 rounded-xl"></div>
                     <div className="flex-1 space-y-2">
