@@ -161,47 +161,14 @@ export const api = {
 
   // Analytics endpoints
   analytics: {
-    getPerformanceMetrics: async (
-      timeframe: string = '1M',
-      portfolioId?: number,
-      signal?: AbortSignal
-    ) => {
-      const params = new URLSearchParams({ timeframe });
-      if (portfolioId) params.append('portfolio_id', portfolioId.toString());
-      const res = await authenticatedFetch(
-        `${API_BASE_URL}/analytics/performance?${params}`,
-        { signal }
-      );
-      if (!res.ok) {
-        throw new Error('Failed to fetch performance metrics');
-      }
-      return await res.json();
-    },
+    getPerformanceMetrics: (timeframe = '1M') =>
+      authenticatedFetch(`${API_BASE_URL}/analytics/performance?timeframe=${timeframe}`),
 
-    getSummary: async (signal?: AbortSignal) => {
-      const res = await authenticatedFetch(`${API_BASE_URL}/analytics/summary`, { signal });
-      if (!res.ok) {
-        throw new Error('Failed to fetch summary');
-      }
-      return await res.json();
-    },
+    getTradeAnalytics: (timeframe = '3M') =>
+      authenticatedFetch(`${API_BASE_URL}/analytics/trade-analytics?timeframe=${timeframe}`),
 
-    getTradeAnalytics: async (
-      timeframe: string = '3M',
-      portfolioId?: number,
-      signal?: AbortSignal
-    ) => {
-      const params = new URLSearchParams({ timeframe });
-      if (portfolioId) params.append('portfolio_id', portfolioId.toString());
-      const res = await authenticatedFetch(
-        `${API_BASE_URL}/analytics/trade-analytics?${params}`,
-        { signal }
-      );
-      if (!res.ok) {
-        throw new Error('Failed to fetch trade analytics');
-      }
-      return await res.json();
-    },
+    getSummary: () =>
+      authenticatedFetch(`${API_BASE_URL}/analytics/summary`),
 
     getEquityCurve: async (
       timeframe: string = '3M',
