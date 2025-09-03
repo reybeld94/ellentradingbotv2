@@ -49,9 +49,11 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isInitialLoad = false) => {
     try {
-      setLoading(true);
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       setError(null);
 
       const [accountRes, positionsRes, signalsRes, ordersRes] = await Promise.all([
@@ -152,8 +154,8 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000);
+    fetchDashboardData(true); // Solo mostrar loading en carga inicial
+    const interval = setInterval(() => fetchDashboardData(false), 30000); // Sin loading en actualizaciones
     return () => clearInterval(interval);
   }, []);
 
@@ -229,7 +231,7 @@ const Dashboard: React.FC = () => {
               {showValues ? 'Hide' : 'Show'} Values
             </button>
             <button
-              onClick={fetchDashboardData}
+              onClick={() => fetchDashboardData(true)} // Mostrar loading cuando el usuario hace refresh manual
               className="btn-secondary"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
