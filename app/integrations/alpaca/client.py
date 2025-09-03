@@ -35,7 +35,19 @@ def _in_regular_trading_hours(now: datetime | None = None) -> bool:
 
 
 class AlpacaClient:
-    def __init__(self) -> None:
+    def __init__(self, portfolio=None) -> None:
+        """Initialize client optionally using a specific portfolio.
+
+        If a portfolio instance is provided, credentials are loaded from it
+        before refreshing the underlying Alpaca trading client. This allows
+        per-portfolio API keys without relying on global state.
+        """
+        if portfolio is not None:
+            try:
+                settings.update_from_portfolio(portfolio)
+            except Exception:
+                logger.exception("Failed to update settings from portfolio")
+
         self.api_key = getattr(settings, "alpaca_api_key", None) or ""
         self.api_secret = getattr(settings, "alpaca_secret_key", None) or ""
         self.base_url = getattr(settings, "alpaca_base_url", None)
@@ -104,6 +116,10 @@ class AlpacaClient:
             )
             for p in positions
         ]
+
+    # Backwards compatibility alias used by some services
+    def get_all_positions(self):
+        return self.get_positions()
 
     def get_position(self, symbol: str):
         """Get single position with complete information"""

@@ -10,6 +10,7 @@ from app.schemas.trades import TradeSchema, EquityPointSchema
 from app.core.auth import get_current_verified_user, get_admin_user
 from app.services.trade_service import TradeService
 from app.services import portfolio_service
+from app.services.trade_validation import TradeValidator
 
 router = APIRouter()
 
@@ -73,3 +74,26 @@ async def get_all_trades(
 
     trades = db.query(Trade).order_by(Trade.opened_at.desc()).all()
     return trades
+
+
+@router.post("/trades/validate")
+async def validate_trades_with_alpaca(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Validar trades en BD contra posiciones reales en Alpaca"""
+    validator = TradeValidator(db)
+    validation_result = validator.validate_user_trades(current_user.id)
+    return validation_result
+
+
+@router.post("/trades/cleanup-orphaned")
+async def cleanup_orphaned_trades(
+    dry_run: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Limpiar trades huérfanos que no existen en Alpaca"""
+    validator = TradeValidator(db)
+    cleanup_result = validator.cleanup_orphaned_trades(current_user.id, dry_run=dry_run)
+    return cleanup_result

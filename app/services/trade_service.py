@@ -1,8 +1,11 @@
 from datetime import datetime
 import statistics
+import logging
 from sqlalchemy.orm import Session
 from app.models.trades import Trade
+from app.models.portfolio import Portfolio
 from app.services.symbol_mapper import get_mapped_symbol
+from app.integrations.alpaca.client import AlpacaClient
 
 
 class TradeService:
@@ -54,30 +57,72 @@ class TradeService:
         return position
 
     def refresh_user_trades(self, user_id: int, portfolio_id: int) -> None:
-        open_trades = (
-            self.db.query(Trade)
-            .filter(
-                Trade.user_id == user_id,
-                Trade.portfolio_id == portfolio_id,
-                Trade.status == "open",
-            )
-            .all()
-        )
+        logger = logging.getLogger(__name__)
 
-        # Ensure broker connectivity, ignore errors as trade status is managed
-        # internally now
         try:
-            self.broker.list_orders(status="open", limit=50)
-        except Exception:
-            pass
+            portfolio = (
+                self.db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
+            )
+            if not portfolio:
+                return
 
-        for trade in open_trades:
-            broker_symbol = self._map_symbol(trade.symbol)
-            price = self._get_current_price(broker_symbol)
-            # Calcular PnL total del trade desde el precio de entrada
-            trade.pnl = (price - trade.entry_price) * trade.quantity
+            alpaca_client = AlpacaClient(portfolio)
 
-        self.db.commit()
+            # Obtener trades abiertos
+            open_trades = (
+                self.db.query(Trade)
+                .filter(
+                    Trade.user_id == user_id,
+                    Trade.portfolio_id == portfolio_id,
+                    Trade.status == "open",
+                )
+                .all()
+            )
+
+            # Obtener posiciones actuales de Alpaca
+            try:
+                positions = alpaca_client.get_all_positions()
+                position_dict = {pos.symbol: pos for pos in positions}
+            except Exception as e:
+                logger.error(f"Error getting positions: {e}")
+                return
+
+            trades_updated = 0
+            trades_closed = 0
+
+            for trade in open_trades:
+                alpaca_position = position_dict.get(trade.symbol)
+
+                if not alpaca_position:
+                    # Trade no tiene posición en Alpaca - marcar como cerrado o eliminar
+                    logger.warning(
+                        f"Trade {trade.id} ({trade.symbol}) not found in Alpaca positions"
+                    )
+                    # NUEVA VALIDACIÓN: marcar para revisión manual
+                    trade.status = "validation_required"
+                    trades_closed += 1
+                    continue
+
+                # Actualizar PnL con datos reales de Alpaca
+                old_pnl = trade.pnl or 0
+                new_pnl = float(getattr(alpaca_position, "unrealized_pl", 0) or 0)
+
+                # Solo actualizar si hay diferencia significativa (más de $0.10)
+                if abs(old_pnl - new_pnl) > 0.10:
+                    trade.pnl = new_pnl
+                    trades_updated += 1
+                    logger.info(
+                        f"Updated PnL for trade {trade.id}: {old_pnl:.2f} -> {new_pnl:.2f}"
+                    )
+
+            self.db.commit()
+            logger.info(
+                f"Updated {trades_updated} trades, marked {trades_closed} for validation"
+            )
+
+        except Exception as e:
+            logger.error(f"Error refreshing trades: {e}")
+            self.db.rollback()
 
     def get_equity_curve(
         self,
