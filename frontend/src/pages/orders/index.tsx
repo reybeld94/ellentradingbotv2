@@ -99,18 +99,32 @@ const OrdersPage: React.FC = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await authenticatedFetch('/api/v1/orders');
+      const response = await authenticatedFetch('/api/v1/orders/my');
       const data = await response.json();
+      console.log('Orders API Response:', data); // DEBUG - remover después
+
       const parsed = Array.isArray(data.orders)
         ? data.orders.map((o: any) => ({
-            ...o,
-            qty: parseFloat(o.qty),
-            filled_qty: parseFloat(o.filled_qty || '0'),
+            id: o.id,
+            symbol: o.symbol,
+            side: o.side,
+            order_type: o.order_type,
+            status: o.status,
+            qty: parseFloat(o.quantity), // API retorna 'quantity', no 'qty'
+            filled_qty: parseFloat(o.filled_quantity || '0'), // API retorna 'filled_quantity'
             limit_price: o.limit_price ? parseFloat(o.limit_price) : undefined,
             stop_price: o.stop_price ? parseFloat(o.stop_price) : undefined,
-            avg_fill_price: o.filled_avg_price ? parseFloat(o.filled_avg_price) : undefined
+            avg_fill_price: o.avg_fill_price ? parseFloat(o.avg_fill_price) : undefined,
+            submitted_at: o.created_at, // API retorna 'created_at', no 'submitted_at'
+            filled_at: o.filled_at,
+            time_in_force: o.time_in_force,
+            strategy_id: o.signal_id, // API retorna 'signal_id'
+            strategy_name: undefined, // No viene en la respuesta
+            client_order_id: o.client_order_id
           }))
         : [];
+
+      console.log('Parsed orders:', parsed.length, 'orders'); // DEBUG - remover después
       setOrders(parsed);
     } catch (error) {
       console.error('Error fetching orders:', error);
