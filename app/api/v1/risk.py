@@ -135,6 +135,110 @@ async def get_risk_status(current_user: User | None = Depends(get_current_verifi
         "allocation_info": allocation,
     }
 
+@router.get("/risk/metrics")
+async def get_risk_metrics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Obtener métricas completas de riesgo para el dashboard"""
+    from app.integrations import broker_client
+    from app.risk.manager import RiskManager
+    from sqlalchemy import func, and_
+    from app.models.trades import Trade
+    from app.models.signal import Signal
+    from app.utils.time import now_eastern
+    from datetime import timedelta
+    
+    active_portfolio = portfolio_service.get_active(db, current_user)
+    if not active_portfolio:
+        raise HTTPException(status_code=400, detail="No active portfolio found")
+    
+    try:
+        # Obtener datos del broker
+        account = broker_client.get_account()
+        portfolio_value = float(getattr(account, "portfolio_value", 100000))
+        buying_power = float(getattr(account, "buying_power", 50000))
+        
+        # Obtener risk limits
+        risk_service = RiskService(db)
+        risk_limits = risk_service.get_or_create_risk_limits(current_user.id, active_portfolio.id)
+        
+        now = now_eastern()
+        
+        # Calcular métricas básicas
+        open_positions = db.query(Trade).filter(
+            and_(
+                Trade.user_id == current_user.id,
+                Trade.portfolio_id == active_portfolio.id,
+                Trade.status == "open"
+            )
+        ).count()
+        
+        # PnL diario
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        daily_pnl = db.query(func.sum(Trade.pnl)).filter(
+            and_(
+                Trade.user_id == current_user.id,
+                Trade.portfolio_id == active_portfolio.id,
+                Trade.closed_at >= today_start,
+                Trade.status == "closed"
+            )
+        ).scalar() or 0.0
+        
+        # Utilización de margen
+        margin_utilization = max(0, (portfolio_value - buying_power) / portfolio_value * 100) if portfolio_value > 0 else 0
+        
+        # Leverage ratio estimado
+        leverage_ratio = portfolio_value / buying_power if buying_power > 0 else 1.0
+        
+        # Risk score calculado
+        risk_factors = []
+        risk_factors.append(min(open_positions / risk_limits.max_open_positions * 30, 30))  # Factor posiciones
+        risk_factors.append(min(margin_utilization, 25))  # Factor margen
+        risk_factors.append(min(abs(daily_pnl) / portfolio_value * 1000, 15) if portfolio_value > 0 else 0)  # Factor PnL
+        risk_factors.append(min((leverage_ratio - 1) * 20, 20))  # Factor leverage
+        
+        risk_score = min(sum(risk_factors), 100)
+        
+        # Determinar nivel de riesgo
+        if risk_score < 30:
+            risk_level = "low"
+        elif risk_score < 60:
+            risk_level = "medium"  
+        elif risk_score < 80:
+            risk_level = "high"
+        else:
+            risk_level = "critical"
+            
+        # VaR simple (estimación básica)
+        portfolio_var = min(risk_score / 100 * 5, 10)  # Entre 0-10%
+        portfolio_cvar = portfolio_var * 1.5
+        
+        return {
+            "metrics": {
+                "portfolioVaR": round(portfolio_var, 2),
+                "portfolioCVaR": round(portfolio_cvar, 2),
+                "positionLimit": risk_limits.max_open_positions,
+                "usedPositions": open_positions,
+                "marginUtilization": round(margin_utilization, 1),
+                "leverageRatio": round(leverage_ratio, 2),
+                "correlationRisk": 35.7,  # Dummy por ahora
+                "concentrationRisk": 28.4,  # Dummy por ahora
+                "liquidityRisk": 12.1,  # Dummy por ahora
+                "marketRisk": 18.9,  # Dummy por ahora
+                "riskScore": int(risk_score),
+                "riskLevel": risk_level
+            },
+            "account": {
+                "portfolioValue": portfolio_value,
+                "buyingPower": buying_power,
+                "dailyPnL": daily_pnl
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating risk metrics: {str(e)}")
+
 @router.post("/risk/test-signal")
 async def test_signal_risk(
     signal_data: Dict[str, Any],

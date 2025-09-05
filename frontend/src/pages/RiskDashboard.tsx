@@ -71,21 +71,29 @@ const RiskDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Mock data - replace with real API calls
+      // Fetch real risk metrics from API
+      const response = await fetch('/api/v1/risk/metrics');
+      if (!response.ok) {
+        throw new Error('Failed to fetch risk metrics');
+      }
+      const apiData = await response.json();
+      
+      // Combine real data with dummy data (temporarily)
       const mockData: RiskDashboardData = {
         metrics: {
-          portfolioVaR: 2.8,
-          portfolioCVaR: 4.2,
-          positionLimit: 10,
-          usedPositions: 7,
-          marginUtilization: 45.3,
-          leverageRatio: 1.8,
-          correlationRisk: 35.7,
-          concentrationRisk: 28.4,
-          liquidityRisk: 12.1,
-          marketRisk: 18.9,
-          riskScore: 72,
-          riskLevel: 'medium'
+          // Use real data from API
+          portfolioVaR: apiData.metrics.portfolioVaR,
+          portfolioCVaR: apiData.metrics.portfolioCVaR,
+          positionLimit: apiData.metrics.positionLimit,
+          usedPositions: apiData.metrics.usedPositions,
+          marginUtilization: apiData.metrics.marginUtilization,
+          leverageRatio: apiData.metrics.leverageRatio,
+          correlationRisk: apiData.metrics.correlationRisk,
+          concentrationRisk: apiData.metrics.concentrationRisk,
+          liquidityRisk: apiData.metrics.liquidityRisk,
+          marketRisk: apiData.metrics.marketRisk,
+          riskScore: apiData.metrics.riskScore,
+          riskLevel: apiData.metrics.riskLevel
         },
         exposure: [
           {
