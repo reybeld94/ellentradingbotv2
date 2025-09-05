@@ -13,7 +13,7 @@ from app.api.v1.portfolio_performance import (
     router as portfolio_performance_router,
 )
 from app.api.ws import router as ws_router
-from app.api.v1 import auth, trades, strategies, portfolio, risk, system, positions, reports
+from app.api.v1 import auth, trades, strategies, portfolio, risk, system, positions, reports, execution
 from app.database import SessionLocal
 from app.services import portfolio_service
 from app.integrations import refresh_broker_client
@@ -48,6 +48,7 @@ app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
 app.include_router(exit_rules_router, prefix="/api/v1/exit-rules", tags=["Exit Rules"])
 app.include_router(bracket_orders_router, prefix="/api/v1/bracket-orders", tags=["Bracket Orders"])
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])
+app.include_router(execution.router, prefix="/api/v1/execution", tags=["execution"])
 app.include_router(positions.router, prefix="/api/v1", tags=["positions"])
 app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
 app.include_router(ws_router)

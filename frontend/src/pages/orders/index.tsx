@@ -99,9 +99,8 @@ const OrdersPage: React.FC = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await authenticatedFetch('/api/v1/orders/my');
+      const response = await authenticatedFetch('/api/v1/execution/orders/my');
       const data = await response.json();
-      console.log('Orders API Response:', data); // DEBUG - remover después
 
       const parsed = Array.isArray(data.orders)
         ? data.orders.map((o: any) => ({
@@ -124,7 +123,6 @@ const OrdersPage: React.FC = () => {
           }))
         : [];
 
-      console.log('Parsed orders:', parsed.length, 'orders'); // DEBUG - remover después
       setOrders(parsed);
     } catch (error) {
       console.error('Error fetching orders:', error);
