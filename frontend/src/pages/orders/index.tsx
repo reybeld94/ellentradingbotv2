@@ -104,7 +104,7 @@ const OrdersPage: React.FC = () => {
 
       const parsed = Array.isArray(data.orders)
         ? data.orders.map((o: any) => ({
-            id: o.id,
+            id: o.id?.toString(),
             symbol: o.symbol,
             side: o.side,
             order_type: o.order_type,
@@ -117,7 +117,7 @@ const OrdersPage: React.FC = () => {
             submitted_at: o.created_at, // API retorna 'created_at', no 'submitted_at'
             filled_at: o.filled_at,
             time_in_force: o.time_in_force,
-            strategy_id: o.signal_id, // API retorna 'signal_id'
+            strategy_id: o.signal_id ? o.signal_id.toString() : undefined, // API retorna 'signal_id'
             strategy_name: undefined, // No viene en la respuesta
             client_order_id: o.client_order_id
           }))
