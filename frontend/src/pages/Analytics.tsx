@@ -70,6 +70,7 @@ const Analytics: React.FC = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Fetching analytics data...');
 
       // Fetch real data from APIs
       const [
@@ -85,6 +86,14 @@ const Analytics: React.FC = () => {
         api.analytics.getPerformanceMetrics(timeframe),
         api.analytics.getTradeAnalytics()
       ]);
+
+      console.log('📡 Response statuses:', {
+        positions: positionsResponse.status,
+        summary: summaryResponse.status,
+        monthlyPerformance: monthlyPerformanceResponse.status,
+        performanceMetrics: performanceMetricsResponse.status,
+        tradeAnalytics: tradeAnalyticsResponse.status
+      });
 
       const positions = positionsResponse.ok ? await positionsResponse.json() : [];
       const summary = summaryResponse.ok ? await summaryResponse.json() : {};
