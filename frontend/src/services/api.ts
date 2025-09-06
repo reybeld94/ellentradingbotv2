@@ -177,14 +177,10 @@ export const api = {
     ) => {
       const params = new URLSearchParams({ timeframe });
       if (portfolioId) params.append('portfolio_id', portfolioId.toString());
-      const res = await authenticatedFetch(
+      return await authenticatedFetch(
         `${API_BASE_URL}/analytics/performance?${params}`,
         { signal }
       );
-      if (!res.ok) {
-        throw new Error('Failed to fetch performance metrics');
-      }
-      return await res.json();
     },
 
     getTradeAnalytics: async (
@@ -194,14 +190,10 @@ export const api = {
     ) => {
       const params = new URLSearchParams({ timeframe });
       if (portfolioId) params.append('portfolio_id', portfolioId.toString());
-      const res = await authenticatedFetch(
+      return await authenticatedFetch(
         `${API_BASE_URL}/analytics/trade-analytics?${params}`,
         { signal }
       );
-      if (!res.ok) {
-        throw new Error('Failed to fetch trade analytics');
-      }
-      return await res.json();
     },
 
     getSummary: async (
@@ -211,14 +203,10 @@ export const api = {
       const params = new URLSearchParams();
       if (portfolioId) params.append('portfolio_id', portfolioId.toString());
       const query = params.toString() ? `?${params}` : '';
-      const res = await authenticatedFetch(
+      return await authenticatedFetch(
         `${API_BASE_URL}/analytics/summary${query}`,
         { signal }
       );
-      if (!res.ok) {
-        throw new Error('Failed to fetch analytics summary');
-      }
-      return await res.json();
     },
 
     getEquityCurve: async (
@@ -243,14 +231,10 @@ export const api = {
       signal?: AbortSignal
     ) => {
       const params = portfolioId ? `?portfolio_id=${portfolioId}` : '';
-      const res = await authenticatedFetch(
+      return await authenticatedFetch(
         `${API_BASE_URL}/analytics/monthly-performance${params}`,
         { signal }
       );
-      if (!res.ok) {
-        throw new Error('Failed to fetch monthly performance');
-      }
-      return await res.json();
     },
 
     getRiskDashboard: async (
