@@ -74,7 +74,9 @@ def test_calculate_win_rate(db_session, test_user, test_portfolio):
     db_session.commit()
 
     base_query = db_session.query(Trade).filter(Trade.user_id == test_user.id)
-    win_rate = analytics._calculate_win_rate(base_query)
+    total_trades = base_query.count()
+    winning_trades = base_query.filter(Trade.pnl > 0).count()
+    win_rate = analytics._calculate_win_rate(total_trades, winning_trades)
 
     assert win_rate == 66.67
 
