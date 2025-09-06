@@ -51,23 +51,36 @@ class PortfolioAnalytics:
                 Trade.status.in_([TradeStatus.OPEN, TradeStatus.CLOSED]),
             )
         )
-        
-        # Check how many trades we found
-        trades_count = base_query.count()
+
+        # Aggregate counts to avoid repeated queries
+        pnl_state = case(
+            (Trade.pnl > 0, "winning"),
+            (Trade.pnl < 0, "losing"),
+            else_="even",
+        ).label("pnl_state")
+        pnl_counts = dict(
+            base_query.with_entities(pnl_state, func.count(Trade.id))
+            .group_by(pnl_state)
+            .all()
+        )
+
+        trades_count = sum(pnl_counts.values())
+        winning_trades = pnl_counts.get("winning", 0)
+        losing_trades = pnl_counts.get("losing", 0)
+
         print(f"  trades_found: {trades_count}")
-        
-        # Check total trades for this portfolio (any date)
-        total_trades = self.db.query(Trade).filter(
-            and_(Trade.user_id == user_id, Trade.portfolio_id == portfolio_id)
-        ).count()
+        print(f"  trade_outcome_counts: {pnl_counts}")
+
+        # Check total trades for this portfolio (any date) and status breakdown in one query
+        status_counts = dict(
+            self.db.query(Trade.status, func.count(Trade.id))
+            .filter(and_(Trade.user_id == user_id, Trade.portfolio_id == portfolio_id))
+            .group_by(Trade.status)
+            .all()
+        )
+        total_trades = sum(status_counts.values())
         print(f"  total_trades_ever: {total_trades}")
-        
-        # Check trade status breakdown
-        if total_trades > 0:
-            status_breakdown = self.db.query(Trade.status, func.count(Trade.id)).filter(
-                and_(Trade.user_id == user_id, Trade.portfolio_id == portfolio_id)
-            ).group_by(Trade.status).all()
-            print(f"  status_breakdown: {dict(status_breakdown)}")
+        print(f"  status_breakdown: {status_counts}")
 
         if trades_count == 0:
             print("  ⚠️ No trades found - returning zeros")
@@ -78,17 +91,19 @@ class PortfolioAnalytics:
             for i, trade in enumerate(sample_trades):
                 print(f"    Trade {i+1}: {trade.symbol} | pnl: {trade.pnl} | qty: {trade.quantity} | entry: {trade.entry_price} | status: {trade.status}")
 
+        win_rate = self._calculate_win_rate(trades_count, winning_trades)
+
         return {
             "total_pnl": self._calculate_total_pnl(base_query),
             "total_pnl_percentage": self._calculate_total_pnl_percentage(base_query),
             "sharpe_ratio": self._calculate_sharpe_ratio(base_query),
             "max_drawdown": self._calculate_max_drawdown(base_query),
-            "win_rate": self._calculate_win_rate(base_query),
+            "win_rate": win_rate,
             "avg_hold_time": self._calculate_avg_hold_time(base_query),
             "profit_factor": self._calculate_profit_factor(base_query),
-            "total_trades": base_query.count(),
-            "winning_trades": base_query.filter(Trade.pnl > 0).count(),
-            "losing_trades": base_query.filter(Trade.pnl < 0).count(),
+            "total_trades": trades_count,
+            "winning_trades": winning_trades,
+            "losing_trades": losing_trades,
             "largest_win": self._get_largest_win(base_query),
             "largest_loss": self._get_largest_loss(base_query),
             "avg_win": self._get_avg_win(base_query),
@@ -171,13 +186,11 @@ class PortfolioAnalytics:
 
         return round(max_drawdown, 2)
 
-    def _calculate_win_rate(self, query) -> float:
+    def _calculate_win_rate(self, total_trades: int, winning_trades: int) -> float:
         """Calcula win rate como porcentaje."""
-        total_trades = query.count()
         if total_trades == 0:
             return 0.0
 
-        winning_trades = query.filter(Trade.pnl > 0).count()
         win_rate = (winning_trades / total_trades) * 100
         return round(win_rate, 2)
 

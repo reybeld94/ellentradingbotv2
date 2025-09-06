@@ -64,9 +64,39 @@ def test_get_performance_metrics_empty(db_session, test_user, test_portfolio):
     assert metrics["timeframe"] == "1M"
 
 
+def test_get_performance_metrics_counts(db_session, test_user, test_portfolio):
+    analytics = PortfolioAnalytics(db_session)
+
+    # Create trades with different outcomes
+    create_test_trade(db_session, user_id=test_user.id, portfolio_id=test_portfolio.id, pnl=10.0)
+    create_test_trade(db_session, user_id=test_user.id, portfolio_id=test_portfolio.id, pnl=-5.0)
+    create_test_trade(db_session, user_id=test_user.id, portfolio_id=test_portfolio.id, pnl=0.0)
+
+    metrics = analytics.get_performance_metrics(test_user.id, test_portfolio.id, "1M")
+
+    assert metrics["total_trades"] == 3
+    assert metrics["winning_trades"] == 1
+    assert metrics["losing_trades"] == 1
+    assert metrics["win_rate"] == pytest.approx(33.33, rel=1e-2)
+
+
 def test_strategy_performance_single_query(db_session, test_user, test_portfolio):
-    strat_a = Strategy(name="s1")
-    strat_b = Strategy(name="s2")
+    strat_a = Strategy(
+        name="s1",
+        entry_rules={},
+        exit_rules={},
+        risk_parameters={},
+        position_sizing={},
+        user_id=test_user.id,
+    )
+    strat_b = Strategy(
+        name="s2",
+        entry_rules={},
+        exit_rules={},
+        risk_parameters={},
+        position_sizing={},
+        user_id=test_user.id,
+    )
     db_session.add_all([strat_a, strat_b])
     db_session.commit()
 
