@@ -71,7 +71,8 @@ const RiskDashboard: React.FC = () => {
   const fetchRiskData = async () => {
     try {
       setLoading(true);
-      
+      console.log('🔄 Fetching risk data...');
+
       // Fetch real risk data from API
       const [metricsResponse, exposureResponse, alertsResponse, riskDashboardResponse] = await Promise.all([
         api.risk.getMetrics(),
@@ -79,7 +80,14 @@ const RiskDashboard: React.FC = () => {
         api.risk.getAlerts(),
         api.analytics.getRiskDashboard()
       ]);
-      
+
+      console.log('📡 Response statuses:', {
+        metrics: metricsResponse.status,
+        exposure: exposureResponse.status,
+        alerts: alertsResponse.status,
+        riskDashboard: riskDashboardResponse.status
+      });
+
       if (!metricsResponse.ok || !exposureResponse.ok || !alertsResponse.ok) {
         throw new Error('Failed to fetch risk data');
       }
@@ -88,6 +96,13 @@ const RiskDashboard: React.FC = () => {
       const exposureData = await exposureResponse.json();
       const alertsData = await alertsResponse.json();
       const riskDashboardData = riskDashboardResponse.ok ? await riskDashboardResponse.json() : null;
+
+      console.log('🔧 Raw API responses:', {
+        apiData,
+        exposureData,
+        alertsData,
+        riskDashboardData
+      });
       
       // Transform correlation data from analytics risk dashboard
       let correlationData = {
@@ -147,7 +162,8 @@ const RiskDashboard: React.FC = () => {
         alerts: alertsData.alerts || [],
         correlations: correlationData
       };
-      
+
+      console.log('✅ Final risk data:', realRiskData);
       setData(realRiskData);
     } catch (error) {
       console.error('Error fetching risk data:', error);
