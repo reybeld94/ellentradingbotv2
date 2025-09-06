@@ -79,13 +79,8 @@ const TradeDistribution: React.FC<TradeDistributionProps> = ({
     };
   }, [timeframe, portfolioId]);
 
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const formatPercentage = (value: number): string => {
+    return `${(value * 100).toFixed(2)}%`;
   };
 
   if (loading) {
@@ -189,15 +184,15 @@ const TradeDistribution: React.FC<TradeDistributionProps> = ({
         </div>
         <div className="text-center p-3 bg-green-50 rounded-lg">
           <p className="text-xl font-bold text-green-600">
-            {formatCurrency(distribution.avg_winner)}
+            {formatPercentage(distribution.avg_winner)}
           </p>
-          <p className="text-sm text-gray-600">Avg Winner</p>
+          <p className="text-sm text-gray-600">Avg Winner Return (%)</p>
         </div>
         <div className="text-center p-3 bg-red-50 rounded-lg">
           <p className="text-xl font-bold text-red-600">
-            {formatCurrency(distribution.avg_loser)}
+            {formatPercentage(distribution.avg_loser)}
           </p>
-          <p className="text-sm text-gray-600">Avg Loser</p>
+          <p className="text-sm text-gray-600">Avg Loser Return (%)</p>
         </div>
       </div>
 
