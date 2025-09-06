@@ -72,25 +72,42 @@ const Analytics: React.FC = () => {
       setLoading(true);
 
       // Fetch real data from APIs
+      console.log('🔄 Starting API calls...');
+
       const [
         positionsResponse,
         summaryResponse,
         monthlyPerformanceResponse,
         performanceMetricsResponse,
         tradeAnalyticsResponse
-      ] = await Promise.all([
+      ] = await Promise.allSettled([
         api.trading.getPositions(),
-        api.analytics.getSummary(),
-        api.analytics.getMonthlyPerformance(),
-        api.analytics.getPerformanceMetrics(timeframe),
-        api.analytics.getTradeAnalytics()
-      ]);
+        api.analytics.getSummary().catch(e => { console.error('Summary API error:', e); return null; }),
+        api.analytics.getMonthlyPerformance().catch(e => { console.error('Monthly Performance API error:', e); return null; }),
+        api.analytics.getPerformanceMetrics(timeframe).catch(e => { console.error('Performance Metrics API error:', e); return null; }),
+        api.analytics.getTradeAnalytics().catch(e => { console.error('Trade Analytics API error:', e); return null; })
+      ]).then(results => results.map(result => result.status === 'fulfilled' ? result.value : null));
 
-      const positions = positionsResponse.ok ? await positionsResponse.json() : [];
-      const summary = summaryResponse.ok ? await summaryResponse.json() : {};
-      const monthlyPerformance = monthlyPerformanceResponse.ok ? await monthlyPerformanceResponse.json() : {};
-      const performanceMetrics = performanceMetricsResponse.ok ? await performanceMetricsResponse.json() : {};
-      const tradeAnalytics = tradeAnalyticsResponse.ok ? await tradeAnalyticsResponse.json() : {};
+      console.log('📡 Response statuses:', {
+        positions: positionsResponse?.status || 'undefined',
+        summary: summaryResponse?.status || 'undefined',
+        monthlyPerformance: monthlyPerformanceResponse?.status || 'undefined',
+        performanceMetrics: performanceMetricsResponse?.status || 'undefined',
+        tradeAnalytics: tradeAnalyticsResponse?.status || 'undefined'
+      });
+
+      console.log('🔍 Raw responses:', {
+        summaryResponse,
+        monthlyPerformanceResponse,
+        performanceMetricsResponse,
+        tradeAnalyticsResponse
+      });
+
+      const positions = positionsResponse?.ok ? await positionsResponse.json() : [];
+      const summary = (summaryResponse && summaryResponse.ok) ? await summaryResponse.json() : {};
+      const monthlyPerformance = (monthlyPerformanceResponse && monthlyPerformanceResponse.ok) ? await monthlyPerformanceResponse.json() : {};
+      const performanceMetrics = (performanceMetricsResponse && performanceMetricsResponse.ok) ? await performanceMetricsResponse.json() : {};
+      const tradeAnalytics = (tradeAnalyticsResponse && tradeAnalyticsResponse.ok) ? await tradeAnalyticsResponse.json() : {};
 
       // Debug logging
       console.log('🔍 Analytics Debug Data:');
