@@ -7,6 +7,7 @@ import RiskMetrics from '../components/risk/RiskMetrics';
 import ExposureChart from '../components/risk/ExposureChart';
 import RiskAlerts from '../components/risk/RiskAlerts';
 import CorrelationMatrix from '../components/risk/CorrelationMatrix';
+import { api } from '../services/api';
 
 interface RiskDashboardData {
   metrics: {
@@ -72,7 +73,7 @@ const RiskDashboard: React.FC = () => {
       setLoading(true);
       
       // Fetch real risk metrics from API
-      const response = await fetch('/api/v1/risk/metrics');
+      const response = await api.risk.getMetrics();
       if (!response.ok) {
         throw new Error('Failed to fetch risk metrics');
       }

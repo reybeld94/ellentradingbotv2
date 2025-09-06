@@ -123,6 +123,9 @@ export const api = {
     getAllocationChart: async () => {
       return authenticatedFetch(`${API_BASE_URL}/risk/allocation-chart`);
     },
+    getMetrics: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/risk/metrics`);
+    },
   },
 
   // Portfolio endpoints
