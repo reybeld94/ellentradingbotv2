@@ -498,7 +498,7 @@ class PortfolioAnalytics:
             func.sum(case((Trade.pnl > 0, 1), else_=0)).label('winners'),
             func.avg(Trade.pnl).label('avg_pnl')
         ).join(
-            Trade, Trade.strategy_id == Strategy.id
+            Trade, Trade.strategy_id == Strategy.name
         ).filter(
             Trade.id.in_(select(trade_ids.c.id))
         ).group_by(Strategy.id, Strategy.name).all()
