@@ -72,12 +72,18 @@ const RiskDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch real risk metrics from API
-      const response = await api.risk.getMetrics();
-      if (!response.ok) {
-        throw new Error('Failed to fetch risk metrics');
+      // Fetch real risk metrics and exposure from API
+      const [metricsResponse, exposureResponse] = await Promise.all([
+        api.risk.getMetrics(),
+        api.risk.getExposure()
+      ]);
+      
+      if (!metricsResponse.ok || !exposureResponse.ok) {
+        throw new Error('Failed to fetch risk data');
       }
-      const apiData = await response.json();
+      
+      const apiData = await metricsResponse.json();
+      const exposureData = await exposureResponse.json();
       
       // Combine real data with dummy data (temporarily)
       const mockData: RiskDashboardData = {
@@ -96,42 +102,8 @@ const RiskDashboard: React.FC = () => {
           riskScore: apiData.metrics.riskScore,
           riskLevel: apiData.metrics.riskLevel
         },
-        exposure: [
-          {
-            category: 'Technology',
-            exposure: 85000,
-            limit: 120000,
-            utilizationPercent: 70.8,
-            riskLevel: 'medium',
-            positions: [
-              { symbol: 'AAPL', value: 45000, percentage: 52.9, riskContribution: 15.2 },
-              { symbol: 'GOOGL', value: 25000, percentage: 29.4, riskContribution: 8.9 },
-              { symbol: 'MSFT', value: 15000, percentage: 17.6, riskContribution: 6.1 }
-            ]
-          },
-          {
-            category: 'Healthcare',
-            exposure: 35000,
-            limit: 60000,
-            utilizationPercent: 58.3,
-            riskLevel: 'low',
-            positions: [
-              { symbol: 'JNJ', value: 20000, percentage: 57.1, riskContribution: 4.2 },
-              { symbol: 'PFE', value: 15000, percentage: 42.9, riskContribution: 3.1 }
-            ]
-          },
-          {
-            category: 'Financial',
-            exposure: 28000,
-            limit: 40000,
-            utilizationPercent: 70.0,
-            riskLevel: 'medium',
-            positions: [
-              { symbol: 'JPM', value: 18000, percentage: 64.3, riskContribution: 5.8 },
-              { symbol: 'BAC', value: 10000, percentage: 35.7, riskContribution: 2.9 }
-            ]
-          }
-        ],
+        // Use real exposure data from API
+        exposure: exposureData.exposure || [],
         alerts: [
           {
             id: '1',

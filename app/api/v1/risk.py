@@ -239,6 +239,101 @@ async def get_risk_metrics(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating risk metrics: {str(e)}")
 
+@router.get("/risk/exposure")
+async def get_risk_exposure(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Obtener exposición real por símbolos y sectores"""
+    from app.integrations import broker_client
+    
+    active_portfolio = portfolio_service.get_active(db, current_user)
+    if not active_portfolio:
+        raise HTTPException(status_code=400, detail="No active portfolio found")
+    
+    try:
+        # Obtener posiciones reales del broker
+        positions = position_manager.get_detailed_positions()
+        
+        # Obtener valor total del portfolio
+        account = broker_client.get_account()
+        portfolio_value = float(getattr(account, "portfolio_value", 100000))
+        
+        # Mapeo simple de sectores (extender según necesites)
+        sector_mapping = {
+            'AAPL': 'Technology', 'MSFT': 'Technology', 'GOOGL': 'Technology', 'NVDA': 'Technology',
+            'JPM': 'Financial', 'BAC': 'Financial', 'GS': 'Financial', 'WFC': 'Financial',
+            'JNJ': 'Healthcare', 'PFE': 'Healthcare', 'UNH': 'Healthcare', 'ABBV': 'Healthcare',
+            'XOM': 'Energy', 'CVX': 'Energy', 'COP': 'Energy',
+            'AMZN': 'Consumer Discretionary', 'TSLA': 'Consumer Discretionary',
+            'WMT': 'Consumer Staples', 'PG': 'Consumer Staples'
+        }
+        
+        # Agrupar por sectores
+        sectors = {}
+        total_exposure = 0
+        
+        for pos in positions:
+            symbol = pos['symbol']
+            market_value = abs(pos['market_value'])
+            sector = sector_mapping.get(symbol, 'Other')
+            
+            if sector not in sectors:
+                sectors[sector] = {
+                    'category': sector,
+                    'exposure': 0,
+                    'limit': portfolio_value * 0.3,  # 30% max por sector
+                    'utilizationPercent': 0,
+                    'riskLevel': 'low',
+                    'positions': []
+                }
+            
+            # Agregar posición al sector
+            sectors[sector]['exposure'] += market_value
+            total_exposure += market_value
+            
+            sectors[sector]['positions'].append({
+                'symbol': symbol,
+                'value': market_value,
+                'percentage': 0,  # Calculamos después
+                'riskContribution': market_value / portfolio_value * 100 if portfolio_value > 0 else 0
+            })
+        
+        # Calcular porcentajes y niveles de riesgo
+        exposure_list = []
+        for sector_data in sectors.values():
+            sector_total = sector_data['exposure']
+            utilization = (sector_total / sector_data['limit'] * 100) if sector_data['limit'] > 0 else 0
+            
+            # Actualizar porcentajes de posiciones
+            for position in sector_data['positions']:
+                position['percentage'] = (position['value'] / sector_total * 100) if sector_total > 0 else 0
+            
+            # Determinar nivel de riesgo
+            if utilization > 80:
+                risk_level = 'high'
+            elif utilization > 60:
+                risk_level = 'medium'
+            else:
+                risk_level = 'low'
+            
+            exposure_list.append({
+                'category': sector_data['category'],
+                'exposure': sector_total,
+                'limit': sector_data['limit'],
+                'utilizationPercent': round(utilization, 1),
+                'riskLevel': risk_level,
+                'positions': sector_data['positions']
+            })
+        
+        # Ordenar por exposición descendente
+        exposure_list.sort(key=lambda x: x['exposure'], reverse=True)
+        
+        return {"exposure": exposure_list}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating exposure: {str(e)}")
+
 @router.post("/risk/test-signal")
 async def test_signal_risk(
     signal_data: Dict[str, Any],
