@@ -116,18 +116,41 @@ const Analytics: React.FC = () => {
         tradeAnalytics: tradeAnalyticsResponse.ok
       });
 
-      // Transform positions to allocation format
-      const totalValue = positions.length > 0 ? positions.reduce((sum: number, pos: any) => sum + (pos.market_value || 0), 0) : 0;
-      const allocation = positions.length > 0 ? positions.map((pos: any) => ({
+      // Transform positions to allocation format with better data handling
+      console.log('🔍 Positions data structure:', positions);
+
+      // Calculate total value from multiple possible sources
+      let totalValue = 0;
+      if (positions.portfolio_value) {
+        totalValue = positions.portfolio_value;
+      } else if (positions.positions && Array.isArray(positions.positions)) {
+        totalValue = positions.positions.reduce((sum: number, pos: any) => sum + (pos.market_value || 0), 0);
+      } else if (Array.isArray(positions) && positions.length > 0) {
+        totalValue = positions.reduce((sum: number, pos: any) => sum + (pos.market_value || 0), 0);
+      }
+
+      console.log('📊 Calculated totalValue:', totalValue);
+
+      // Extract positions array from different possible structures
+      let positionsArray = [];
+      if (positions.positions && Array.isArray(positions.positions)) {
+        positionsArray = positions.positions;
+      } else if (Array.isArray(positions)) {
+        positionsArray = positions;
+      }
+
+      const allocation = positionsArray.length > 0 ? positionsArray.map((pos: any) => ({
         symbol: pos.symbol || 'N/A',
         value: pos.market_value || 0,
         percentage: totalValue > 0 ? ((pos.market_value || 0) / totalValue) * 100 : 0,
-        change24h: pos.unrealized_pl_percent || 0,
-        shares: pos.qty || 0,
-        avgPrice: pos.avg_entry_price || 0,
+        change24h: pos.unrealized_pl_percent || pos.unrealized_pnl_percent || 0,
+        shares: pos.qty || pos.quantity || 0,
+        avgPrice: pos.avg_entry_price || pos.avg_cost || 0,
         currentPrice: pos.market_value && pos.qty ? (pos.market_value / pos.qty) : 0,
         sector: pos.sector || 'Other'
       })) : [];
+
+      console.log('📈 Final allocation data:', allocation);
 
       // Transform performance data with benchmarks
       const performanceData = [
@@ -160,28 +183,66 @@ const Analytics: React.FC = () => {
         }
       ];
 
-      // Transform monthly returns to heatmap format
-      const heatmapData = monthlyPerformance.monthly_returns?.map((item: any) => ({
-        date: `${item.month}-01`,
-        value: Math.max(0, Math.min(100, (item.pnl / 1000) + 50)), // Normalize PnL to 0-100 scale
-        trades: item.trades || 0,
-        pnl: item.pnl || 0
-      })) || Array.from({ length: 365 }, (_, i) => ({
-        date: new Date(Date.now() - (365 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        value: Math.random() * 100,
-        trades: Math.floor(Math.random() * 10),
-        pnl: (Math.random() - 0.5) * 2000
-      }));
+      // Transform monthly returns to heatmap format with better data handling
+      console.log('🗓️ Monthly performance data:', monthlyPerformance);
 
-      // Use real metrics data
+      let heatmapData = [];
+      if (monthlyPerformance.monthly_returns && Array.isArray(monthlyPerformance.monthly_returns)) {
+        heatmapData = monthlyPerformance.monthly_returns.map((item: any) => ({
+          date: item.date || `${item.year}-${String(item.month).padStart(2, '0')}-01`,
+          value: Math.max(0, Math.min(100, (item.pnl / 1000) + 50)), // Normalize PnL to 0-100 scale
+          trades: item.trades || 0,
+          pnl: item.pnl || 0
+        }));
+      } else if (monthlyPerformance.monthly_performance && Array.isArray(monthlyPerformance.monthly_performance)) {
+        heatmapData = monthlyPerformance.monthly_performance.map((item: any) => ({
+          date: item.date || `${item.year}-${String(item.month).padStart(2, '0')}-01`,
+          value: Math.max(0, Math.min(100, (item.return_pct || 0) * 10 + 50)),
+          trades: item.trades || 0,
+          pnl: item.pnl || item.return_amount || 0
+        }));
+      } else {
+        // Generate realistic heatmap data based on actual trading days
+        const today = new Date();
+        const startDate = new Date(today.getFullYear(), today.getMonth() - 12, 1); // Last 12 months
+        heatmapData = [];
+
+        for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+          // Only add data for weekdays (trading days)
+          if (d.getDay() !== 0 && d.getDay() !== 6) {
+            heatmapData.push({
+              date: d.toISOString().split('T')[0],
+              value: 50, // Neutral value
+              trades: 0,
+              pnl: 0
+            });
+          }
+        }
+      }
+
+      console.log('📅 Final heatmap data length:', heatmapData.length);
+
+      // Use real metrics data with better fallbacks
       const riskMetrics = tradeAnalytics.risk_metrics || {};
-      
+
       console.log('🔧 Frontend Data Transformation Debug:');
       console.log('performanceMetrics:', performanceMetrics);
       console.log('performanceMetrics.total_pnl:', performanceMetrics.total_pnl);
       console.log('performanceMetrics.sharpe_ratio:', performanceMetrics.sharpe_ratio);
       console.log('performanceMetrics.win_rate:', performanceMetrics.win_rate);
+      console.log('performanceMetrics.max_drawdown:', performanceMetrics.max_drawdown);
+      console.log('riskMetrics:', riskMetrics);
       console.log('totalValue calculation:', totalValue);
+
+      // Better drawdown calculation
+      let maxDrawdown = 0;
+      if (performanceMetrics.max_drawdown !== undefined && performanceMetrics.max_drawdown !== null) {
+        maxDrawdown = Math.abs(performanceMetrics.max_drawdown);
+      } else if (riskMetrics.max_drawdown !== undefined && riskMetrics.max_drawdown !== null) {
+        maxDrawdown = Math.abs(riskMetrics.max_drawdown);
+      }
+
+      console.log('📉 Calculated maxDrawdown:', maxDrawdown);
       
       const realData: AnalyticsData = {
         allocation,
@@ -191,7 +252,7 @@ const Analytics: React.FC = () => {
           sharpeRatio: performanceMetrics.sharpe_ratio || riskMetrics.sharpe_ratio || 0,
           sortinoRatio: riskMetrics.sortino_ratio || 0,
           calmarRatio: riskMetrics.calmar_ratio || 0,
-          maxDrawdown: Math.abs(performanceMetrics.max_drawdown || riskMetrics.max_drawdown || 0),
+          maxDrawdown: maxDrawdown,
           volatility: riskMetrics.volatility * 100 || 0,
           beta: 1.12, // Keep placeholder for now as we don't have beta calculation
           alpha: 3.2, // Keep placeholder for now
