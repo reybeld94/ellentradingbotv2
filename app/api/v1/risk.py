@@ -398,6 +398,8 @@ async def get_risk_alerts(
     from datetime import datetime, timedelta
     from uuid import uuid4
     from app.utils.time import now_eastern
+    from sqlalchemy import func, and_
+    from app.models.trades import Trade
     
     active_portfolio = portfolio_service.get_active(db, current_user)
     if not active_portfolio:
