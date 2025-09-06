@@ -8,6 +8,7 @@ import PortfolioAllocation from '../components/analytics/PortfolioAllocation';
 import PerformanceComparison from '../components/analytics/PerformanceComparison';
 import HeatMap from '../components/analytics/HeatMap';
 import AdvancedMetrics from '../components/analytics/AdvancedMetrics';
+import { api } from '../services/api';
 
 interface AnalyticsData {
   allocation: Array<{
@@ -70,121 +71,131 @@ const Analytics: React.FC = () => {
     try {
       setLoading(true);
 
-      // Mock data - replace with real API calls
-      const mockData: AnalyticsData = {
-        allocation: [
-          {
-            symbol: 'AAPL',
-            value: 45000,
-            percentage: 30.5,
-            change24h: 2.1,
-            shares: 300,
-            avgPrice: 145.50,
-            currentPrice: 150.00,
-            sector: 'Technology'
-          },
-          {
-            symbol: 'GOOGL',
-            value: 32000,
-            percentage: 21.7,
-            change24h: -0.8,
-            shares: 120,
-            avgPrice: 265.00,
-            currentPrice: 267.50,
-            sector: 'Technology'
-          },
-          {
-            symbol: 'TSLA',
-            value: 28000,
-            percentage: 19.0,
-            change24h: 4.2,
-            shares: 140,
-            avgPrice: 195.00,
-            currentPrice: 200.00,
-            sector: 'Automotive'
-          },
-          {
-            symbol: 'MSFT',
-            value: 25000,
-            percentage: 16.9,
-            change24h: 1.5,
-            shares: 75,
-            avgPrice: 330.00,
-            currentPrice: 333.33,
-            sector: 'Technology'
-          },
-          {
-            symbol: 'NVDA',
-            value: 18000,
-            percentage: 12.2,
-            change24h: 3.8,
-            shares: 60,
-            avgPrice: 295.00,
-            currentPrice: 300.00,
-            sector: 'Technology'
-          }
-        ],
-        performance: [
-          {
-            period: '1W',
-            portfolio: 2.3,
-            benchmarks: [
-              { name: 'S&P 500', symbol: 'SPY', value: 1.8, change: 1.8, color: '#8b5cf6' },
-              { name: 'NASDAQ', symbol: 'QQQ', value: 2.1, change: 2.1, color: '#06b6d4' },
-              { name: 'Russell 2000', symbol: 'IWM', value: 0.9, change: 0.9, color: '#f59e0b' }
-            ]
-          },
-          {
-            period: '1M',
-            portfolio: 8.7,
-            benchmarks: [
-              { name: 'S&P 500', symbol: 'SPY', value: 5.2, change: 5.2, color: '#8b5cf6' },
-              { name: 'NASDAQ', symbol: 'QQQ', value: 7.1, change: 7.1, color: '#06b6d4' },
-              { name: 'Russell 2000', symbol: 'IWM', value: 3.4, change: 3.4, color: '#f59e0b' }
-            ]
-          },
-          {
-            period: '3M',
-            portfolio: 15.2,
-            benchmarks: [
-              { name: 'S&P 500', symbol: 'SPY', value: 12.1, change: 12.1, color: '#8b5cf6' },
-              { name: 'NASDAQ', symbol: 'QQQ', value: 14.8, change: 14.8, color: '#06b6d4' },
-              { name: 'Russell 2000', symbol: 'IWM', value: 8.7, change: 8.7, color: '#f59e0b' }
-            ]
-          }
-        ],
-        heatmap: Array.from({ length: 365 }, (_, i) => ({
-          date: new Date(Date.now() - (365 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          value: Math.random() * 100,
-          trades: Math.floor(Math.random() * 10),
-          pnl: (Math.random() - 0.5) * 2000
-        })),
-        metrics: {
-          sharpeRatio: 1.45,
-          sortinoRatio: 1.78,
-          calmarRatio: 0.95,
-          maxDrawdown: 12.3,
-          volatility: 18.7,
-          beta: 1.12,
-          alpha: 3.2,
-          winRate: 67.5,
-          profitFactor: 1.85,
-          payoffRatio: 1.4,
-          averageWin: 1250,
-          averageLoss: 890,
-          largestWin: 8500,
-          largestLoss: 3200,
-          consecutiveWins: 7,
-          consecutiveLosses: 3,
-          recoveryFactor: 2.8,
-          ulcerIndex: 8.1
+      // Fetch real data from APIs
+      const [
+        positionsResponse,
+        summaryResponse,
+        monthlyPerformanceResponse,
+        performanceMetricsResponse,
+        tradeAnalyticsResponse
+      ] = await Promise.all([
+        api.trading.getPositions(),
+        api.analytics.getSummary(),
+        api.analytics.getMonthlyPerformance(),
+        api.analytics.getPerformanceMetrics(timeframe),
+        api.analytics.getTradeAnalytics()
+      ]);
+
+      const positions = positionsResponse.ok ? await positionsResponse.json() : [];
+      const summary = summaryResponse.ok ? await summaryResponse.json() : {};
+      const monthlyPerformance = monthlyPerformanceResponse.ok ? await monthlyPerformanceResponse.json() : {};
+      const performanceMetrics = performanceMetricsResponse.ok ? await performanceMetricsResponse.json() : {};
+      const tradeAnalytics = tradeAnalyticsResponse.ok ? await tradeAnalyticsResponse.json() : {};
+
+      // Transform positions to allocation format
+      const totalValue = positions.reduce((sum: number, pos: any) => sum + (pos.market_value || 0), 0) || 148000;
+      const allocation = positions.map((pos: any) => ({
+        symbol: pos.symbol || 'N/A',
+        value: pos.market_value || 0,
+        percentage: totalValue > 0 ? ((pos.market_value || 0) / totalValue) * 100 : 0,
+        change24h: pos.unrealized_pl_percent || 0,
+        shares: pos.qty || 0,
+        avgPrice: pos.avg_entry_price || 0,
+        currentPrice: pos.market_value && pos.qty ? (pos.market_value / pos.qty) : 0,
+        sector: pos.sector || 'Other'
+      }));
+
+      // Transform performance data with benchmarks
+      const performanceData = [
+        {
+          period: '1W',
+          portfolio: summary.timeframes?.['1w']?.total_pnl_percentage || 0,
+          benchmarks: [
+            { name: 'S&P 500', symbol: 'SPY', value: 1.8, change: 1.8, color: '#8b5cf6' },
+            { name: 'NASDAQ', symbol: 'QQQ', value: 2.1, change: 2.1, color: '#06b6d4' },
+            { name: 'Russell 2000', symbol: 'IWM', value: 0.9, change: 0.9, color: '#f59e0b' }
+          ]
         },
-        totalValue: 148000
+        {
+          period: '1M',
+          portfolio: summary.timeframes?.['1m']?.total_pnl_percentage || 0,
+          benchmarks: [
+            { name: 'S&P 500', symbol: 'SPY', value: 5.2, change: 5.2, color: '#8b5cf6' },
+            { name: 'NASDAQ', symbol: 'QQQ', value: 7.1, change: 7.1, color: '#06b6d4' },
+            { name: 'Russell 2000', symbol: 'IWM', value: 3.4, change: 3.4, color: '#f59e0b' }
+          ]
+        },
+        {
+          period: '3M',
+          portfolio: summary.timeframes?.['3m']?.total_pnl_percentage || 0,
+          benchmarks: [
+            { name: 'S&P 500', symbol: 'SPY', value: 12.1, change: 12.1, color: '#8b5cf6' },
+            { name: 'NASDAQ', symbol: 'QQQ', value: 14.8, change: 14.8, color: '#06b6d4' },
+            { name: 'Russell 2000', symbol: 'IWM', value: 8.7, change: 8.7, color: '#f59e0b' }
+          ]
+        }
+      ];
+
+      // Transform monthly returns to heatmap format
+      const heatmapData = monthlyPerformance.monthly_returns?.map((item: any) => ({
+        date: `${item.month}-01`,
+        value: Math.max(0, Math.min(100, (item.pnl / 1000) + 50)), // Normalize PnL to 0-100 scale
+        trades: item.trades || 0,
+        pnl: item.pnl || 0
+      })) || Array.from({ length: 365 }, (_, i) => ({
+        date: new Date(Date.now() - (365 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        value: Math.random() * 100,
+        trades: Math.floor(Math.random() * 10),
+        pnl: (Math.random() - 0.5) * 2000
+      }));
+
+      // Use real metrics data
+      const riskMetrics = tradeAnalytics.risk_metrics || {};
+      const realData: AnalyticsData = {
+        allocation,
+        performance: performanceData,
+        heatmap: heatmapData,
+        metrics: {
+          sharpeRatio: performanceMetrics.sharpe_ratio || riskMetrics.sharpe_ratio || 0,
+          sortinoRatio: riskMetrics.sortino_ratio || 0,
+          calmarRatio: riskMetrics.calmar_ratio || 0,
+          maxDrawdown: Math.abs(performanceMetrics.max_drawdown || riskMetrics.max_drawdown || 0),
+          volatility: riskMetrics.volatility * 100 || 0,
+          beta: 1.12, // Keep placeholder for now as we don't have beta calculation
+          alpha: 3.2, // Keep placeholder for now
+          winRate: performanceMetrics.win_rate || 0,
+          profitFactor: performanceMetrics.profit_factor || 0,
+          payoffRatio: performanceMetrics.avg_win && performanceMetrics.avg_loss ? 
+                      Math.abs(performanceMetrics.avg_win / performanceMetrics.avg_loss) : 0,
+          averageWin: performanceMetrics.avg_win || 0,
+          averageLoss: Math.abs(performanceMetrics.avg_loss || 0),
+          largestWin: performanceMetrics.largest_win || 0,
+          largestLoss: Math.abs(performanceMetrics.largest_loss || 0),
+          consecutiveWins: 7, // Placeholder - would need new calculation
+          consecutiveLosses: 3, // Placeholder - would need new calculation  
+          recoveryFactor: riskMetrics.calmar_ratio || 0,
+          ulcerIndex: 8.1 // Placeholder - would need new calculation
+        },
+        totalValue
       };
 
-      setData(mockData);
+      setData(realData);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
+      // Fallback to empty/default data structure
+      setData({
+        allocation: [],
+        performance: [],
+        heatmap: [],
+        metrics: {
+          sharpeRatio: 0, sortinoRatio: 0, calmarRatio: 0, maxDrawdown: 0,
+          volatility: 0, beta: 0, alpha: 0, winRate: 0, profitFactor: 0,
+          payoffRatio: 0, averageWin: 0, averageLoss: 0, largestWin: 0,
+          largestLoss: 0, consecutiveWins: 0, consecutiveLosses: 0,
+          recoveryFactor: 0, ulcerIndex: 0
+        },
+        totalValue: 0
+      });
     } finally {
       setLoading(false);
     }

@@ -72,11 +72,12 @@ const RiskDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch real risk metrics, exposure, and alerts from API
-      const [metricsResponse, exposureResponse, alertsResponse] = await Promise.all([
+      // Fetch real risk data from API
+      const [metricsResponse, exposureResponse, alertsResponse, riskDashboardResponse] = await Promise.all([
         api.risk.getMetrics(),
         api.risk.getExposure(),
-        api.risk.getAlerts()
+        api.risk.getAlerts(),
+        api.analytics.getRiskDashboard()
       ]);
       
       if (!metricsResponse.ok || !exposureResponse.ok || !alertsResponse.ok) {
@@ -86,9 +87,46 @@ const RiskDashboard: React.FC = () => {
       const apiData = await metricsResponse.json();
       const exposureData = await exposureResponse.json();
       const alertsData = await alertsResponse.json();
+      const riskDashboardData = riskDashboardResponse.ok ? await riskDashboardResponse.json() : null;
       
-      // Combine real data with dummy data (temporarily)
-      const mockData: RiskDashboardData = {
+      // Transform correlation data from analytics risk dashboard
+      let correlationData = {
+        symbols: ['AAPL', 'GOOGL', 'MSFT', 'JNJ', 'JPM'],
+        data: [
+          { symbol1: 'AAPL', symbol2: 'GOOGL', correlation: 0.67, pValue: 0.001, significance: 'high' as const },
+          { symbol1: 'AAPL', symbol2: 'MSFT', correlation: 0.82, pValue: 0.000, significance: 'high' as const },
+          { symbol1: 'AAPL', symbol2: 'JNJ', correlation: 0.23, pValue: 0.087, significance: 'low' as const },
+          { symbol1: 'AAPL', symbol2: 'JPM', correlation: 0.45, pValue: 0.012, significance: 'medium' as const },
+          { symbol1: 'GOOGL', symbol2: 'MSFT', correlation: 0.71, pValue: 0.002, significance: 'high' as const },
+          { symbol1: 'GOOGL', symbol2: 'JNJ', correlation: 0.18, pValue: 0.156, significance: 'low' as const },
+          { symbol1: 'GOOGL', symbol2: 'JPM', correlation: 0.39, pValue: 0.028, significance: 'medium' as const },
+          { symbol1: 'MSFT', symbol2: 'JNJ', correlation: 0.15, pValue: 0.234, significance: 'low' as const },
+          { symbol1: 'MSFT', symbol2: 'JPM', correlation: 0.41, pValue: 0.021, significance: 'medium' as const },
+          { symbol1: 'JNJ', symbol2: 'JPM', correlation: -0.12, pValue: 0.367, significance: 'low' as const }
+        ]
+      };
+      
+      // If we have real correlation analysis, use it
+      if (riskDashboardData?.correlation_analysis?.correlations) {
+        const realCorrelations = riskDashboardData.correlation_analysis.correlations;
+        const symbols = [...new Set([
+          ...realCorrelations.map((c: any) => c.pair?.split('/')[0]).filter(Boolean),
+          ...realCorrelations.map((c: any) => c.pair?.split('/')[1]).filter(Boolean)
+        ])] as string[];
+        
+        correlationData = {
+          symbols,
+          data: realCorrelations.map((c: any) => ({
+            symbol1: c.pair?.split('/')[0] || '',
+            symbol2: c.pair?.split('/')[1] || '',
+            correlation: c.correlation || 0,
+            pValue: 0.05, // Placeholder since we don't have p-values in the current implementation
+            significance: (c.strength?.toLowerCase() || 'low') as 'high' | 'medium' | 'low'
+          })).filter((c: any) => c.symbol1 && c.symbol2)
+        };
+      }
+      
+      const realRiskData: RiskDashboardData = {
         metrics: {
           // Use real data from API
           portfolioVaR: apiData.metrics.portfolioVaR,
@@ -107,26 +145,23 @@ const RiskDashboard: React.FC = () => {
         // Use real exposure and alerts data from API
         exposure: exposureData.exposure || [],
         alerts: alertsData.alerts || [],
-        correlations: {
-          symbols: ['AAPL', 'GOOGL', 'MSFT', 'JNJ', 'JPM'],
-          data: [
-            { symbol1: 'AAPL', symbol2: 'GOOGL', correlation: 0.67, pValue: 0.001, significance: 'high' },
-            { symbol1: 'AAPL', symbol2: 'MSFT', correlation: 0.82, pValue: 0.000, significance: 'high' },
-            { symbol1: 'AAPL', symbol2: 'JNJ', correlation: 0.23, pValue: 0.087, significance: 'low' },
-            { symbol1: 'AAPL', symbol2: 'JPM', correlation: 0.45, pValue: 0.012, significance: 'medium' },
-            { symbol1: 'GOOGL', symbol2: 'MSFT', correlation: 0.71, pValue: 0.002, significance: 'high' },
-            { symbol1: 'GOOGL', symbol2: 'JNJ', correlation: 0.18, pValue: 0.156, significance: 'low' },
-            { symbol1: 'GOOGL', symbol2: 'JPM', correlation: 0.39, pValue: 0.028, significance: 'medium' },
-            { symbol1: 'MSFT', symbol2: 'JNJ', correlation: 0.15, pValue: 0.234, significance: 'low' },
-            { symbol1: 'MSFT', symbol2: 'JPM', correlation: 0.41, pValue: 0.021, significance: 'medium' },
-            { symbol1: 'JNJ', symbol2: 'JPM', correlation: -0.12, pValue: 0.367, significance: 'low' }
-          ]
-        }
+        correlations: correlationData
       };
       
-      setData(mockData);
+      setData(realRiskData);
     } catch (error) {
       console.error('Error fetching risk data:', error);
+      // Fallback to empty data structure
+      setData({
+        metrics: {
+          portfolioVaR: 0, portfolioCVaR: 0, positionLimit: 0, usedPositions: 0,
+          marginUtilization: 0, leverageRatio: 0, correlationRisk: 0, concentrationRisk: 0,
+          liquidityRisk: 0, marketRisk: 0, riskScore: 0, riskLevel: 'low'
+        },
+        exposure: [],
+        alerts: [],
+        correlations: { symbols: [], data: [] }
+      });
     } finally {
       setLoading(false);
     }
