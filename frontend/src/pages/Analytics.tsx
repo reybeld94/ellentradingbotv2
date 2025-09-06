@@ -166,6 +166,14 @@ const Analytics: React.FC = () => {
 
       // Use real metrics data
       const riskMetrics = tradeAnalytics.risk_metrics || {};
+      
+      console.log('🔧 Frontend Data Transformation Debug:');
+      console.log('performanceMetrics:', performanceMetrics);
+      console.log('performanceMetrics.total_pnl:', performanceMetrics.total_pnl);
+      console.log('performanceMetrics.sharpe_ratio:', performanceMetrics.sharpe_ratio);
+      console.log('performanceMetrics.win_rate:', performanceMetrics.win_rate);
+      console.log('totalValue calculation:', totalValue);
+      
       const realData: AnalyticsData = {
         allocation,
         performance: performanceData,
@@ -194,6 +202,7 @@ const Analytics: React.FC = () => {
         totalValue
       };
 
+      console.log('🔧 Final realData that will be displayed:', realData);
       setData(realData);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
