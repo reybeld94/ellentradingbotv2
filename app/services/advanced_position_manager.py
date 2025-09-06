@@ -6,6 +6,7 @@ import logging
 
 from app.models.strategy_position import StrategyPosition
 from app.models.trades import Trade
+from app.core.types import TradeStatus
 from app.models.user import User
 from app.models.portfolio import Portfolio
 from app.services import portfolio_service
@@ -33,7 +34,7 @@ class AdvancedPositionManager:
             open_trades = self.db.query(Trade).filter(
                 Trade.user_id == user_id,
                 Trade.portfolio_id == portfolio_id,
-                Trade.status == "open"
+                Trade.status == TradeStatus.OPEN
             ).all()
             
             positions_summary = []
@@ -173,7 +174,7 @@ class AdvancedPositionManager:
             # Trades cerrados en el período
             closed_trades = self.db.query(Trade).filter(
                 Trade.user_id == user_id,
-                Trade.status == "closed",
+                Trade.status == TradeStatus.CLOSED,
                 Trade.closed_at >= start_date,
                 Trade.closed_at <= end_date
             ).order_by(Trade.closed_at.desc()).all()

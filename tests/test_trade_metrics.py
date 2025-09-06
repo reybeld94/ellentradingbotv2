@@ -8,6 +8,7 @@ os.environ.setdefault('SECRET_KEY', 'secret')
 
 from app.database import Base
 from app.models.trades import Trade
+from app.core.types import TradeStatus
 from app.services.trade_service import TradeService
 
 
@@ -25,7 +26,7 @@ def _setup_trades(pnls):
             quantity=1,
             entry_price=100,
             exit_price=100 + pnl,
-            status="closed",
+            status=TradeStatus.CLOSED,
             pnl=pnl,
             opened_at=now,
             closed_at=now,

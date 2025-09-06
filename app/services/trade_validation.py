@@ -6,6 +6,7 @@ from app.models.trades import Trade
 from app.models.user import User
 from app.services import portfolio_service
 from app.integrations.alpaca.client import AlpacaClient
+from app.core.types import TradeStatus
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class TradeValidator:
                 .filter(
                     Trade.user_id == user_id,
                     Trade.portfolio_id == active_portfolio.id,
-                    Trade.status == "open",
+                    Trade.status == TradeStatus.OPEN,
                 )
                 .all()
             )

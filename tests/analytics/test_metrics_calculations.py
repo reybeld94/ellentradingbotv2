@@ -8,6 +8,7 @@ from app.analytics.portfolio_analytics import PortfolioAnalytics
 from app.database import Base
 from app.models.user import User
 from app.models.portfolio import Portfolio
+from app.core.types import TradeStatus
 from app.models.trades import Trade
 
 
@@ -54,9 +55,9 @@ def test_calculate_win_rate(db_session, test_user, test_portfolio):
     analytics = PortfolioAnalytics(db_session)
 
     trades_data = [
-        {"pnl": 100.0, "status": "closed"},
-        {"pnl": 50.0, "status": "closed"},
-        {"pnl": -30.0, "status": "closed"},
+        {"pnl": 100.0, "status": TradeStatus.CLOSED},
+        {"pnl": 50.0, "status": TradeStatus.CLOSED},
+        {"pnl": -30.0, "status": TradeStatus.CLOSED},
     ]
 
     for trade_data in trades_data:
@@ -93,7 +94,7 @@ def test_profit_factor_calculation(db_session, test_user, test_portfolio):
             user_id=test_user.id,
             portfolio_id=test_portfolio.id,
             symbol="AAPL",
-            status="closed",
+            status=TradeStatus.CLOSED,
             **trade_data,
         )
         db_session.add(trade)
@@ -119,7 +120,7 @@ def test_sharpe_ratio_calculation(db_session, test_user, test_portfolio):
             pnl=pnl,
             quantity=1,
             entry_price=100.0,
-            status="closed",
+            status=TradeStatus.CLOSED,
             opened_at=datetime.utcnow(),
         )
         db_session.add(trade)

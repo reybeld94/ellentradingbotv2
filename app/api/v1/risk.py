@@ -146,6 +146,7 @@ async def get_risk_metrics(
     from sqlalchemy import func, and_
     from app.models.trades import Trade
     from app.models.signal import Signal
+    from app.core.types import TradeStatus
     from app.utils.time import now_eastern
     from datetime import timedelta
     
@@ -170,7 +171,7 @@ async def get_risk_metrics(
             and_(
                 Trade.user_id == current_user.id,
                 Trade.portfolio_id == active_portfolio.id,
-                Trade.status == "open"
+                Trade.status == TradeStatus.OPEN,
             )
         ).count()
         
@@ -181,7 +182,7 @@ async def get_risk_metrics(
                 Trade.user_id == current_user.id,
                 Trade.portfolio_id == active_portfolio.id,
                 Trade.closed_at >= today_start,
-                Trade.status == "closed"
+                Trade.status == TradeStatus.CLOSED,
             )
         ).scalar() or 0.0
         
@@ -507,7 +508,7 @@ async def get_risk_alerts(
                 Trade.user_id == current_user.id,
                 Trade.portfolio_id == active_portfolio.id,
                 Trade.closed_at >= today_start,
-                Trade.status == "closed"
+                Trade.status == TradeStatus.CLOSED
             )
         ).scalar() or 0.0
         

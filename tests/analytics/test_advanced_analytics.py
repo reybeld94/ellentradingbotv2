@@ -6,6 +6,7 @@ from app.analytics.portfolio_analytics import PortfolioAnalytics
 from app.models.trades import Trade
 from app.database import Base
 from app.models.user import User
+from app.core.types import TradeStatus
 from app.models.portfolio import Portfolio
 
 
@@ -65,7 +66,7 @@ def test_build_equity_curve(db_session, test_user, test_portfolio):
             symbol="AAPL",
             quantity=10,
             entry_price=100.0,
-            status="filled",
+            status=TradeStatus.CLOSED,
             **trade_data,
         )
         db_session.add(trade)
@@ -100,7 +101,7 @@ def test_trade_distribution_analysis(db_session, test_user, test_portfolio):
             quantity=1,
             entry_price=100.0,
             pnl=r * 100.0,
-            status="filled",
+            status=TradeStatus.CLOSED,
         )
         db_session.add(trade)
 

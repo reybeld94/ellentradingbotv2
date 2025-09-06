@@ -11,6 +11,7 @@ from app.core.auth import get_current_verified_user, get_admin_user
 from app.services.trade_service import TradeService
 from app.services import portfolio_service
 from app.services.trade_validation import TradeValidator
+from app.core.types import TradeStatus
 
 router = APIRouter()
 
@@ -66,7 +67,7 @@ async def get_all_trades(
     # Actualizar PnL y estado de todos los trades abiertos agrupados por usuario y portafolio
     key_pairs = {
         (t.user_id, t.portfolio_id)
-        for t in db.query(Trade).filter(Trade.status == 'open').all()
+        for t in db.query(Trade).filter(Trade.status == TradeStatus.OPEN).all()
     }
     for uid, pid in key_pairs:
         if pid is not None:

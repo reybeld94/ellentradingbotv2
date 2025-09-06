@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.portfolio import Portfolio
 from app.models.trades import Trade
 from app.models.signal import Signal
+from app.core.types import TradeStatus
 from datetime import datetime, timedelta
 from app.utils.time import now_eastern
 from app.integrations import broker_client
@@ -108,7 +109,7 @@ class RiskService:
                 Trade.user_id == user_id,
                 Trade.portfolio_id == portfolio_id,
                 Trade.closed_at >= today_start,
-                Trade.status == "closed"
+                Trade.status == TradeStatus.CLOSED,
             )
         ).scalar() or 0.0
         
@@ -127,7 +128,7 @@ class RiskService:
             and_(
                 Trade.user_id == user_id,
                 Trade.portfolio_id == portfolio_id,
-                Trade.status == "open"
+                Trade.status == TradeStatus.OPEN,
             )
         ).count()
         

@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.models.trades import Trade
+from app.core.types import TradeStatus
 from app.services.trade_service import TradeService
 from app.utils.time import now_eastern
 
@@ -18,9 +19,9 @@ def test_equity_curve_filters_by_strategy():
     now = now_eastern()
     trades = [
         Trade(strategy_id="A", symbol="AAPL", action="buy", quantity=1, entry_price=100,
-              status="closed", closed_at=now, pnl=10, user_id=1, portfolio_id=1),
+              status=TradeStatus.CLOSED, closed_at=now, pnl=10, user_id=1, portfolio_id=1),
         Trade(strategy_id="B", symbol="AAPL", action="buy", quantity=1, entry_price=100,
-              status="closed", closed_at=now, pnl=5, user_id=1, portfolio_id=1),
+              status=TradeStatus.CLOSED, closed_at=now, pnl=5, user_id=1, portfolio_id=1),
     ]
     db.add_all(trades)
     db.commit()

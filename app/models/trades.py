@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.utils.time import now_eastern
 from app.database import Base
+from app.core.types import TradeStatus
 
 
 class Trade(Base):
@@ -16,7 +17,7 @@ class Trade(Base):
     quantity = Column(Float)
     entry_price = Column(Float)
     exit_price = Column(Float, nullable=True)
-    status = Column(String(10), default="open")  # open, closed
+    status = Column(String(10), default=TradeStatus.OPEN.value)  # open, closed, validation_required
     opened_at = Column(DateTime(timezone=True), default=now_eastern)
     closed_at = Column(DateTime(timezone=True), nullable=True)
     pnl = Column(Float, nullable=True)
