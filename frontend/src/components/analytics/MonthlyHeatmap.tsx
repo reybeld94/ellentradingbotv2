@@ -30,7 +30,40 @@ const MonthlyHeatmap: React.FC<MonthlyHeatmapProps> = ({ portfolioId }) => {
         const response = await api.analytics.getMonthlyPerformance(portfolioId, controller.signal);
         if (!isMounted) return;
         const data = await response.json();
-        setMonthlyData(data.monthly_returns || []);
+
+        console.log('🗓️ Monthly heatmap raw data:', data);
+
+        let monthlyReturns = data.monthly_returns || data.monthly_performance || [];
+
+        // If we have very little data, try to get current positions to show recent activity
+        if (monthlyReturns.length === 0) {
+          try {
+            const positionsResponse = await api.trading.getPositions();
+            const positions = await positionsResponse.json();
+
+            if (positions.positions && positions.positions.length > 0) {
+              // Create a current month entry based on open positions
+              const currentDate = new Date();
+              const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
+              const totalUnrealizedPnL = positions.positions.reduce((sum: number, pos: any) =>
+                sum + (pos.unrealized_pnl || 0), 0);
+
+              monthlyReturns = [{
+                month: currentMonth,
+                pnl: totalUnrealizedPnL,
+                trades: positions.positions.length,
+                win_rate: 0 // Can't calculate win rate for open positions
+              }];
+
+              console.log('📊 Generated current month data from positions:', monthlyReturns);
+            }
+          } catch (posError) {
+            console.error('Error fetching positions for heatmap:', posError);
+          }
+        }
+
+        setMonthlyData(monthlyReturns);
       } catch (err) {
         if (!isMounted) return;
         console.error('Error fetching monthly data:', err);
