@@ -18,6 +18,11 @@ class PortfolioAnalytics:
 
     def get_performance_metrics(self, user_id: int, portfolio_id: int, timeframe: str = "1M") -> Dict[str, Any]:
         """Calcula métricas de performance para el portfolio"""
+        print(f"🔍 get_performance_metrics Debug:")
+        print(f"  user_id: {user_id}")
+        print(f"  portfolio_id: {portfolio_id}")
+        print(f"  timeframe: {timeframe}")
+        
         end_date = datetime.utcnow()
         if timeframe == "1D":
             start_date = end_date - timedelta(days=1)
@@ -34,6 +39,8 @@ class PortfolioAnalytics:
         else:
             start_date = datetime(2020, 1, 1)
 
+        print(f"  date_range: {start_date} to {end_date}")
+
         base_query = self.db.query(Trade).filter(
             and_(
                 Trade.user_id == user_id,
@@ -43,6 +50,26 @@ class PortfolioAnalytics:
                 Trade.status.in_(["open", "closed"]),
             )
         )
+        
+        # Check how many trades we found
+        trades_count = base_query.count()
+        print(f"  trades_found: {trades_count}")
+        
+        # Check total trades for this portfolio (any date)
+        total_trades = self.db.query(Trade).filter(
+            and_(Trade.user_id == user_id, Trade.portfolio_id == portfolio_id)
+        ).count()
+        print(f"  total_trades_ever: {total_trades}")
+        
+        # Check trade status breakdown
+        if total_trades > 0:
+            status_breakdown = self.db.query(Trade.status, func.count(Trade.id)).filter(
+                and_(Trade.user_id == user_id, Trade.portfolio_id == portfolio_id)
+            ).group_by(Trade.status).all()
+            print(f"  status_breakdown: {dict(status_breakdown)}")
+
+        if trades_count == 0:
+            print("  ⚠️ No trades found - returning zeros")
 
         return {
             "total_pnl": self._calculate_total_pnl(base_query),
