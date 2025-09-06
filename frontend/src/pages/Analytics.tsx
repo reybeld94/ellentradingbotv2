@@ -92,9 +92,24 @@ const Analytics: React.FC = () => {
       const performanceMetrics = performanceMetricsResponse.ok ? await performanceMetricsResponse.json() : {};
       const tradeAnalytics = tradeAnalyticsResponse.ok ? await tradeAnalyticsResponse.json() : {};
 
+      // Debug logging
+      console.log('🔍 Analytics Debug Data:');
+      console.log('Positions:', positions);
+      console.log('Summary:', summary);
+      console.log('Monthly Performance:', monthlyPerformance);
+      console.log('Performance Metrics:', performanceMetrics);
+      console.log('Trade Analytics:', tradeAnalytics);
+      console.log('Response Status:', {
+        positions: positionsResponse.ok,
+        summary: summaryResponse.ok,
+        monthlyPerformance: monthlyPerformanceResponse.ok,
+        performanceMetrics: performanceMetricsResponse.ok,
+        tradeAnalytics: tradeAnalyticsResponse.ok
+      });
+
       // Transform positions to allocation format
-      const totalValue = positions.reduce((sum: number, pos: any) => sum + (pos.market_value || 0), 0) || 148000;
-      const allocation = positions.map((pos: any) => ({
+      const totalValue = positions.length > 0 ? positions.reduce((sum: number, pos: any) => sum + (pos.market_value || 0), 0) : 0;
+      const allocation = positions.length > 0 ? positions.map((pos: any) => ({
         symbol: pos.symbol || 'N/A',
         value: pos.market_value || 0,
         percentage: totalValue > 0 ? ((pos.market_value || 0) / totalValue) * 100 : 0,
@@ -103,7 +118,7 @@ const Analytics: React.FC = () => {
         avgPrice: pos.avg_entry_price || 0,
         currentPrice: pos.market_value && pos.qty ? (pos.market_value / pos.qty) : 0,
         sector: pos.sector || 'Other'
-      }));
+      })) : [];
 
       // Transform performance data with benchmarks
       const performanceData = [
