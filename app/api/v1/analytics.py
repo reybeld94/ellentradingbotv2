@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 from app.database import get_db
 from app.models.user import User
+from app.models.portfolio import Portfolio
 from app.core.auth import get_current_verified_user
 from app.services import portfolio_service
 from app.analytics.portfolio_analytics import PortfolioAnalytics
@@ -83,8 +84,24 @@ async def get_analytics_summary(
 ):
     """Obtiene resumen rápido de analytics para dashboard"""
     try:
+        # Debug logging
+        print(f"🔍 Analytics Summary Debug:")
+        print(f"  User ID: {current_user.id}")
+        print(f"  User Email: {current_user.email}")
+        
+        # Check what portfolios exist
+        all_portfolios = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).all()
+        print(f"  Found {len(all_portfolios)} portfolios for user:")
+        for p in all_portfolios:
+            print(f"    - {p.name} (ID: {p.id}, active: {p.is_active})")
+        
         portfolio = portfolio_service.get_active(db, current_user)
+        print(f"  get_active result: {portfolio}")
+        
         if not portfolio:
+            # Additional debug
+            active_count = db.query(Portfolio).filter(Portfolio.user_id == current_user.id, Portfolio.is_active == True).count()
+            print(f"  Active portfolios count: {active_count}")
             raise HTTPException(status_code=400, detail="No active portfolio found")
 
         analytics = PortfolioAnalytics(db)
