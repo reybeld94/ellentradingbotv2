@@ -283,16 +283,16 @@ const PortfolioAnalytics: React.FC = () => {
 
             <MetricCard
               title="Profit Factor"
-              value={pf > 0 && isFinite(pf) ? pf.toFixed(2) : '∞'}
+              value={isFinite(pf) ? pf.toFixed(2) : '∞'}
               subtitle={
-                pf > 0 && isFinite(pf)
-                  ? pf > 1
-                    ? 'Profitable'
-                    : 'Unprofitable'
-                  : 'No losing trades'
+                pf === Infinity
+                  ? 'No losing trades'
+                  : pf > 1
+                  ? 'Profitable'
+                  : 'Unprofitable'
               }
               icon={Trophy}
-              colorClass={pf > 1 ? 'text-green-600' : 'text-red-600'}
+              colorClass={pf !== Infinity && pf <= 1 ? 'text-red-600' : 'text-green-600'}
             />
 
             <MetricCard
