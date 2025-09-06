@@ -156,7 +156,8 @@ const TradesPage: React.FC = () => {
 
   const fetchRealMetrics = async () => {
     try {
-      const data = await api.analytics.getPerformanceMetrics('1M');
+      const response = await api.analytics.getPerformanceMetrics('1M');
+      const data = await response.json();
       setStats({
         totalPnL: data.total_pnl,
         totalTrades: data.total_trades,

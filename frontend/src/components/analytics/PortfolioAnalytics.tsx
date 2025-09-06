@@ -99,8 +99,10 @@ const PortfolioAnalytics: React.FC = () => {
         ]);
 
         if (!isMounted) return;
-        setMetrics(metricsData);
-        setSummary(summaryData);
+        const metrics = await metricsData.json();
+        const summary = await summaryData.json();
+        setMetrics(metrics);
+        setSummary(summary);
       } catch (err) {
         if (!isMounted) return;
         console.error('Error fetching analytics:', err);

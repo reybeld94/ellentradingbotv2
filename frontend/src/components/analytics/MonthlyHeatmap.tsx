@@ -29,7 +29,8 @@ const MonthlyHeatmap: React.FC<MonthlyHeatmapProps> = ({ portfolioId }) => {
 
         const response = await api.analytics.getMonthlyPerformance(portfolioId, controller.signal);
         if (!isMounted) return;
-        setMonthlyData(response.monthly_returns || []);
+        const data = await response.json();
+        setMonthlyData(data.monthly_returns || []);
       } catch (err) {
         if (!isMounted) return;
         console.error('Error fetching monthly data:', err);
