@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, case, select
 from app.models.trades import Trade
+from app.core.types import TradeStatus
 from decimal import Decimal, getcontext
 import pandas as pd
 import statistics
@@ -47,7 +48,7 @@ class PortfolioAnalytics:
                 Trade.portfolio_id == portfolio_id,
                 Trade.opened_at >= start_date,
                 Trade.opened_at <= end_date,
-                Trade.status.in_(["open", "closed"]),
+                Trade.status.in_([TradeStatus.OPEN, TradeStatus.CLOSED]),
             )
         )
         
@@ -275,7 +276,7 @@ class PortfolioAnalytics:
                 Trade.portfolio_id == portfolio_id,
                 Trade.opened_at >= start_date,
                 Trade.opened_at <= end_date,
-                Trade.status.in_(["filled", "closed"])
+                Trade.status.in_([TradeStatus.OPEN, TradeStatus.CLOSED])
             )
         )
 
@@ -613,7 +614,7 @@ class PortfolioAnalytics:
                 Trade.portfolio_id == portfolio_id,
                 Trade.opened_at >= start_date,
                 Trade.opened_at <= end_date,
-                Trade.status.in_(["filled", "closed"])
+                Trade.status.in_([TradeStatus.OPEN, TradeStatus.CLOSED])
             )
         )
 

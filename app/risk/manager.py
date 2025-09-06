@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from datetime import datetime, time, timedelta
-from app.core.types import NormalizedSignal, OrderIntent
+from app.core.types import NormalizedSignal, OrderIntent, TradeStatus
 from app.models.risk_limit import RiskLimit
 from app.models.trades import Trade
 from app.models.signal import Signal
@@ -170,7 +170,7 @@ class RiskManager:
             and_(
                 Trade.user_id == user_id,
                 Trade.portfolio_id == portfolio_id,
-                Trade.status == "open"
+                Trade.status == TradeStatus.OPEN,
             )
         ).count()
         
@@ -196,7 +196,7 @@ class RiskManager:
                 Trade.user_id == user_id,
                 Trade.portfolio_id == portfolio_id,
                 Trade.closed_at >= today_start,
-                Trade.status == "closed"
+                Trade.status == TradeStatus.CLOSED,
             )
         ).scalar() or 0.0
         
@@ -230,7 +230,7 @@ class RiskManager:
                 Trade.symbol == symbol,
                 Trade.user_id == user_id,
                 Trade.portfolio_id == portfolio_id,
-                Trade.status == "open"
+                Trade.status == TradeStatus.OPEN,
             )
         ).scalar() or 0.0
 

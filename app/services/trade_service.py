@@ -3,6 +3,7 @@ import statistics
 import logging
 from sqlalchemy.orm import Session
 from app.models.trades import Trade
+from app.core.types import TradeStatus
 from app.models.portfolio import Portfolio
 from app.services.symbol_mapper import get_mapped_symbol
 from app.integrations.alpaca.client import AlpacaClient
@@ -74,7 +75,7 @@ class TradeService:
                 .filter(
                     Trade.user_id == user_id,
                     Trade.portfolio_id == portfolio_id,
-                    Trade.status == "open",
+                    Trade.status == TradeStatus.OPEN,
                 )
                 .all()
             )
@@ -99,7 +100,7 @@ class TradeService:
                         f"Trade {trade.id} ({trade.symbol}) not found in Alpaca positions"
                     )
                     # NUEVA VALIDACIÓN: marcar para revisión manual
-                    trade.status = "validation_required"
+                    trade.status = TradeStatus.VALIDATION_REQUIRED
                     trades_closed += 1
                     continue
 
@@ -144,7 +145,7 @@ class TradeService:
                 Trade.user_id == user_id,
                 Trade.portfolio_id == portfolio_id,
             )
-            .filter(Trade.status == "closed")
+            .filter(Trade.status == TradeStatus.CLOSED)
         )
 
         if strategy_id is not None:
@@ -174,7 +175,7 @@ class TradeService:
         return (
             self.db.query(Trade)
             .filter(Trade.strategy_id == strategy_id)
-            .filter(Trade.status == "closed")
+            .filter(Trade.status == TradeStatus.CLOSED)
             .order_by(Trade.closed_at)
             .all()
         )

@@ -9,6 +9,7 @@ from app.models.portfolio import Portfolio
 from app.analytics.portfolio_analytics import PortfolioAnalytics
 from app.models.trades import Trade
 from app.models.risk_limit import RiskLimit
+from app.core.types import TradeStatus
 
 
 @pytest.fixture
@@ -61,7 +62,7 @@ def test_get_risk_dashboard_data(db_session, test_user, test_portfolio):
   ]
 
   for trade_data in trades_data:
-      trade = Trade(user_id=test_user.id, portfolio_id=test_portfolio.id, status="filled", **trade_data)
+      trade = Trade(user_id=test_user.id, portfolio_id=test_portfolio.id, status=TradeStatus.CLOSED, **trade_data)
       db_session.add(trade)
 
   db_session.commit()
@@ -94,7 +95,7 @@ def test_advanced_risk_metrics_calculation(db_session, test_user, test_portfolio
           pnl=r * 1000,
           quantity=10,
           entry_price=100.0,
-          status="filled",
+          status=TradeStatus.CLOSED,
           opened_at=datetime.utcnow() - timedelta(days=10 - i)
       )
       db_session.add(trade)
@@ -130,7 +131,7 @@ def test_position_sizing_analysis(db_session, test_user, test_portfolio):
           portfolio_id=test_portfolio.id,
           symbol=f"STOCK{i}",
           pnl=50.0,
-          status="filled",
+          status=TradeStatus.CLOSED,
           **data
       )
       db_session.add(trade)
@@ -168,7 +169,7 @@ def test_symbol_exposure_analysis(db_session, test_user, test_portfolio):
               pnl=pnl,
               quantity=10,
               entry_price=100.0,
-              status="filled"
+              status=TradeStatus.CLOSED
           )
           db_session.add(trade)
 

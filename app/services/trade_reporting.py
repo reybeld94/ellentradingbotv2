@@ -6,6 +6,7 @@ from collections import defaultdict
 import logging
 
 from app.models.trades import Trade
+from app.core.types import TradeStatus
 from app.models.strategy import Strategy
 from app.models.user import User
 from app.services.strategy_manager import StrategyManager
@@ -118,7 +119,7 @@ class TradeReporting:
                 Trade.user_id == user_id,
                 Trade.closed_at >= start_datetime,
                 Trade.closed_at <= end_datetime,
-                Trade.status == "closed"
+                Trade.status == TradeStatus.CLOSED,
             ).all()
             
             if not weekly_trades:
@@ -206,7 +207,7 @@ class TradeReporting:
                     Trade.user_id == user_id,
                     Trade.strategy_id == str(strategy.id),
                     Trade.closed_at >= cutoff_date,
-                    Trade.status == "closed"
+                    Trade.status == TradeStatus.CLOSED,
                 ).count()
                 
                 # Agregar datos de actividad reciente

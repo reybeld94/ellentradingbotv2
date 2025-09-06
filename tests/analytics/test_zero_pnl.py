@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.models.user import User
 from app.models.portfolio import Portfolio
+from app.core.types import TradeStatus
 from app.models.trades import Trade
 from app.analytics.portfolio_analytics import PortfolioAnalytics
 
@@ -57,7 +58,7 @@ def test_monthly_returns_includes_zero_pnl(db_session, test_user, test_portfolio
         pnl=0.0,
         quantity=1,
         entry_price=100.0,
-        status="closed",
+        status=TradeStatus.CLOSED,
         opened_at=datetime(2024, 1, 15),
     )
     db_session.add(trade)
@@ -80,7 +81,7 @@ def test_risk_metrics_with_zero_pnl(db_session, test_user, test_portfolio):
         pnl=0.0,
         quantity=1,
         entry_price=100.0,
-        status="closed",
+        status=TradeStatus.CLOSED,
         opened_at=datetime.utcnow(),
     )
     trade2 = Trade(
@@ -90,7 +91,7 @@ def test_risk_metrics_with_zero_pnl(db_session, test_user, test_portfolio):
         pnl=50.0,
         quantity=1,
         entry_price=100.0,
-        status="closed",
+        status=TradeStatus.CLOSED,
         opened_at=datetime.utcnow(),
     )
     db_session.add_all([trade1, trade2])
@@ -113,7 +114,7 @@ def test_risk_adjusted_returns_with_zero_pnl(db_session, test_user, test_portfol
             pnl=pnl,
             quantity=1,
             entry_price=100.0,
-            status="closed",
+            status=TradeStatus.CLOSED,
             opened_at=datetime.utcnow(),
         )
         db_session.add(trade)

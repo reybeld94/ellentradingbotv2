@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 os.environ.setdefault('SECRET_KEY', 'secret')
 
+from app.core.types import TradeStatus
 from app.database import Base
 from app.models.trades import Trade
 from app.models.strategy_position import StrategyPosition
@@ -31,7 +32,7 @@ def test_refresh_does_not_close_open_trades(monkeypatch):
         action="buy",
         quantity=1,
         entry_price=100,
-        status="open",
+        status=TradeStatus.OPEN,
         user_id=1,
         portfolio_id=1,
     )
@@ -56,7 +57,7 @@ def test_refresh_does_not_close_open_trades(monkeypatch):
 
     service.refresh_user_trades(1, 1)
     refreshed = db.query(Trade).first()
-    assert refreshed.status == "open"
+    assert refreshed.status == TradeStatus.OPEN
     assert refreshed.pnl == 5
     db.close()
 
@@ -78,7 +79,7 @@ def test_execute_sell_closes_trades(monkeypatch):
         action="buy",
         quantity=1,
         entry_price=100,
-        status="open",
+        status=TradeStatus.OPEN,
         user_id=1,
         portfolio_id=1,
     )
@@ -88,7 +89,7 @@ def test_execute_sell_closes_trades(monkeypatch):
         action="buy",
         quantity=1,
         entry_price=110,
-        status="open",
+        status=TradeStatus.OPEN,
         user_id=1,
         portfolio_id=1,
     )
@@ -122,7 +123,7 @@ def test_execute_sell_closes_trades(monkeypatch):
     oe._execute_sell_signal(signal, spm, "AAPL", db)
 
     trades = db.query(Trade).order_by(Trade.entry_price).all()
-    assert all(t.status == "closed" for t in trades)
+    assert all(t.status == TradeStatus.CLOSED for t in trades)
     assert trades[0].pnl == 20  # 120 - 100
     assert trades[1].pnl == 10  # 120 - 110
     db.close()

@@ -32,6 +32,12 @@ class OrderStatus(str, Enum):
     PENDING_CANCEL = "pending_cancel"
     PENDING_PARENT = "pending_parent"  # Esperando que se ejecute orden padre
 
+
+class TradeStatus(str, Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+    VALIDATION_REQUIRED = "validation_required"
+
 class OrderType(str, Enum):
     MARKET = "market"
     LIMIT = "limit"

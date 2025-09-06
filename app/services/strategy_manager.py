@@ -139,6 +139,7 @@ class StrategyManager:
     def get_strategy_performance(self, strategy_id: int, user_id: int) -> Dict[str, Any]:
         """Performance individual por estrategia"""
         from app.models.trades import Trade
+        from app.core.types import TradeStatus
         from sqlalchemy import func
 
         strategy = self.get_strategy_by_id(strategy_id, user_id)
@@ -148,7 +149,7 @@ class StrategyManager:
         trades_query = self.db.query(Trade).filter(
             Trade.strategy_id == str(strategy_id),
             Trade.user_id == user_id,
-            Trade.status == "closed",
+            Trade.status == TradeStatus.CLOSED,
         )
 
         total_trades = trades_query.count()
@@ -275,6 +276,7 @@ class StrategyManager:
         self, strategy_id: int, user_id: int
     ) -> List[Dict[str, Any]]:
         """Curva de equity para una estrategia específica"""
+        from app.core.types import TradeStatus
         from app.models.trades import Trade
 
         trades = (
@@ -282,7 +284,7 @@ class StrategyManager:
             .filter(
                 Trade.strategy_id == str(strategy_id),
                 Trade.user_id == user_id,
-                Trade.status == "closed",
+                Trade.status == TradeStatus.CLOSED,
                 Trade.closed_at.isnot(None),
             )
             .order_by(Trade.closed_at.asc())
