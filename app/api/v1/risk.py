@@ -397,6 +397,7 @@ async def get_risk_alerts(
     from app.integrations import broker_client
     from datetime import datetime, timedelta
     from uuid import uuid4
+    from app.utils.time import now_eastern
     
     active_portfolio = portfolio_service.get_active(db, current_user)
     if not active_portfolio:
