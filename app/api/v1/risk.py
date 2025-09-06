@@ -259,14 +259,50 @@ async def get_risk_exposure(
         account = broker_client.get_account()
         portfolio_value = float(getattr(account, "portfolio_value", 100000))
         
-        # Mapeo simple de sectores (extender según necesites)
+        # Mapeo ampliado de sectores 
         sector_mapping = {
-            'AAPL': 'Technology', 'MSFT': 'Technology', 'GOOGL': 'Technology', 'NVDA': 'Technology',
+            # Technology
+            'AAPL': 'Technology', 'MSFT': 'Technology', 'GOOGL': 'Technology', 'GOOG': 'Technology',
+            'NVDA': 'Technology', 'META': 'Technology', 'FB': 'Technology', 'NFLX': 'Technology',
+            'CRM': 'Technology', 'ADBE': 'Technology', 'ORCL': 'Technology', 'CSCO': 'Technology',
+            'INTC': 'Technology', 'AMD': 'Technology', 'NOW': 'Technology', 'PLTR': 'Technology',
+            
+            # Financial  
             'JPM': 'Financial', 'BAC': 'Financial', 'GS': 'Financial', 'WFC': 'Financial',
+            'MS': 'Financial', 'C': 'Financial', 'AXP': 'Financial', 'BRK.A': 'Financial',
+            'BRK.B': 'Financial', 'V': 'Financial', 'MA': 'Financial', 'PYPL': 'Financial',
+            
+            # Healthcare
             'JNJ': 'Healthcare', 'PFE': 'Healthcare', 'UNH': 'Healthcare', 'ABBV': 'Healthcare',
-            'XOM': 'Energy', 'CVX': 'Energy', 'COP': 'Energy',
-            'AMZN': 'Consumer Discretionary', 'TSLA': 'Consumer Discretionary',
-            'WMT': 'Consumer Staples', 'PG': 'Consumer Staples'
+            'TMO': 'Healthcare', 'ABT': 'Healthcare', 'DHR': 'Healthcare', 'BMY': 'Healthcare',
+            'AMGN': 'Healthcare', 'GILD': 'Healthcare', 'CVS': 'Healthcare',
+            
+            # Consumer Discretionary
+            'AMZN': 'Consumer Discretionary', 'TSLA': 'Consumer Discretionary', 
+            'HD': 'Consumer Discretionary', 'NKE': 'Consumer Discretionary',
+            'MCD': 'Consumer Discretionary', 'SBUX': 'Consumer Discretionary',
+            
+            # Consumer Staples
+            'WMT': 'Consumer Staples', 'PG': 'Consumer Staples', 'KO': 'Consumer Staples',
+            'PEP': 'Consumer Staples', 'COST': 'Consumer Staples',
+            
+            # Energy
+            'XOM': 'Energy', 'CVX': 'Energy', 'COP': 'Energy', 'SLB': 'Energy',
+            
+            # Utilities
+            'NEE': 'Utilities', 'SO': 'Utilities', 'DUK': 'Utilities',
+            
+            # Real Estate
+            'AMT': 'Real Estate', 'PLD': 'Real Estate', 'CCI': 'Real Estate',
+            
+            # Materials
+            'LIN': 'Materials', 'APD': 'Materials', 'SHW': 'Materials',
+            
+            # Industrials
+            'BA': 'Industrials', 'HON': 'Industrials', 'UPS': 'Industrials', 'CAT': 'Industrials',
+            
+            # Communication
+            'T': 'Communication', 'VZ': 'Communication', 'CMCSA': 'Communication'
         }
         
         # Agrupar por sectores
@@ -279,10 +315,28 @@ async def get_risk_exposure(
             sector = sector_mapping.get(symbol, 'Other')
             
             if sector not in sectors:
+                # Límites dinámicos por sector
+                sector_limit_multiplier = {
+                    'Technology': 0.6,  # 60% para tech
+                    'Financial': 0.4,   # 40% para financiero  
+                    'Healthcare': 0.35, # 35% para healthcare
+                    'Consumer Discretionary': 0.3, # 30%
+                    'Consumer Staples': 0.25,      # 25%
+                    'Energy': 0.2,      # 20%
+                    'Utilities': 0.15,  # 15%
+                    'Real Estate': 0.15, # 15%
+                    'Materials': 0.15,  # 15%
+                    'Industrials': 0.25, # 25%
+                    'Communication': 0.2, # 20%
+                    'Other': 0.5        # 50% para otros
+                }
+                
+                limit_multiplier = sector_limit_multiplier.get(sector, 0.5)
+                
                 sectors[sector] = {
                     'category': sector,
                     'exposure': 0,
-                    'limit': portfolio_value * 0.3,  # 30% max por sector
+                    'limit': portfolio_value * limit_multiplier,
                     'utilizationPercent': 0,
                     'riskLevel': 'low',
                     'positions': []
