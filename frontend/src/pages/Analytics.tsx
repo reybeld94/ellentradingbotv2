@@ -108,13 +108,7 @@ const Analytics: React.FC = () => {
       console.log('Monthly Performance:', monthlyPerformance);
       console.log('Performance Metrics:', performanceMetrics);
       console.log('Trade Analytics:', tradeAnalytics);
-      console.log('Response Status:', {
-        positions: positionsResponse.ok,
-        summary: summaryResponse.ok,
-        monthlyPerformance: monthlyPerformanceResponse.ok,
-        performanceMetrics: performanceMetricsResponse.ok,
-        tradeAnalytics: tradeAnalyticsResponse.ok
-      });
+      console.log('✅ All analytics data fetched successfully');
 
       // Transform positions to allocation format
       const totalValue = positions.length > 0 ? positions.reduce((sum: number, pos: any) => sum + (pos.market_value || 0), 0) : 0;
