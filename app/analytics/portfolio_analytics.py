@@ -70,6 +70,12 @@ class PortfolioAnalytics:
 
         if trades_count == 0:
             print("  ⚠️ No trades found - returning zeros")
+        else:
+            # Debug: Show sample trade data
+            sample_trades = base_query.limit(3).all()
+            print(f"  📊 Sample trades data:")
+            for i, trade in enumerate(sample_trades):
+                print(f"    Trade {i+1}: {trade.symbol} | pnl: {trade.pnl} | qty: {trade.quantity} | entry: {trade.entry_price} | status: {trade.status}")
 
         return {
             "total_pnl": self._calculate_total_pnl(base_query),
@@ -93,6 +99,7 @@ class PortfolioAnalytics:
 
     def _calculate_total_pnl(self, query) -> Decimal:
         result = query.with_entities(func.sum(Trade.pnl)).scalar()
+        print(f"    _calculate_total_pnl result: {result}")
         return Decimal(result) if result is not None else Decimal("0")
 
     def _calculate_total_pnl_percentage(self, query) -> Decimal:
