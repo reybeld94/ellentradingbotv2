@@ -129,6 +129,9 @@ export const api = {
     getExposure: async () => {
       return authenticatedFetch(`${API_BASE_URL}/risk/exposure`);
     },
+    getAlerts: async () => {
+      return authenticatedFetch(`${API_BASE_URL}/risk/alerts`);
+    },
   },
 
   // Portfolio endpoints

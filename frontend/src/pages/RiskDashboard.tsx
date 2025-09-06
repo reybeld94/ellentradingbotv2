@@ -72,18 +72,20 @@ const RiskDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch real risk metrics and exposure from API
-      const [metricsResponse, exposureResponse] = await Promise.all([
+      // Fetch real risk metrics, exposure, and alerts from API
+      const [metricsResponse, exposureResponse, alertsResponse] = await Promise.all([
         api.risk.getMetrics(),
-        api.risk.getExposure()
+        api.risk.getExposure(),
+        api.risk.getAlerts()
       ]);
       
-      if (!metricsResponse.ok || !exposureResponse.ok) {
+      if (!metricsResponse.ok || !exposureResponse.ok || !alertsResponse.ok) {
         throw new Error('Failed to fetch risk data');
       }
       
       const apiData = await metricsResponse.json();
       const exposureData = await exposureResponse.json();
+      const alertsData = await alertsResponse.json();
       
       // Combine real data with dummy data (temporarily)
       const mockData: RiskDashboardData = {
@@ -102,47 +104,9 @@ const RiskDashboard: React.FC = () => {
           riskScore: apiData.metrics.riskScore,
           riskLevel: apiData.metrics.riskLevel
         },
-        // Use real exposure data from API
+        // Use real exposure and alerts data from API
         exposure: exposureData.exposure || [],
-        alerts: [
-          {
-            id: '1',
-            type: 'critical',
-            category: 'exposure',
-            title: 'Technology Sector Over-Concentration',
-            description: 'Technology sector exposure has exceeded 65% of portfolio, increasing concentration risk.',
-            timestamp: new Date(Date.now() - 1800000).toISOString(),
-            isRead: false,
-            isAcknowledged: false,
-            affectedPositions: ['AAPL', 'GOOGL', 'MSFT'],
-            recommendedAction: 'Consider reducing technology positions or diversifying into other sectors.',
-            severity: 8
-          },
-          {
-            id: '2',
-            type: 'warning',
-            category: 'correlation',
-            title: 'High Correlation Detected',
-            description: 'AAPL and MSFT showing correlation above 0.8, increasing portfolio risk.',
-            timestamp: new Date(Date.now() - 3600000).toISOString(),
-            isRead: false,
-            isAcknowledged: false,
-            affectedPositions: ['AAPL', 'MSFT'],
-            recommendedAction: 'Monitor correlation trends and consider position adjustments.',
-            severity: 6
-          },
-          {
-            id: '3',
-            type: 'info',
-            category: 'volatility',
-            title: 'Market Volatility Increase',
-            description: 'Market volatility has increased by 15% over the past week.',
-            timestamp: new Date(Date.now() - 7200000).toISOString(),
-            isRead: true,
-            isAcknowledged: true,
-            severity: 4
-          }
-        ],
+        alerts: alertsData.alerts || [],
         correlations: {
           symbols: ['AAPL', 'GOOGL', 'MSFT', 'JNJ', 'JPM'],
           data: [

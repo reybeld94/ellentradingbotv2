@@ -388,6 +388,169 @@ async def get_risk_exposure(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating exposure: {str(e)}")
 
+@router.get("/risk/alerts")
+async def get_risk_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user)
+):
+    """Generar alertas de riesgo reales basadas en el estado actual del portfolio"""
+    from app.integrations import broker_client
+    from datetime import datetime, timedelta
+    from uuid import uuid4
+    
+    active_portfolio = portfolio_service.get_active(db, current_user)
+    if not active_portfolio:
+        raise HTTPException(status_code=400, detail="No active portfolio found")
+    
+    try:
+        alerts = []
+        now = now_eastern()
+        
+        # Obtener datos necesarios
+        account = broker_client.get_account()
+        portfolio_value = float(getattr(account, "portfolio_value", 100000))
+        buying_power = float(getattr(account, "buying_power", 50000))
+        positions = position_manager.get_detailed_positions()
+        risk_service = RiskService(db)
+        risk_limits = risk_service.get_or_create_risk_limits(current_user.id, active_portfolio.id)
+        
+        # 1. Alerta de utilización de margen alta
+        margin_utilization = max(0, (portfolio_value - buying_power) / portfolio_value * 100) if portfolio_value > 0 else 0
+        if margin_utilization > 70:
+            severity = 8 if margin_utilization > 85 else 6
+            alert_type = 'critical' if margin_utilization > 85 else 'warning'
+            
+            alerts.append({
+                'id': str(uuid4()),
+                'type': alert_type,
+                'category': 'margin',
+                'title': f'High Margin Utilization: {margin_utilization:.1f}%',
+                'description': f'Margin usage is at {margin_utilization:.1f}%, which may increase risk during market volatility.',
+                'timestamp': now.isoformat(),
+                'isRead': False,
+                'isAcknowledged': False,
+                'recommendedAction': 'Consider reducing position sizes or adding more capital to decrease leverage.',
+                'severity': severity
+            })
+        
+        # 2. Alerta de posiciones cerca del límite
+        open_positions_count = len([p for p in positions if abs(p['quantity']) > 0.001])
+        position_utilization = (open_positions_count / risk_limits.max_open_positions * 100) if risk_limits.max_open_positions > 0 else 0
+        
+        if position_utilization > 80:
+            alerts.append({
+                'id': str(uuid4()),
+                'type': 'warning',
+                'category': 'position',
+                'title': f'Position Limit Nearly Reached',
+                'description': f'Using {open_positions_count}/{risk_limits.max_open_positions} available position slots ({position_utilization:.0f}%).',
+                'timestamp': now.isoformat(),
+                'isRead': False,
+                'isAcknowledged': False,
+                'recommendedAction': 'Close some positions or increase position limits before taking new trades.',
+                'severity': 5
+            })
+        
+        # 3. Alertas de exposición por sector
+        # Reutilizar lógica del endpoint de exposure
+        sector_mapping = {
+            'AAPL': 'Technology', 'MSFT': 'Technology', 'GOOGL': 'Technology', 'GOOG': 'Technology',
+            'NVDA': 'Technology', 'META': 'Technology', 'FB': 'Technology', 'NFLX': 'Technology',
+            'JPM': 'Financial', 'BAC': 'Financial', 'GS': 'Financial', 'WFC': 'Financial',
+            'JNJ': 'Healthcare', 'PFE': 'Healthcare', 'UNH': 'Healthcare'
+            # Mapeo reducido para el ejemplo
+        }
+        
+        sectors = {}
+        for pos in positions:
+            symbol = pos['symbol']
+            market_value = abs(pos['market_value'])
+            sector = sector_mapping.get(symbol, 'Other')
+            
+            if sector not in sectors:
+                sectors[sector] = {'exposure': 0, 'symbols': []}
+            
+            sectors[sector]['exposure'] += market_value
+            sectors[sector]['symbols'].append(symbol)
+        
+        # Verificar límites por sector
+        sector_limits = {'Technology': 0.6, 'Financial': 0.4, 'Healthcare': 0.35, 'Other': 0.5}
+        for sector, data in sectors.items():
+            limit = sector_limits.get(sector, 0.3)
+            utilization = (data['exposure'] / (portfolio_value * limit)) if portfolio_value > 0 else 0
+            
+            if utilization > 0.9:  # 90% del límite del sector
+                severity = 8 if utilization > 1.1 else 6
+                alert_type = 'critical' if utilization > 1.1 else 'warning'
+                
+                alerts.append({
+                    'id': str(uuid4()),
+                    'type': alert_type,
+                    'category': 'exposure',
+                    'title': f'{sector} Sector Over-Concentration',
+                    'description': f'{sector} sector exposure at {utilization*100:.1f}% of limit (${data["exposure"]:.0f}).',
+                    'timestamp': now.isoformat(),
+                    'isRead': False,
+                    'isAcknowledged': False,
+                    'affectedPositions': data['symbols'],
+                    'recommendedAction': f'Consider reducing {sector.lower()} positions or diversifying into other sectors.',
+                    'severity': severity
+                })
+        
+        # 4. Alerta de PnL diario negativo significativo
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        daily_pnl = db.query(func.sum(Trade.pnl)).filter(
+            and_(
+                Trade.user_id == current_user.id,
+                Trade.portfolio_id == active_portfolio.id,
+                Trade.closed_at >= today_start,
+                Trade.status == "closed"
+            )
+        ).scalar() or 0.0
+        
+        if daily_pnl < 0:
+            daily_loss_percent = abs(daily_pnl) / portfolio_value * 100 if portfolio_value > 0 else 0
+            if daily_loss_percent > 1:  # Pérdida > 1%
+                severity = 7 if daily_loss_percent > 3 else 5
+                alert_type = 'critical' if daily_loss_percent > 3 else 'warning'
+                
+                alerts.append({
+                    'id': str(uuid4()),
+                    'type': alert_type,
+                    'category': 'volatility',
+                    'title': f'Significant Daily Loss: {daily_loss_percent:.1f}%',
+                    'description': f'Daily P&L shows loss of ${abs(daily_pnl):.2f} ({daily_loss_percent:.1f}% of portfolio).',
+                    'timestamp': now.isoformat(),
+                    'isRead': False,
+                    'isAcknowledged': False,
+                    'recommendedAction': 'Review trading strategy and consider reducing position sizes.',
+                    'severity': severity
+                })
+        
+        # 5. Alerta informativa de leverage alto
+        leverage_ratio = portfolio_value / buying_power if buying_power > 0 else 1.0
+        if leverage_ratio > 3:
+            alerts.append({
+                'id': str(uuid4()),
+                'type': 'info',
+                'category': 'market',
+                'title': f'High Leverage: {leverage_ratio:.2f}x',
+                'description': f'Current leverage ratio is {leverage_ratio:.2f}x. Monitor positions closely.',
+                'timestamp': now.isoformat(),
+                'isRead': False,
+                'isAcknowledged': False,
+                'recommendedAction': 'Consider reducing leverage during volatile market conditions.',
+                'severity': 4
+            })
+        
+        # Ordenar por severidad descendente
+        alerts.sort(key=lambda x: x['severity'], reverse=True)
+        
+        return {"alerts": alerts}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating risk alerts: {str(e)}")
+
 @router.post("/risk/test-signal")
 async def test_signal_risk(
     signal_data: Dict[str, Any],
