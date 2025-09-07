@@ -392,26 +392,11 @@ const TradesPage: React.FC = () => {
           />
         )}
 
-        <div className='grid grid-cols-12 gap-6 min-h-screen'>
-          <div className='col-span-12 lg:col-span-8'>
-            <div className='card p-4'>
-              <h3 className='text-base font-semibold text-slate-900 mb-3'>Portfolio Performance</h3>
-              <div className='h-48'>
-                <AlpacaStyleChart loading={loading} compact={true} />
-              </div>
-            </div>
-          </div>
-
-          <div className='col-span-12 lg:col-span-4 lg:row-span-2 space-y-4'>
-            <CompactTradeMetrics stats={stats} />
-            {strategyStats.length > 0 && (
-              <CompactStrategyPerformance strategyStats={strategyStats} />
-            )}
-          </div>
-
-          <div className='col-span-12 lg:col-span-8'>
+        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
+          <div className='lg:col-span-8 space-y-6'>
+            <AlpacaStyleChart loading={loading} />
             {showFilters && (
-              <div className='mb-4'>
+              <div>
                 <TradeFilters filters={filters} onFiltersChange={setFilters} strategies={strategies} onReset={resetFilters} />
               </div>
             )}
@@ -488,6 +473,13 @@ const TradesPage: React.FC = () => {
                 )}
               </div>
             </div>
+          </div>
+
+          <div className='lg:col-span-4 space-y-4'>
+            <CompactTradeMetrics stats={stats} />
+            {strategyStats.length > 0 && (
+              <CompactStrategyPerformance strategyStats={strategyStats} />
+            )}
           </div>
         </div>
 
