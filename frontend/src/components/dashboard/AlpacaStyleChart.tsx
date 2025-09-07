@@ -26,15 +26,17 @@ interface PortfolioPerformanceData {
 
 interface AlpacaStyleChartProps {
   loading?: boolean;
+  compact?: boolean;
 }
 
 const AlpacaStyleChart: React.FC<AlpacaStyleChartProps> = ({
-  loading = false
+  loading = false,
+  compact = false
 }) => {
   const [data, setData] = useState<PortfolioPerformanceData | null>(null);
   const [selectedTimeframe, setSelectedTimeframe] = useState<
     '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'
-  >('1D');
+  >(compact ? '1M' : '1D');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,19 +137,23 @@ const AlpacaStyleChart: React.FC<AlpacaStyleChartProps> = ({
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="animate-pulse">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-              <div className="h-8 bg-gray-200 rounded w-48 mb-1"></div>
-              <div className="h-4 bg-gray-200 rounded w-40"></div>
+          {!compact ? (
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-48 mb-1"></div>
+                <div className="h-4 bg-gray-200 rounded w-40"></div>
+              </div>
+              <div className="flex space-x-2">
+                {timeframes.map((tf) => (
+                  <div key={tf.key} className="h-8 w-10 bg-gray-200 rounded"></div>
+                ))}
+              </div>
             </div>
-            <div className="flex space-x-2">
-              {timeframes.map((tf) => (
-                <div key={tf.key} className="h-8 w-10 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          </div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+          ) : (
+            <div className="h-4 bg-gray-200 rounded w-32 mb-4"></div>
+          )}
+          <div className={compact ? 'h-40 bg-gray-200 rounded' : 'h-64 bg-gray-200 rounded'}></div>
         </div>
       </div>
     );
@@ -167,53 +173,62 @@ const AlpacaStyleChart: React.FC<AlpacaStyleChartProps> = ({
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h3 className="text-sm font-medium text-gray-600 mb-2">
-            Your portfolio
-          </h3>
-          <div className="flex items-center space-x-2">
-            <span className="text-3xl font-bold text-gray-900">
-              {formatCurrency(data.current_value)}
-            </span>
-            <span
-              className={`text-lg font-medium ${
-                isPositive ? 'text-green-600' : 'text-red-600'
-              }`}
-            >
-              {isPositive ? '+' : ''}
-              {data.change_percent}%
-            </span>
+      {!compact ? (
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 mb-2">
+              Your portfolio
+            </h3>
+            <div className="flex items-center space-x-2">
+              <span className="text-3xl font-bold text-gray-900">
+                {formatCurrency(data.current_value)}
+              </span>
+              <span
+                className={`text-lg font-medium ${
+                  isPositive ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {isPositive ? '+' : ''}
+                {data.change_percent}%
+              </span>
+            </div>
+            <div className="text-sm text-gray-500 mt-1">
+              {lastUpdated.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZoneName: 'short'
+              })}
+            </div>
           </div>
-          <div className="text-sm text-gray-500 mt-1">
-            {lastUpdated.toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true,
-              timeZoneName: 'short'
-            })}
+          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+            {timeframes.map((tf) => (
+              <button
+                key={tf.key}
+                onClick={() => setSelectedTimeframe(tf.key)}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                  selectedTimeframe === tf.key
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
           </div>
         </div>
-        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-          {timeframes.map((tf) => (
-            <button
-              key={tf.key}
-              onClick={() => setSelectedTimeframe(tf.key)}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                selectedTimeframe === tf.key
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {tf.label}
-            </button>
-          ))}
+      ) : (
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-600">Portfolio Value</span>
+          <span className="text-lg font-bold text-gray-900">
+            {formatCurrency(data.current_value)}
+          </span>
         </div>
-      </div>
+      )}
 
-      <div className="h-64 -mx-2">
+      <div className={compact ? 'h-40 -mx-2' : 'h-64 -mx-2'}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data.historical_data}>
             <XAxis
