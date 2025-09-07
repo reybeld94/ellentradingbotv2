@@ -464,9 +464,6 @@ const TradesPage: React.FC = () => {
                           strategy_id: trade.strategy_id,
                         }}
                         onClose={handleCloseTrade}
-                        onViewDetails={(trade) => {
-                          console.log('View details for trade:', trade.id);
-                        }}
                       />
                     ))}
                   </div>
