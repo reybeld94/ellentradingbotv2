@@ -4,8 +4,7 @@ import {
   TrendingDown,
   Brain,
   ArrowUpRight,
-  ArrowDownRight,
-  Eye
+  ArrowDownRight
 } from 'lucide-react';
 import SymbolLogo from '../SymbolLogo';
 
@@ -33,14 +32,12 @@ interface Trade {
 
 interface TradeCardProps {
   trade: Trade;
-  onViewDetails?: (trade: Trade) => void;
   onClose?: (tradeId: string) => void;
   compact?: boolean;
 }
 
 const TradeCard: React.FC<TradeCardProps> = ({
   trade,
-  onViewDetails,
   onClose
 }) => {
   const isProfit = (trade.realized_pnl || trade.unrealized_pnl || 0) >= 0;
@@ -158,14 +155,6 @@ const TradeCard: React.FC<TradeCardProps> = ({
 
             {/* Actions */}
             <div className="flex items-center space-x-2">
-              <button
-                onClick={() => onViewDetails?.(trade)}
-                className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                title="View Details"
-              >
-                <Eye className="w-4 h-4" />
-              </button>
-              
               {trade.status === 'open' && onClose && (
                 <button
                   onClick={() => onClose(trade.id)}
