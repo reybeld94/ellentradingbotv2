@@ -6,10 +6,13 @@ import logging
 from enum import Enum
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_verified_user
+from app.database import get_db
 from app.integrations.alpaca.client import AlpacaClient
 from app.models.user import User
+from app.services import portfolio_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -30,10 +33,15 @@ async def get_portfolio_performance(
         TimeframeEnum.ONE_DAY, description="Timeframe for portfolio performance"
     ),
     current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
 ):
     """Return portfolio performance data using Alpaca Portfolio History."""
     try:
-        alpaca_client = AlpacaClient()
+        active_portfolio = portfolio_service.get_active(db, current_user)
+        if not active_portfolio:
+            raise HTTPException(status_code=400, detail="No active portfolio found")
+
+        alpaca_client = AlpacaClient(active_portfolio)
 
         # Calculate date range based on timeframe
         end_date = datetime.now()
@@ -120,6 +128,8 @@ async def get_portfolio_performance(
             "historical_data": historical_data,
         }
 
+    except HTTPException:
+        raise
     except Exception as exc:  # pragma: no cover - log and rethrow
         logger.error("Error getting portfolio performance: %s", exc)
         raise HTTPException(
