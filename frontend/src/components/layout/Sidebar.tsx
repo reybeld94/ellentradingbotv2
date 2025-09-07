@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
-export type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'risk' | 'analytics' | 'settings';
+export type Page = 'dashboard' | 'signals' | 'orders' | 'trades' | 'strategies' | 'exit-rules' | 'risk' | 'analytics' | 'settings';
 
 interface SidebarProps {
   currentPage: Page;
@@ -74,6 +74,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           id: 'strategies' as Page,
           name: 'Strategies',
           icon: Brain,
+          badge: null,
+          category: 'trading' as const
+        },
+        {
+          id: 'exit-rules' as Page,
+          name: 'Exit Rules',
+          icon: Settings,
           badge: null,
           category: 'trading' as const
         }
