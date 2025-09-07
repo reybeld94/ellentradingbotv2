@@ -40,6 +40,33 @@ async def get_user_trades(
     return trades
 
 
+@router.get("/trades/by-strategy/{strategy_id}", response_model=List[TradeSchema])
+async def get_trades_by_strategy(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Return trades for the current user filtered by strategy."""
+    active_portfolio = portfolio_service.get_active(db, current_user)
+    if not active_portfolio:
+        return []
+
+    service = TradeService(db)
+    service.refresh_user_trades(current_user.id, active_portfolio.id)
+
+    trades = (
+        db.query(Trade)
+        .filter(
+            Trade.user_id == current_user.id,
+            Trade.portfolio_id == active_portfolio.id,
+            Trade.strategy_id == str(strategy_id),
+        )
+        .order_by(Trade.opened_at.desc())
+        .all()
+    )
+    return trades
+
+
 @router.get("/trades/equity-curve", response_model=List[EquityPointSchema])
 async def get_equity_curve(
     db: Session = Depends(get_db),
