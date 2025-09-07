@@ -85,7 +85,6 @@ const AuthenticatedApp: React.FC = () => {
       pendingSignalsCount={pendingSignalsCount}
     >
       <Routes>
-        <Route path="/exit-rules" element={<ExitRulesManager />} />
         <Route path="*" element={renderCurrentPage()} />
       </Routes>
     </Layout>
