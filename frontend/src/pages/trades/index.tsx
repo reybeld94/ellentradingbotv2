@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Filter, Download, RefreshCw, BarChart3 } from 'lucide-react';
 import TradeCard from '../../components/trades/TradeCard';
-import TradeMetrics from '../../components/trades/TradeMetrics';
 import TradeFilters from '../../components/trades/TradeFilters';
+import CompactTradeMetrics from '../../components/trades/CompactTradeMetrics';
+import CompactStrategyPerformance from '../../components/trades/CompactStrategyPerformance';
 import AlpacaStyleChart from '../../components/dashboard/AlpacaStyleChart';
 import ValidationAlert from '../../components/ValidationAlert';
 import { api } from '../../services/api';
@@ -377,26 +378,11 @@ const TradesPage: React.FC = () => {
             <p className='text-slate-600 mt-1'>Comprehensive analysis of your trading performance and positions</p>
           </div>
           <div className='flex items-center space-x-3'>
-            {/* View mode toggle removed */}
-            <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary ${showFilters ? 'bg-primary-50 text-primary-700 border-primary-200' : ''}`}>
-              <Filter className='w-4 h-4 mr-2' />
-              Filters
-            </button>
-            <button onClick={exportTrades} className='btn-ghost'>
-              <Download className='w-4 h-4 mr-2' />
-              Export
-            </button>
-            <button onClick={() => { fetchTrades(); fetchRealMetrics(); }} className='btn-secondary'>
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
             <button onClick={validateTrades} className='btn btn-warning'>
               Validate with Alpaca
             </button>
           </div>
         </div>
-
-        <TradeMetrics metrics={stats} loading={loading} />
 
         {showValidationPanel && (
           <ValidationAlert
@@ -406,86 +392,101 @@ const TradesPage: React.FC = () => {
           />
         )}
 
-        {/* Portfolio Performance Chart */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">Portfolio Performance</h3>
-              <p className="text-sm text-slate-600">Track your trading performance over time</p>
+        <div className='grid grid-cols-12 gap-6 min-h-screen'>
+          <div className='col-span-12 lg:col-span-4'>
+            <div className='card p-4'>
+              <h3 className='text-base font-semibold text-slate-900 mb-3'>Portfolio Performance</h3>
+              <div className='h-48'>
+                <AlpacaStyleChart loading={loading} compact={true} />
+              </div>
             </div>
           </div>
 
-          {/* Usar el mismo componente que funciona en Dashboard */}
-          <AlpacaStyleChart loading={loading} />
-        </div>
-
-        {strategyStats.length > 0 && (
-          <div className='card p-6'>
-            <h3 className='text-lg font-semibold text-slate-900 mb-4'>Performance by Strategy</h3>
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-              {strategyStats.map(s => (
-                <div key={s.id} className='p-4 rounded-xl bg-slate-50'>
-                  <div className='flex items-center justify-between mb-2'>
-                    <span className='font-medium text-slate-700'>{s.name}</span>
-                    <span className={`text-sm font-semibold ${s.totalPnL >= 0 ? 'text-success-600' : 'text-error-600'}`}>
-                      {s.totalPnL >= 0 ? '+' : ''}${Math.abs(s.totalPnL).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className='text-xs text-slate-500'>Win Rate: {s.winRate.toFixed(1)}% ({s.trades} trades)</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
-          {showFilters && (
-            <div className='lg:col-span-1'>
-              <TradeFilters filters={filters} onFiltersChange={setFilters} strategies={strategies} onReset={resetFilters} />
-            </div>
-          )}
-          <div className={showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}>
-            {filteredTrades.length === 0 ? (
-              <div className='card p-12 text-center'>
-                <div className='w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6'>
-                  <BarChart3 className='w-10 h-10 text-slate-400' />
-                </div>
-                <h3 className='text-xl font-semibold text-slate-900 mb-2'>No Trades Found</h3>
-                <p className='text-slate-600 mb-6'>
-                  {trades.length === 0 ? "You haven't executed any trades yet. Your trading history will appear here once you start trading." : 'No trades match your current filters. Try adjusting your search criteria.'}
-                </p>
-                {trades.length > 0 && (
-                  <button onClick={resetFilters} className='btn-secondary'>
-                    Clear Filters
+          <div className='col-span-12 lg:col-span-4'>
+            {showFilters && (
+              <div className='mb-4'>
+                <TradeFilters filters={filters} onFiltersChange={setFilters} strategies={strategies} onReset={resetFilters} />
+              </div>
+            )}
+            <div className='card p-4'>
+              <div className='flex items-center justify-between mb-4'>
+                <h3 className='text-base font-semibold text-slate-900'>Recent Trades</h3>
+                <div className='flex items-center space-x-2'>
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`btn-ghost text-xs px-2 py-1 ${showFilters ? 'bg-primary-50 text-primary-700 border-primary-200' : ''}`}
+                  >
+                    <Filter className='w-3 h-3 mr-1' />
+                    Filters
                   </button>
+                  <button onClick={exportTrades} className='btn-ghost text-xs px-2 py-1'>
+                    <Download className='w-3 h-3 mr-1' />
+                    Export
+                  </button>
+                  <button
+                    onClick={() => {
+                      fetchTrades();
+                      fetchRealMetrics();
+                    }}
+                    className='btn-secondary text-xs px-2 py-1'
+                  >
+                    <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </button>
+                </div>
+              </div>
+              <div className='overflow-auto' style={{ maxHeight: '500px' }}>
+                {filteredTrades.length === 0 ? (
+                  <div className='text-center p-6'>
+                    <div className='w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6'>
+                      <BarChart3 className='w-10 h-10 text-slate-400' />
+                    </div>
+                    <h3 className='text-xl font-semibold text-slate-900 mb-2'>No Trades Found</h3>
+                    <p className='text-slate-600 mb-6'>
+                      {trades.length === 0
+                        ? "You haven't executed any trades yet. Your trading history will appear here once you start trading."
+                        : 'No trades match your current filters. Try adjusting your search criteria.'}
+                    </p>
+                    {trades.length > 0 && (
+                      <button onClick={resetFilters} className='btn-secondary'>
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className='space-y-3'>
+                    {filteredTrades.map(trade => (
+                      <TradeCard
+                        key={trade.id}
+                        trade={{
+                          id: trade.id,
+                          symbol: trade.symbol,
+                          side: trade.action,
+                          quantity: trade.quantity,
+                          entry_price: trade.entry_price,
+                          exit_price: trade.exit_price,
+                          realized_pnl: trade.pnl,
+                          entry_time: trade.opened_at,
+                          exit_time: trade.closed_at,
+                          status: trade.status,
+                          strategy_id: trade.strategy_id,
+                        }}
+                        onClose={handleCloseTrade}
+                        onViewDetails={(trade) => {
+                          console.log('View details for trade:', trade.id);
+                        }}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredTrades.map(trade => (
-                  <TradeCard
-                    key={trade.id}
-                    trade={{
-                      id: trade.id,
-                      symbol: trade.symbol,
-                      side: trade.action,
-                      quantity: trade.quantity,
-                      entry_price: trade.entry_price,
-                      exit_price: trade.exit_price,
-                      realized_pnl: trade.pnl,
-                      entry_time: trade.opened_at,
-                      exit_time: trade.closed_at,
-                      status: trade.status,
-                      strategy_id: trade.strategy_id,
-                    }}
-                    onClose={handleCloseTrade}
-                    onViewDetails={(trade) => {
-                      console.log('View details for trade:', trade.id);
-                      // Aquí puedes añadir la lógica para mostrar detalles
-                    }}
-                  />
-                ))}
-              </div>
+            </div>
+          </div>
+
+          <div className='col-span-12 lg:col-span-4 space-y-4'>
+            <CompactTradeMetrics stats={stats} />
+            {strategyStats.length > 0 && (
+              <CompactStrategyPerformance strategyStats={strategyStats} />
             )}
           </div>
         </div>
