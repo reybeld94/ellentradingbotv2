@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
@@ -19,6 +19,8 @@ import type { Page } from './components/layout/Sidebar';
 const AuthenticatedApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [pendingSignalsCount, setPendingSignalsCount] = useState(0);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch signals count logic (mantener el existente)
   useEffect(() => {
@@ -52,6 +54,22 @@ const AuthenticatedApp: React.FC = () => {
     const interval = setInterval(fetchSignalsCount, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (currentPage === 'exit-rules') {
+      navigate('/exit-rules');
+    } else {
+      navigate('/');
+    }
+  }, [currentPage, navigate]);
+
+  useEffect(() => {
+    if (location.pathname === '/exit-rules') {
+      setCurrentPage('exit-rules');
+    } else {
+      setCurrentPage(prev => (prev === 'exit-rules' ? 'dashboard' : prev));
+    }
+  }, [location.pathname]);
 
   const renderCurrentPage = () => {
     switch (currentPage) {
