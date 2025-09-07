@@ -3,15 +3,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+
 from app.database import get_db
 from app.models.trades import Trade
 from app.models.user import User
+from app.models.signal import Signal
 from app.schemas.trades import TradeSchema, EquityPointSchema
 from app.core.auth import get_current_verified_user, get_admin_user
 from app.services.trade_service import TradeService
 from app.services import portfolio_service
 from app.services.trade_validation import TradeValidator
 from app.core.types import TradeStatus
+from app.utils.time import now_eastern
 
 router = APIRouter()
 
@@ -125,3 +128,41 @@ async def cleanup_orphaned_trades(
     validator = TradeValidator(db)
     cleanup_result = validator.cleanup_orphaned_trades(current_user.id, dry_run=dry_run)
     return cleanup_result
+
+
+@router.post("/trades/{trade_id}/close", response_model=TradeSchema)
+async def close_trade(
+    trade_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_verified_user),
+):
+    """Create a sell signal and mark the trade as closed."""
+    trade = (
+        db.query(Trade)
+        .filter(Trade.id == trade_id, Trade.user_id == current_user.id)
+        .first()
+    )
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    if trade.status != TradeStatus.OPEN:
+        raise HTTPException(status_code=400, detail="Trade is not open")
+
+    # Create sell signal to close the position
+    action = "sell" if trade.action.lower() == "buy" else "buy"
+    signal = Signal(
+        symbol=trade.symbol,
+        action=action,
+        strategy_id=trade.strategy_id,
+        quantity=trade.quantity,
+        user_id=current_user.id,
+        portfolio_id=trade.portfolio_id,
+    )
+    db.add(signal)
+
+    # Mark trade as closed
+    trade.status = TradeStatus.CLOSED
+    trade.closed_at = now_eastern()
+
+    db.commit()
+    db.refresh(trade)
+    return trade
