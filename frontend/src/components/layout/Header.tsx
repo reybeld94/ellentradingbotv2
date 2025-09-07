@@ -101,6 +101,7 @@ const Header: React.FC<HeaderProps> = ({
     orders: 'Order Management',
     trades: 'Trade History',
     strategies: 'Strategy Manager',
+    'exit-rules': 'Exit Rules Manager',
     risk: 'Risk Dashboard',
     analytics: 'Portfolio Analytics',
     settings: 'Account Settings'

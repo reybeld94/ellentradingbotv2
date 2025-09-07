@@ -65,6 +65,8 @@ const AuthenticatedApp: React.FC = () => {
         return <TradesPage />;
       case 'strategies':
         return <StrategiesPage />;
+      case 'exit-rules':
+        return <ExitRulesManager />;
       case 'risk':
         return <RiskDashboard />;
       case 'analytics':
