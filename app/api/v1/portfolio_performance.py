@@ -109,14 +109,29 @@ async def get_portfolio_performance(
                         continue
 
         if not historical_data:
-            raise HTTPException(
-                status_code=404, detail="No portfolio history data available"
-            )
-
-        current_value = historical_data[-1]["portfolio_value"]
-        initial_value = historical_data[0]["portfolio_value"]
-        change_amount = current_value - initial_value
-        change_percent = (change_amount / initial_value * 100) if initial_value else 0
+            try:
+                account = alpaca_client.get_account()
+                current_value = float(getattr(account, "portfolio_value", 0))
+                historical_data = [
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "portfolio_value": current_value,
+                    }
+                ]
+                initial_value = current_value
+                change_amount = 0
+                change_percent = 0
+            except Exception:
+                raise HTTPException(
+                    status_code=404, detail="No portfolio history data available"
+                )
+        else:
+            current_value = historical_data[-1]["portfolio_value"]
+            initial_value = historical_data[0]["portfolio_value"]
+            change_amount = current_value - initial_value
+            change_percent = (
+                change_amount / initial_value * 100
+            ) if initial_value else 0
 
         return {
             "current_value": current_value,

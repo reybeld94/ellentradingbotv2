@@ -154,7 +154,12 @@ def test_portfolio_performance_no_data(auth_headers, monkeypatch):
     class EmptyClient:
         def __init__(self, portfolio):
             self._trading = SimpleNamespace(
-                get_portfolio_history=lambda req: SimpleNamespace(equity=[], timestamp=[])
+                get_portfolio_history=lambda req: SimpleNamespace(equity=[], timestamp=[]),
+            )
+
+        def get_account(self):
+            return SimpleNamespace(
+                cash=0, buying_power=0, portfolio_value=1000.0
             )
 
     monkeypatch.setattr(
@@ -164,8 +169,12 @@ def test_portfolio_performance_no_data(auth_headers, monkeypatch):
     response = client.get(
         "/api/v1/portfolio/performance?timeframe=1D", headers=auth_headers
     )
-    assert response.status_code == 404
-    assert "No portfolio history data available" in response.json()["detail"]
+    assert response.status_code == 200
+    data = response.json()
+    assert data["initial_value"] == 1000.0
+    assert data["current_value"] == 1000.0
+    assert data["change_percent"] == 0
+    assert len(data["historical_data"]) == 1
 
 
 def test_portfolio_performance_no_portfolio(auth_headers_no_portfolio):
