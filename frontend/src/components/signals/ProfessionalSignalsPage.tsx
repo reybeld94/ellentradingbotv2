@@ -60,7 +60,9 @@ const ProfessionalSignalsPage: React.FC<ProfessionalSignalsPageProps> = ({
       const direction = sortOrder === 'asc' ? 1 : -1;
 
       if (sortBy === 'timestamp') {
-        return direction * (new Date(bVal as string).getTime() - new Date(aVal as string).getTime());
+        return sortOrder === 'asc'
+          ? new Date(aVal as string).getTime() - new Date(bVal as string).getTime()
+          : new Date(bVal as string).getTime() - new Date(aVal as string).getTime();
       }
       return direction * ((aVal as number) > (bVal as number) ? 1 : -1);
     });
