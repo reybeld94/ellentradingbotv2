@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProfessionalSignalsPage from '../components/signals/ProfessionalSignalsPage';
 import SignalModal from '../components/signals/SignalModal';
+import Pagination from '../components/Pagination';
 
 export type SignalStatus =
   | 'pending'
@@ -46,6 +47,8 @@ interface NormalizedSignal {
 const SignalsPage: React.FC = () => {
   const [signals, setSignals] = useState<RawSignal[]>([]);
   const [selectedSignal, setSelectedSignal] = useState<RawSignal | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
 
   const getAuthToken = () => localStorage.getItem('token');
 
@@ -143,14 +146,23 @@ const SignalsPage: React.FC = () => {
     error_message: s.error_message,
   }));
 
+  const filteredSignals = normalizedSignals;
+  const pagedSignals = filteredSignals.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <>
       <ProfessionalSignalsPage
-        signals={normalizedSignals}
+        signals={pagedSignals}
         onApprove={handleApprove}
         onReject={handleReject}
         onViewDetails={handleViewDetails}
         onRefresh={fetchSignals}
+      />
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredSignals.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
       />
       <SignalModal
         signal={selectedSignal}
