@@ -44,8 +44,8 @@ const ProfessionalSignalsPage: React.FC<ProfessionalSignalsPageProps> = ({
 }) => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('timestamp');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortBy] = useState<keyof Signal>('timestamp');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
 
   const filteredSignals = signals
     .filter(signal => {
