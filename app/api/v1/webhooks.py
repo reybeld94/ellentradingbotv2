@@ -85,15 +85,24 @@ async def receive_tradingview_webhook(
 
 @router.get("/signals")
 async def get_signals(
+        page: int = Query(1, ge=1),
+        limit: int = Query(50, ge=1, le=100),
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_verified_user)  # PROTEGIDO
 ):
     """Ver señales del usuario actual"""
 
     # Filtrar señales por usuario
+    skip = (page - 1) * limit
     if current_user.is_admin:
         # Admin puede ver todas las señales
-        signals = db.query(Signal).order_by(Signal.timestamp.desc()).limit(50).all()
+        signals = (
+            db.query(Signal)
+            .order_by(Signal.timestamp.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
     else:
         # Usuario normal solo ve sus señales
         active_portfolio = portfolio_service.get_active(db, current_user)
@@ -106,7 +115,8 @@ async def get_signals(
                 Signal.portfolio_id == active_portfolio.id,
             )
             .order_by(Signal.timestamp.desc())
-            .limit(50)
+            .offset(skip)
+            .limit(limit)
             .all()
         )
 

@@ -1,6 +1,6 @@
 # backend/app/api/v1/orders.py
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from alpaca.common.exceptions import APIError
 from sqlalchemy.orm import Session
 import logging
@@ -167,13 +167,22 @@ async def get_positions(
 
 @router.get("/signals")
 async def get_signals(
+        page: int = Query(1, ge=1),
+        limit: int = Query(50, ge=1, le=100),
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_verified_user)
 ):
     """Ver señales del usuario actual"""
+    skip = (page - 1) * limit
     if current_user.is_admin:
         # Admin puede ver todas
-        signals = db.query(Signal).order_by(Signal.timestamp.desc()).limit(50).all()
+        signals = (
+            db.query(Signal)
+            .order_by(Signal.timestamp.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
     else:
         active_portfolio = portfolio_service.get_active(db, current_user)
         if not active_portfolio:
@@ -185,7 +194,8 @@ async def get_signals(
                 Signal.portfolio_id == active_portfolio.id,
             )
             .order_by(Signal.timestamp.desc())
-            .limit(50)
+            .offset(skip)
+            .limit(limit)
             .all()
         )
 
