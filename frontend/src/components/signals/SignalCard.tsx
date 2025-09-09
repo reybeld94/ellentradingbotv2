@@ -169,44 +169,110 @@ const SignalCard: React.FC<SignalCardProps> = ({
 
   if (compact) {
     return (
-      <div className="card p-4 hover:shadow-medium transition-all duration-300 group">
-        <div className="flex items-center space-x-4">
-          {/* Symbol & Action */}
-          <div className="flex items-center space-x-3">
-            <SymbolLogo symbol={signal.symbol} className="w-8 h-8" />
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-semibold text-slate-900">
-                  {signal.symbol}
-                </span>
-                <span
-                  className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold border ${actionConfig.bg} ${actionConfig.color} ${actionConfig.border}`}
-                >
-                  <ActionIcon className="w-3 h-3 mr-1" />
-                  {signal.action.toUpperCase()}
-                </span>
+      <div className="bg-white border border-slate-200 rounded-lg hover:shadow-md transition-all duration-200 group">
+        <div className="p-4">
+          <div className="flex items-center justify-between">
+            {/* Left Section: Symbol */}
+            <div className="flex items-center space-x-3 flex-1">
+              <SymbolLogo
+                symbol={signal.symbol}
+                className="w-10 h-10 flex-shrink-0"
+              />
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg font-bold text-slate-900">
+                    {signal.symbol}
+                  </span>
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${actionConfig.bg} ${actionConfig.color} ${actionConfig.border}`}
+                  >
+                    <ActionIcon className="w-3 h-3 mr-1" />
+                    {signal.action.toUpperCase()}
+                  </span>
+                </div>
               </div>
-              <p className="text-sm text-slate-600">{signal.strategy_id}</p>
+            </div>
+
+            {/* Center Section: Details */}
+            <div className="hidden md:flex items-center space-x-6 flex-1 justify-center text-sm text-slate-600">
+              <div>{signal.strategy_id}</div>
+              <span>•</span>
+              <div>{formatTime(signal.timestamp)}</div>
+              {signal.quantity !== undefined && (
+                <>
+                  <span>•</span>
+                  <div>Qty {signal.quantity}</div>
+                </>
+              )}
+              {signal.confidence !== undefined && (
+                <>
+                  <span>•</span>
+                  <div
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getConfidenceColor(confidence)}`}
+                  >
+                    {confidence}%
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Right Section: Status & Actions */}
+            <div className="flex items-center space-x-2">
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}
+              >
+                <StatusIcon
+                  className={`w-3 h-3 mr-1 ${statusConfig.pulse ? 'animate-pulse' : ''}`}
+                />
+                {statusConfig.label}
+              </span>
+              <button
+                onClick={() => onViewDetails?.(signal)}
+                className="p-1 rounded-full text-slate-500 hover:bg-slate-100"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+              {signal.status === 'pending' && (
+                <>
+                  <button
+                    onClick={() => onApprove?.(signal.id)}
+                    className="p-1 rounded-full text-success-600 hover:bg-success-50"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onReject?.(signal.id)}
+                    className="p-1 rounded-full text-error-600 hover:bg-error-50"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Status & Confidence */}
-          <div className="flex items-center space-x-2 ml-auto">
-            {signal.confidence !== undefined && (
-              <span
-                className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${getConfidenceColor(
-                  confidence,
-                )}`}
-              >
-                {confidence}%
-              </span>
-            )}
-            <div
-              className={`p-2 rounded-lg ${statusConfig.bg} ${statusConfig.border} border`}
-            >
-              <StatusIcon
-                className={`w-4 h-4 ${statusConfig.color} ${statusConfig.pulse ? 'animate-pulse' : ''}`}
-              />
+          {/* Mobile Details */}
+          <div className="md:hidden mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <div>{signal.strategy_id}</div>
+              <span>•</span>
+              <div>{formatTime(signal.timestamp)}</div>
+              {signal.quantity !== undefined && (
+                <>
+                  <span>•</span>
+                  <div>Qty {signal.quantity}</div>
+                </>
+              )}
+              {signal.confidence !== undefined && (
+                <>
+                  <span>•</span>
+                  <div
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getConfidenceColor(confidence)}`}
+                  >
+                    {confidence}%
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
