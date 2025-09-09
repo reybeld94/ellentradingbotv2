@@ -1,12 +1,9 @@
-import { useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
   Activity,
   Clock,
   DollarSign,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 import SymbolLogo from './SymbolLogo';
 
@@ -44,7 +41,6 @@ interface ActiveTradesPanelProps {
 }
 
 const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
-  const [showPnL, setShowPnL] = useState(true);
 
   const DEFAULT_EXCHANGE = import.meta.env.VITE_DEFAULT_EXCHANGE || 'Alpaca';
 
@@ -100,20 +96,9 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 w-full h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-gray-600" />
-          <h3 className="text-lg font-semibold text-gray-800">Trades Activos</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowPnL(!showPnL)}
-            className="p-1 hover:bg-gray-100 rounded"
-            title={showPnL ? "Ocultar P&L" : "Mostrar P&L"}
-          >
-            {showPnL ? <Eye className="w-4 h-4 text-gray-500" /> : <EyeOff className="w-4 h-4 text-gray-500" />}
-          </button>
-        </div>
+      <div className="flex items-center gap-2 mb-4">
+        <Activity className="w-5 h-5 text-gray-600" />
+        <h3 className="text-lg font-semibold text-gray-800">Trades Activos</h3>
       </div>
 
       {/* Resumen */}
@@ -125,7 +110,7 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
         <div className="text-center">
           <div className="text-sm text-gray-600">P&L Total</div>
           <div className={`text-lg font-bold ${getPnLColor(totalPnL)}`}>
-            {showPnL ? `$${totalPnL.toFixed(2)}` : '***'}
+            ${totalPnL.toFixed(2)}
           </div>
         </div>
       </div>
@@ -178,26 +163,24 @@ const ActiveTradesPanel = ({ trades = [] }: ActiveTradesPanelProps) => {
             </div>
 
             {/* Cuarta fila: P&L */}
-            {showPnL && (
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                <div className="flex items-center gap-1">
-                  <DollarSign className="w-3 h-3 text-gray-400" />
-                  <span className={`font-bold text-sm ${getPnLColor(trade.pnl)}`}>
-                    ${trade.pnl.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {trade.pnl >= 0 ? (
-                    <TrendingUp className="w-3 h-3 text-green-600" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3 text-red-600" />
-                  )}
-                  <span className={`text-sm font-medium ${getPnLColor(trade.pnl)}`}>
-                    {trade.pnlPercent >= 0 ? '+' : ''}{trade.pnlPercent.toFixed(2)}%
-                  </span>
-                </div>
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3 text-gray-400" />
+                <span className={`font-bold text-sm ${getPnLColor(trade.pnl)}`}>
+                  ${trade.pnl.toFixed(2)}
+                </span>
               </div>
-            )}
+              <div className="flex items-center gap-1">
+                {trade.pnl >= 0 ? (
+                  <TrendingUp className="w-3 h-3 text-green-600" />
+                ) : (
+                  <TrendingDown className="w-3 h-3 text-red-600" />
+                )}
+                <span className={`text-sm font-medium ${getPnLColor(trade.pnl)}`}>
+                  {trade.pnlPercent >= 0 ? '+' : ''}{trade.pnlPercent.toFixed(2)}%
+                </span>
+              </div>
+            </div>
             </div>
           ))
         )}
