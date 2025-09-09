@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Plus, Filter, Download, RefreshCw, Zap,
-  LayoutGrid, List as ListIcon
+  Plus, Filter, Download, RefreshCw, Zap
 } from 'lucide-react';
 import SignalCard from '../components/signals/SignalCard';
 import SignalFilters from '../components/signals/SignalFilters';
@@ -52,7 +51,7 @@ const SignalsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode] = useState<'grid' | 'list'>('list');
   
   const [filters, setFilters] = useState<FilterOptions>({
     search: '',
@@ -267,13 +266,6 @@ const SignalsPage: React.FC = () => {
           
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              className="btn-ghost"
-            >
-              {viewMode === 'grid' ? <ListIcon className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
-            </button>
-            
-            <button
               onClick={() => setShowFilters(!showFilters)}
               className={`btn-secondary ${showFilters ? 'bg-primary-50 text-primary-700 border-primary-200' : ''}`}
             >
@@ -336,11 +328,7 @@ const SignalsPage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className={`space-y-4 ${
-                viewMode === 'grid' 
-                  ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 space-y-0' 
-                  : ''
-              }`}>
+              <div className="space-y-4">
                 {filteredSignals.map((signal) => (
                   <SignalCard
                     key={signal.id}
