@@ -198,21 +198,33 @@ async def get_signals(
             .limit(limit)
             .all()
         )
+    result = []
+    for signal in signals:
+        price = None
+        try:
+            trade = broker_client.get_latest_trade(signal.symbol)
+            p = getattr(trade, "price", None)
+            price = float(p) if p is not None else None
+        except Exception as exc:  # pragma: no cover - network/timeout
+            logger.warning("Could not fetch price for %s: %s", signal.symbol, exc)
+            price = None
 
-    return [
-        {
-            "id": signal.id,
-            "symbol": signal.symbol,
-            "action": signal.action,
-            "quantity": signal.quantity,
-            "status": signal.status,
-            "error_message": signal.error_message,
-            "timestamp": to_eastern(signal.timestamp).isoformat(),
-            "strategy_id": signal.strategy_id,
-            "source": "tradingview"
-        }
-        for signal in signals
-    ]
+        result.append(
+            {
+                "id": signal.id,
+                "symbol": signal.symbol,
+                "action": signal.action,
+                "quantity": signal.quantity,
+                "status": signal.status,
+                "error_message": signal.error_message,
+                "timestamp": to_eastern(signal.timestamp).isoformat(),
+                "strategy_id": signal.strategy_id,
+                "source": "tradingview",
+                "price": price,
+            }
+        )
+
+    return result
 
 
 # Endpoints administrativos
