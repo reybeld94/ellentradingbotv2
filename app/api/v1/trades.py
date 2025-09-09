@@ -1,5 +1,6 @@
 # backend/app/api/v1/trades.py
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -15,6 +16,9 @@ from app.services import portfolio_service
 from app.services.trade_validation import TradeValidator
 from app.core.types import TradeStatus
 from app.utils.time import now_eastern
+from app.services.order_executor import OrderExecutor
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -158,11 +162,19 @@ async def close_trade(
         portfolio_id=trade.portfolio_id,
     )
     db.add(signal)
-
-    # Mark trade as closed
-    trade.status = TradeStatus.CLOSED
-    trade.closed_at = now_eastern()
-
     db.commit()
-    db.refresh(trade)
+    db.refresh(signal)
+
+    executor = OrderExecutor()
+    try:
+        executor.execute_signal(signal, current_user)
+        trade.status = TradeStatus.CLOSED
+        trade.closed_at = now_eastern()
+        db.commit()
+        db.refresh(trade)
+    except Exception:
+        logger.exception("Failed to execute close signal for trade %s", trade_id)
+        db.rollback()
+        db.refresh(trade)
+
     return trade
