@@ -17,6 +17,7 @@ from app.core.auth import get_current_verified_user
 from app.models.user import User
 from app.models.portfolio import Portfolio
 from app.models.trades import Trade
+from app.models.signal import Signal
 from app.core.types import TradeStatus
 from app.services.order_executor import OrderExecutor
 
@@ -96,3 +97,5 @@ def test_close_trade_failure_keeps_open(setup_db, monkeypatch):
 
     db.refresh(trade)
     assert trade.status == TradeStatus.OPEN
+    signal = db.query(Signal).first()
+    assert signal.error_message == "boom"
