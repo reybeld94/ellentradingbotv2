@@ -168,13 +168,17 @@ async def close_trade(
     executor = OrderExecutor()
     try:
         executor.execute_signal(signal, current_user)
+    except Exception as e:
+        logger.exception("Failed to execute close signal for trade %s", trade_id)
+        signal.error_message = str(e)
+        trade.status = TradeStatus.OPEN
+        db.commit()
+        db.refresh(signal)
+        db.refresh(trade)
+    else:
         trade.status = TradeStatus.CLOSED
         trade.closed_at = now_eastern()
         db.commit()
-        db.refresh(trade)
-    except Exception:
-        logger.exception("Failed to execute close signal for trade %s", trade_id)
-        db.rollback()
         db.refresh(trade)
 
     return trade
