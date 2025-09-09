@@ -10,6 +10,7 @@ import {
   Search,
   RefreshCw
 } from 'lucide-react';
+import SymbolLogo from '../SymbolLogo';
 
 interface Signal {
   id: number;
@@ -173,9 +174,7 @@ const ProfessionalSignalsPage: React.FC<ProfessionalSignalsPageProps> = ({
                     {/* Left Section */}
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-bold text-gray-700">{signal.symbol}</span>
-                        </div>
+                        <SymbolLogo symbol={signal.symbol} className="w-12 h-12" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
