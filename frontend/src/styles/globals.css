@@ -16,6 +16,60 @@
     font-feature-settings: 'cv11', 'ss01';
     font-variation-settings: 'opsz' 32;
   }
+
+
+  /* Make table rows/cells grow naturally with multiline content */
+  table {
+    border-collapse: collapse;
+    table-layout: auto;
+  }
+
+  tr {
+    height: auto !important;
+  }
+
+  th,
+  td {
+    vertical-align: top;
+    height: auto !important;
+    overflow: visible;
+  }
+
+  td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.5;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+
+  /* Force wrappers commonly used inside table cells to allow wrapping. */
+  td > * {
+    white-space: inherit;
+    overflow: visible;
+    text-overflow: clip;
+    max-height: none;
+  }
+
+  /* Defensive rule for div-based grids that use ARIA roles instead of <table>. */
+  [role='row'] {
+    min-height: fit-content;
+    height: auto !important;
+  }
+
+  [role='gridcell'],
+  [role='cell'] {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.5;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: fit-content;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
 }
 
 @layer components {
@@ -118,4 +172,3 @@
     display: none;
   }
 }
-
