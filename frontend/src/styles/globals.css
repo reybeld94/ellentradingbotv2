@@ -16,6 +16,27 @@
     font-feature-settings: 'cv11', 'ss01';
     font-variation-settings: 'opsz' 32;
   }
+
+
+  /* Make table rows/cells grow naturally with multiline content */
+  table {
+    border-collapse: collapse;
+    table-layout: auto;
+  }
+
+  th,
+  td {
+    vertical-align: top;
+  }
+
+  td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.45;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
 }
 
 @layer components {
